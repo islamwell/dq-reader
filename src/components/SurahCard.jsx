@@ -63,7 +63,7 @@ const SurahCard = ({ surah, index }) => {
               <div className={`flex items-center justify-end space-x-3 text-sm ${secondaryTextStyle}`}>
                 <RevelationPlaceIcon place={surah.revelation_place} className="w-4 h-4" />
                 <span>•</span>
-                <span>{surah.verses_count} verses</span>
+                <span>{surah.verses_count}</span>
               </div>
             </div>
           </div>

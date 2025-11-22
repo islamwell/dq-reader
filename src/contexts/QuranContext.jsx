@@ -27,6 +27,7 @@ import {
   hasLocalTranslation,
   loadLocalTranslationForSurah
 } from '../data/localTranslations';
+import { DEFAULT_RECITER } from '../data/reciters';
 
 const SUPPORTED_THEMES = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
 const DEFAULT_THEME = 'light';
@@ -104,6 +105,18 @@ export const QuranProvider = ({ children }) => {
   const [lastPlayedPosition, setLastPlayedPosition] = useState(null);
   const [theme, setTheme] = useState(DEFAULT_THEME);
   const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
+  const [selectedReciter, setSelectedReciter] = useState(() => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_RECITER;
+    }
+    try {
+      const stored = localStorage.getItem('quran_reciter_preference');
+      return stored || DEFAULT_RECITER;
+    } catch (error) {
+      console.error('Failed to restore reciter preference:', error);
+      return DEFAULT_RECITER;
+    }
+  });
   const [enablePrimaryAudio, setEnablePrimaryAudio] = useState(true);
   const [enableSupplementalAudio, setEnableSupplementalAudio] = useState(true);
   const [bookmarks, setBookmarks] = useState([]);
@@ -743,6 +756,16 @@ export const QuranProvider = ({ children }) => {
     setLanguage(normalizedLanguage);
   }, []);
 
+  const setReciterPreference = useCallback((value) => {
+    try {
+      localStorage.setItem('quran_reciter_preference', value);
+    } catch (error) {
+      console.error('Failed to persist reciter preference:', error);
+    }
+
+    setSelectedReciter(value);
+  }, []);
+
   const setPrimaryAudioEnabled = useCallback(
     (value) => {
       const normalizedValue = Boolean(value);
@@ -1348,8 +1371,8 @@ export const QuranProvider = ({ children }) => {
       return mapping.url;
     }
 
-    return `https://everyayah.com/data/Alafasy_128kbps/${String(surahNumber).padStart(3, '0')}${String(ayahNumber).padStart(3, '0')}.mp3`;
-  }, [audioMappings]);
+    return `https://everyayah.com/data/${selectedReciter}/${String(surahNumber).padStart(3, '0')}${String(ayahNumber).padStart(3, '0')}.mp3`;
+  }, [audioMappings, selectedReciter]);
 
   const getTafseer = useCallback((surahNumber, ayahNumber) => {
     const key = `${surahNumber}:${ayahNumber}`;
@@ -1918,6 +1941,7 @@ export const QuranProvider = ({ children }) => {
       lastPlayedPosition,
       theme,
       language,
+      selectedReciter,
       enablePrimaryAudio,
       enableSupplementalAudio,
       bookmarks,
@@ -1938,6 +1962,7 @@ export const QuranProvider = ({ children }) => {
       fetchCustomUrls,
       setThemePreference,
       setLanguagePreference,
+      setReciterPreference,
       searchQuran,
       includeTranslationsInSearch,
       setSearchTranslationsEnabled,
@@ -1957,6 +1982,7 @@ export const QuranProvider = ({ children }) => {
       lastPlayedPosition,
       theme,
       language,
+      selectedReciter,
       enablePrimaryAudio,
       enableSupplementalAudio,
       bookmarks,
@@ -1976,6 +2002,7 @@ export const QuranProvider = ({ children }) => {
       fetchCustomUrls,
       setThemePreference,
       setLanguagePreference,
+      setReciterPreference,
       searchQuran,
       includeTranslationsInSearch,
       setSearchTranslationsEnabled,

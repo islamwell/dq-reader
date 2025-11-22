@@ -11,6 +11,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminPanel from './pages/AdminPanel';
 import ProtectedRoute from './components/ProtectedRoute';
 import Bookmarks from './pages/Bookmarks';
+import Credits from './pages/Credits';
 import SettingsPanel from './components/SettingsPanel';
 import './App.css';
 
@@ -28,10 +29,11 @@ function App() {
                 <Route path="/surah/:surahNumber" element={<Surah />} />
                 <Route path="/bookmarks" element={<Bookmarks />} />
               </Route>
-              <Route 
-                path="/search" 
-                element={<SearchResults onOpenSettings={() => setIsSettingsOpen(true)} />} 
+              <Route
+                path="/search"
+                element={<SearchResults onOpenSettings={() => setIsSettingsOpen(true)} />}
               />
+              <Route path="/credits" element={<Credits />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route 
                 path="/admin" 
