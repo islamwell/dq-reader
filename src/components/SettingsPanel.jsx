@@ -45,6 +45,12 @@ const SettingsPanel = ({ isOpen, onClose }) => {
 
   const topBookmarks = useMemo(() => bookmarks.slice(0, 3), [bookmarks]);
 
+  // Get current reciter name
+  const currentReciterName = useMemo(() => {
+    const reciter = RECITERS.find(r => r.folder === selectedReciter);
+    return reciter?.name || 'Quran';
+  }, [selectedReciter]);
+
   // Create surah lookup
   const surahLookup = useMemo(() => {
     return surahs.reduce((accumulator, surah) => {
@@ -323,8 +329,8 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                         <SafeIcon icon={FiHeadphones} className="text-lg text-islamic-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-700">Afasy Recitation</p>
-                        <p className="text-xs text-slate-500">Toggle the primary Alafasy recitation audio.</p>
+                        <p className="text-sm font-semibold text-slate-700">{currentReciterName} Recitation</p>
+                        <p className="text-xs text-slate-500">Toggle the primary Quran recitation audio.</p>
                       </div>
                     </div>
                     <span
