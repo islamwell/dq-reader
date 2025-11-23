@@ -57,18 +57,18 @@ workflows:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
       - name: Build Android release
         script: |
-        # Ensure google-services.json exists
+          # Ensure google-services.json exists
           if [ ! -f "$CM_BUILD_DIR/android/app/google-services.json" ]; then
             echo "WARNING: google-services.json not found!"
             echo "Make sure to add it to your repository at: android/app/google-services.json"
             exit 1
           fi
-          
-# Make gradlew executable
+
+          # Make gradlew executable
           cd android
           chmod +x gradlew
 
-# Build release APK
+          # Build release APK
           ./gradlew assembleRelease
     artifacts:
       - android/app/build/outputs/**/*.apk
@@ -79,7 +79,6 @@ workflows:
         notify:
           success: true
           failure: true
-
 
   # iOS Build Workflow
   ios-workflow:
