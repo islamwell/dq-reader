@@ -57,13 +57,18 @@ workflows:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
       - name: Build Android release
         script: |
-          LATEST_GOOGLE_SERVICES_JSON=$(find $CM_BUILD_DIR -name "google-services.json" | head -1)
-          if [ -z "$LATEST_GOOGLE_SERVICES_JSON" ]; then
-            echo "No google-services.json found, using default..."
-          else
-            cp $LATEST_GOOGLE_SERVICES_JSON $CM_BUILD_DIR/android/app/google-services.json
+        # Ensure google-services.json exists
+          if [ ! -f "$CM_BUILD_DIR/android/app/google-services.json" ]; then
+            echo "WARNING: google-services.json not found!"
+            echo "Make sure to add it to your repository at: android/app/google-services.json"
+            exit 1
           fi
+          
+# Make gradlew executable
           cd android
+          chmod +x gradlew
+
+# Build release APK
           ./gradlew assembleRelease
     artifacts:
       - android/app/build/outputs/**/*.apk
