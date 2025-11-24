@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import SurahCard from '../components/SurahCard';
 import { useQuranData } from '../contexts/QuranContext';
@@ -21,10 +21,40 @@ const THEME_SECONDARY_TEXT_STYLES = {
   sepia: 'text-amber-800'
 };
 
+// Rotating ayahs from Surah Ar-Rum (30:21-24)
+const ROTATING_AYAHS = [
+  {
+    arabic: "وَمِنْ ءَایَـٰتِهِۦٓ أَنْ خَلَقَ لَكُم مِّنْ أَنفُسِكُمْ أَزْوَ ٰ⁠جࣰا لِّتَسْكُنُوٓا۟ إِلَیْهَا وَجَعَلَ بَیْنَكُم مَّوَدَّةࣰ وَرَحْمَةً ۚ إِنَّ فِی ذَ ٰ⁠لِكَ لَـَٔایَـٰتࣲ لِّقَوْمࣲ یَتَفَكَّرُونَ",
+    translation: "And one of His signs is that He created for you spouses from among yourselves so that you may find comfort in them. And He has placed between you compassion and mercy. Surely in this are signs for people who reflect."
+  },
+  {
+    arabic: "وَمِنْ ءَایَـٰتِهِۦ خَلْقُ ٱلسَّمَـٰوَ ٰ⁠تِ وَٱلْأَرْضِ وَٱخْتِلَـٰفُ أَلْسِنَتِكُمْ وَأَلْوَ ٰ⁠نِكُمْ ۚ إِنَّ فِی ذَ ٰ⁠لِكَ لَـَٔایَـٰتࣲ لِّلْعَـٰلِمِینَ",
+    translation: "And one of His signs is the creation of the heavens and the earth, and the diversity of your languages and colours. Surely in this are signs for those of ˹sound˺ knowledge."
+  },
+  {
+    arabic: "وَمِنْ ءَایَـٰتِهِۦ مَنَامُكُم بِٱلَّیْلِ وَٱلنَّهَارِ وَٱبْتِغَاۤؤُكُم مِّن فَضْلِهِۦٓ ۚ إِنَّ فِی ذَ ٰ⁠لِكَ لَـَٔایَـٰتࣲ لِّقَوْمࣲ یَسْمَعُونَ",
+    translation: "And one of His signs is your sleep by night and by day, and your seeking His bounty. Surely in this are signs for people who listen."
+  },
+  {
+    arabic: "وَمِنْ ءَایَـٰتِهِۦ یُرِیكُمُ ٱلْبَرْقَ خَوْفࣰا وَطَمَعࣰا وَیُنَزِّلُ مِنَ ٱلسَّمَاۤءِ مَاۤءࣰ فَیُحْیِۦ بِهِ ٱلْأَرْضَ بَعْدَ مَوْتِهَاۤ ۚ إِنَّ فِی ذَ ٰ⁠لِكَ لَـَٔایَـٰتࣲ لِّقَوْمࣲ یَعْقِلُونَ",
+    translation: "And one of His signs is that He shows you lightning, inspiring ˹you with˺ hope and fear. And He sends down rain from the sky, reviving the earth after its death. Surely in this are signs for people who understand."
+  }
+];
+
 const Home = () => {
   const { surahs, loading, theme } = useQuranData();
   const textStyle = THEME_TEXT_STYLES[theme] || THEME_TEXT_STYLES.green;
   const secondaryTextStyle = THEME_SECONDARY_TEXT_STYLES[theme] || THEME_SECONDARY_TEXT_STYLES.green;
+
+  // Rotate ayah on each visit (use date-based index to change daily or use random)
+  const [currentAyahIndex] = useState(() => {
+    const visitCount = parseInt(localStorage.getItem('homeVisitCount') || '0', 10);
+    const newCount = visitCount + 1;
+    localStorage.setItem('homeVisitCount', newCount.toString());
+    return (visitCount % ROTATING_AYAHS.length);
+  });
+
+  const currentAyah = ROTATING_AYAHS[currentAyahIndex];
 
   if (loading) {
     return (
@@ -48,9 +78,28 @@ const Home = () => {
           القرآن الكريم
         </h1>
         <p className={`text-xl mb-2 ${textStyle}`}>The Noble Quran</p>
-        <p className={secondaryTextStyle}>
-          Listen to the beautiful recitation of the Holy Quran with translations
+        <p className={`italic mb-4 ${secondaryTextStyle}`}>
+          Then do they not reflect upon the Qur'an, or are there locks upon [their] hearts?
         </p>
+
+        {/* Rotating Ayah Display */}
+        <motion.div
+          key={currentAyahIndex}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={`mt-6 p-6 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 border border-emerald-200 shadow-sm`}
+        >
+          <p className={`quran-text-pak text-2xl mb-4 ${textStyle}`}>
+            {currentAyah.arabic}
+          </p>
+          <p className={`text-base leading-relaxed ${secondaryTextStyle}`}>
+            {currentAyah.translation}
+          </p>
+          <p className={`text-xs mt-3 opacity-75 ${secondaryTextStyle}`}>
+            — Surah Ar-Rum (30:{21 + currentAyahIndex})
+          </p>
+        </motion.div>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
