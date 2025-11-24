@@ -69,6 +69,7 @@ const AyahCard = ({ verse, surahNumber }) => {
   );
   const translationMeta = verse.translations && verse.translations[0] ? verse.translations[0] : null;
   const translationLabel = translationMeta?.label || translationMeta?.language || language;
+  const isUrduTranslation = translationLabel?.includes('Junagarhi') || translationLabel?.toLowerCase().includes('urdu');
 
   const handlePlayAudio = () => {
     if (isPlaying && !isPaused) {
@@ -136,7 +137,7 @@ const AyahCard = ({ verse, surahNumber }) => {
         </div>
 
         {translationMeta && (
-          <div className={`english-text p-4 rounded-lg ${accentBgStyle}`}>
+          <div className={`${isUrduTranslation ? 'urdu-text' : 'english-text'} p-4 rounded-lg ${accentBgStyle}`}>
             <p className={textStyle}>{translationMeta.text}</p>
           </div>
         )}

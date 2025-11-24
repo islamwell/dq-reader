@@ -201,8 +201,6 @@ const Surah = () => {
                   <div className="flex items-center">
                     <RevelationPlaceIcon place={surah.revelation_place} className="w-5 h-5" />
                   </div>
-                  <span>•</span>
-                  <span>{surah.verses_count} verses</span>
                 </div>
               </div>
             </div>
