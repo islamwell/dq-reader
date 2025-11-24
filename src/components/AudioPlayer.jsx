@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 
-const { FiPlay, FiPause, FiArrowLeft, FiArrowUp } = FiIcons;
+const { FiPlay, FiPause, FiArrowLeft, FiArrowUp, FiShare2 } = FiIcons;
 
 const THEME_PLAYER_STYLES = {
   green: 'bg-gradient-to-r from-emerald-600 to-emerald-700 border-emerald-800',
@@ -432,14 +432,24 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleShareCurrentAyah}
-            className="quran-text-pak text-base md:text-2xl truncate text-right min-w-0 overflow-hidden whitespace-nowrap text-white bg-transparent border-none px-0 py-0 hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            title="Share this ayah"
-          >
-            {arabicPreview}
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={handleShareCurrentAyah}
+              className="shrink-0 w-7 h-7 md:w-8 md:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition-colors"
+              title="Share this ayah"
+            >
+              <SafeIcon icon={FiShare2} className="text-sm md:text-base" />
+            </button>
+            <button
+              type="button"
+              onClick={handleShareCurrentAyah}
+              className="quran-text-pak text-xs md:text-base truncate text-right min-w-0 overflow-hidden whitespace-nowrap text-white bg-transparent border-none px-0 py-0 hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              title="Share this ayah"
+            >
+              {arabicPreview}
+            </button>
+          </div>
         </div>
       </div>
     );
