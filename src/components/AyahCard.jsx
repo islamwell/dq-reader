@@ -137,9 +137,6 @@ const AyahCard = ({ verse, surahNumber }) => {
 
         {translationMeta && (
           <div className={`english-text p-4 rounded-lg ${accentBgStyle}`}>
-            <p className={`text-sm font-medium mb-2 ${secondaryTextStyle}`}>
-              Translation{translationLabel ? ` (${translationLabel})` : ''}:
-            </p>
             <p className={textStyle}>{translationMeta.text}</p>
           </div>
         )}
