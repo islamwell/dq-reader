@@ -119,6 +119,7 @@ export const QuranProvider = ({ children }) => {
   });
   const [enablePrimaryAudio, setEnablePrimaryAudio] = useState(true);
   const [enableSupplementalAudio, setEnableSupplementalAudio] = useState(true);
+  const [enableDQ2Audio, setEnableDQ2Audio] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
   const [includeTranslationsInSearch, setIncludeTranslationsInSearch] = useState(() => {
     if (typeof window === 'undefined') {
@@ -190,8 +191,14 @@ export const QuranProvider = ({ children }) => {
 
     const paddedSurah = String(normalizedSurah).padStart(3, '0');
     const paddedAyah = String(normalizedAyah).padStart(3, '0');
+
+    // Use DQ2 audio if enabled, otherwise use regular supplemental audio
+    if (enableDQ2Audio) {
+      return `https://nrq.no/wp-content/uploads/dq2ayat/${paddedSurah}-${paddedAyah}.mp3`;
+    }
+
     return `https://nrq.no/wp-content/uploads/ayah/${paddedSurah}-${paddedAyah}.mp3`;
-  }, []);
+  }, [enableDQ2Audio]);
 
   const ensureSearchIndex = useCallback(async () => {
     if (searchIndexRef.current) {
@@ -783,6 +790,11 @@ export const QuranProvider = ({ children }) => {
     },
     [enablePrimaryAudio, persistAudioPreferences]
   );
+
+  const setDQ2AudioEnabled = useCallback((value) => {
+    const normalizedValue = Boolean(value);
+    setEnableDQ2Audio(normalizedValue);
+  }, []);
 
   const setSearchTranslationsEnabled = useCallback((value) => {
     const normalizedValue = Boolean(value);
@@ -1944,6 +1956,7 @@ export const QuranProvider = ({ children }) => {
       selectedReciter,
       enablePrimaryAudio,
       enableSupplementalAudio,
+      enableDQ2Audio,
       bookmarks,
       setCurrentSurah,
       saveAudioMapping,
@@ -1968,6 +1981,7 @@ export const QuranProvider = ({ children }) => {
       setSearchTranslationsEnabled,
       setPrimaryAudioEnabled,
       setSupplementalAudioEnabled,
+      setDQ2AudioEnabled,
       toggleBookmark,
       removeBookmark,
       updateBookmarkNote
@@ -1985,6 +1999,7 @@ export const QuranProvider = ({ children }) => {
       selectedReciter,
       enablePrimaryAudio,
       enableSupplementalAudio,
+      enableDQ2Audio,
       bookmarks,
       saveAudioMapping,
       deleteAudioMapping,
@@ -2008,6 +2023,7 @@ export const QuranProvider = ({ children }) => {
       setSearchTranslationsEnabled,
       setPrimaryAudioEnabled,
       setSupplementalAudioEnabled,
+      setDQ2AudioEnabled,
       toggleBookmark,
       removeBookmark,
       updateBookmarkNote
