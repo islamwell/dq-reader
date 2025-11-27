@@ -1544,6 +1544,9 @@ export const QuranProvider = ({ children }) => {
 
         supplementalAudioPhaseRef.current = 'supplemental';
 
+        // Flag to prevent double error handling (both event listener and promise rejection)
+        let errorHandled = false;
+
         const cleanupSupplementalListeners = () => {
           supplementalAudio.removeEventListener('playing', handleSupplementalPlaying);
           supplementalAudio.removeEventListener('pause', handleSupplementalPause);
@@ -1564,6 +1567,10 @@ export const QuranProvider = ({ children }) => {
         };
 
         const handleSupplementalError = (event) => {
+          // Prevent double handling of errors
+          if (errorHandled) return;
+          errorHandled = true;
+
           console.warn(`${audioType} audio file not found, skipping:`, {
             surah: normalizedSurahNumber,
             ayah: normalizedAyahNumber,
@@ -1612,6 +1619,10 @@ export const QuranProvider = ({ children }) => {
         const supplementalPlayPromise = supplementalAudio.play();
         if (supplementalPlayPromise) {
           supplementalPlayPromise.catch((error) => {
+            // Prevent double handling of errors
+            if (errorHandled) return;
+            errorHandled = true;
+
             console.warn(`${audioType} audio play failed, skipping:`, {
               surah: normalizedSurahNumber,
               ayah: normalizedAyahNumber,
@@ -1661,6 +1672,9 @@ export const QuranProvider = ({ children }) => {
       audio.preload = 'auto';
       audio.crossOrigin = 'anonymous';
 
+      // Flag to prevent double error handling (both event listener and promise rejection)
+      let primaryErrorHandled = false;
+
       const cleanupAudioListeners = () => {
         audio.removeEventListener('playing', handlePlaying);
         audio.removeEventListener('pause', handlePause);
@@ -1681,6 +1695,10 @@ export const QuranProvider = ({ children }) => {
       };
 
       const handleError = (event) => {
+        // Prevent double handling of errors
+        if (primaryErrorHandled) return;
+        primaryErrorHandled = true;
+
         // Primary audio missing, play supplemental audio if available, otherwise advance
         console.warn('Primary audio file not found:', {
           surah: normalizedSurahNumber,
@@ -1750,6 +1768,10 @@ export const QuranProvider = ({ children }) => {
       const playPromise = audio.play();
       if (playPromise) {
         playPromise.catch((error) => {
+          // Prevent double handling of errors
+          if (primaryErrorHandled) return;
+          primaryErrorHandled = true;
+
           // Primary audio play failed, try supplemental or advance
           console.warn('Primary audio play failed:', {
             surah: normalizedSurahNumber,
