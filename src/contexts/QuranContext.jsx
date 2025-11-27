@@ -141,6 +141,7 @@ export const QuranProvider = ({ children }) => {
   const translationWarningRef = useRef(new Set());
   const supplementalAudioPhaseRef = useRef('primary');
   const pendingSupplementalUrlRef = useRef(null);
+  const isDQ2AttemptRef = useRef(false);
   const searchIndexRef = useRef(null);
   const searchIndexPromiseRef = useRef(null);
   const translationPrefetchRef = useRef(false);
@@ -175,7 +176,7 @@ export const QuranProvider = ({ children }) => {
     setLastPlayedPosition(position);
   }, []);
 
-  const getSupplementalAudioUrl = useCallback((surahNumber, ayahNumber) => {
+  const getSupplementalAudioUrl = useCallback((surahNumber, ayahNumber, forceFallback = false) => {
     const normalizedSurah = Number(surahNumber);
     const normalizedAyah = Number(ayahNumber);
 
@@ -192,13 +193,19 @@ export const QuranProvider = ({ children }) => {
     const paddedSurah = String(normalizedSurah).padStart(3, '0');
     const paddedAyah = String(normalizedAyah).padStart(3, '0');
 
-    // Use DQ2 audio if enabled, otherwise use regular supplemental audio
+    // If forceFallback or if both are enabled, return custom1
+    // If only DQ2 is enabled and not forcing fallback, return DQ2
+    // Otherwise return custom1
+    if (forceFallback || (enableSupplementalAudio && !enableDQ2Audio)) {
+      return `https://nrq.no/wp-content/uploads/ayah/${paddedSurah}-${paddedAyah}.mp3`;
+    }
+
     if (enableDQ2Audio) {
       return `https://nrq.no/wp-content/uploads/dq2ayat/${paddedSurah}-${paddedAyah}.mp3`;
     }
 
     return `https://nrq.no/wp-content/uploads/ayah/${paddedSurah}-${paddedAyah}.mp3`;
-  }, [enableDQ2Audio]);
+  }, [enableDQ2Audio, enableSupplementalAudio]);
 
   const ensureSearchIndex = useCallback(async () => {
     if (searchIndexRef.current) {
@@ -1451,9 +1458,12 @@ export const QuranProvider = ({ children }) => {
 
       const ayahKey = `${normalizedSurahNumber}:${normalizedAyahNumber}`;
       const shouldPlayPrimary = enablePrimaryAudio;
-      const supplementalUrl = enableSupplementalAudio
+      const supplementalUrl = (enableSupplementalAudio || enableDQ2Audio)
         ? getSupplementalAudioUrl(normalizedSurahNumber, normalizedAyahNumber)
         : null;
+
+      // Track if this is a DQ2 attempt for fallback logic
+      isDQ2AttemptRef.current = enableDQ2Audio && supplementalUrl && supplementalUrl.includes('dq2ayat');
 
       if (!shouldPlayPrimary && !supplementalUrl) {
         toast.error('Audio playback is disabled in settings.');
@@ -1529,19 +1539,36 @@ export const QuranProvider = ({ children }) => {
         };
 
         const handleSupplementalError = (event) => {
-          // Silently skip missing supplemental audio files and continue to next ayah
-          console.warn('Supplemental audio file not found, skipping to next ayah:', {
+          console.warn('Supplemental audio file not found:', {
             surah: normalizedSurahNumber,
             ayah: normalizedAyahNumber,
-            url: supplementalAudioUrl
+            url: supplementalAudioUrl,
+            isDQ2: isDQ2AttemptRef.current
           });
+
           toast.dismiss(supplementalToastId);
           cleanupSupplementalListeners();
           destroyCurrentAudio();
+
+          // If this was a DQ2 attempt and custom1 is enabled, try fallback to custom1
+          if (isDQ2AttemptRef.current && enableSupplementalAudio) {
+            console.log('Falling back to custom1 audio');
+            isDQ2AttemptRef.current = false; // Mark that we've tried fallback
+            const fallbackUrl = getSupplementalAudioUrl(normalizedSurahNumber, normalizedAyahNumber, true);
+            if (fallbackUrl) {
+              pendingSupplementalUrlRef.current = fallbackUrl;
+              playSupplementalAudio();
+              return;
+            }
+          }
+
+          // If no fallback available or fallback also failed, advance to next ayat
+          console.log('No fallback available, advancing to next ayat');
           supplementalAudioPhaseRef.current = 'primary';
           pendingSupplementalUrlRef.current = null;
           setCurrentAudio(null);
           setIsPaused(false);
+          isDQ2AttemptRef.current = false;
           advanceToNextOrStop();
         };
 
@@ -1549,6 +1576,7 @@ export const QuranProvider = ({ children }) => {
           cleanupSupplementalListeners();
           pendingSupplementalUrlRef.current = null;
           supplementalAudioPhaseRef.current = 'primary';
+          isDQ2AttemptRef.current = false;
           destroyCurrentAudio();
           advanceToNextOrStop();
         };
@@ -1565,19 +1593,36 @@ export const QuranProvider = ({ children }) => {
         const supplementalPlayPromise = supplementalAudio.play();
         if (supplementalPlayPromise) {
           supplementalPlayPromise.catch((error) => {
-            // Silently skip missing supplemental audio files and continue to next ayah
-            console.warn('Supplemental audio play failed, skipping to next ayah:', {
+            console.warn('Supplemental audio play failed:', {
               surah: normalizedSurahNumber,
               ayah: normalizedAyahNumber,
-              error: error.message
+              error: error.message,
+              isDQ2: isDQ2AttemptRef.current
             });
+
             toast.dismiss(supplementalToastId);
             cleanupSupplementalListeners();
             destroyCurrentAudio();
+
+            // If this was a DQ2 attempt and custom1 is enabled, try fallback to custom1
+            if (isDQ2AttemptRef.current && enableSupplementalAudio) {
+              console.log('Falling back to custom1 audio (from play promise)');
+              isDQ2AttemptRef.current = false;
+              const fallbackUrl = getSupplementalAudioUrl(normalizedSurahNumber, normalizedAyahNumber, true);
+              if (fallbackUrl) {
+                pendingSupplementalUrlRef.current = fallbackUrl;
+                playSupplementalAudio();
+                return;
+              }
+            }
+
+            // If no fallback available or fallback also failed, advance to next ayat
+            console.log('No fallback available, advancing to next ayat (from play promise)');
             supplementalAudioPhaseRef.current = 'primary';
             pendingSupplementalUrlRef.current = null;
             setCurrentAudio(null);
             setIsPaused(false);
+            isDQ2AttemptRef.current = false;
             advanceToNextOrStop();
           });
         }
@@ -1699,6 +1744,7 @@ export const QuranProvider = ({ children }) => {
       destroyCurrentAudio,
       enablePrimaryAudio,
       enableSupplementalAudio,
+      enableDQ2Audio,
       getAudioUrl,
       getSupplementalAudioUrl,
       pauseAudio,
