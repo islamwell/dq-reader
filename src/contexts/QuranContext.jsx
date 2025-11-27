@@ -1978,10 +1978,22 @@ export const QuranProvider = ({ children }) => {
       tafseerEntriesRef,
       (snapshot) => {
         snapshot.docChanges().forEach((change) => {
+          const data = change.doc.data();
+          const key = `${data.surah_number}:${data.ayah_number}`;
+
           if (change.type === 'added' || change.type === 'modified') {
-            const data = change.doc.data();
-            const key = `${data.surah_number}:${data.ayah_number}`;
-            setTafseerMappings((prev) => ({ ...prev, [key]: data.tafseer_text }));
+            setTafseerMappings((prev) => {
+              const next = { ...prev, [key]: data.tafseer_text };
+              localStorage.setItem('quran_tafseer_mappings', JSON.stringify(next));
+              return next;
+            });
+          } else if (change.type === 'removed') {
+            setTafseerMappings((prev) => {
+              const next = { ...prev };
+              delete next[key];
+              localStorage.setItem('quran_tafseer_mappings', JSON.stringify(next));
+              return next;
+            });
           }
         });
       },
