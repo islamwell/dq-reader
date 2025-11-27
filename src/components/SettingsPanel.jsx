@@ -399,7 +399,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-slate-700">DQ2 Translation Audio</p>
-                        <p className="text-xs text-slate-500">Use DQ2 custom audio instead of default.</p>
+                        <p className="text-xs text-slate-500">Use DQ2 custom audio in addition to default.</p>
                       </div>
                     </div>
                     <span
