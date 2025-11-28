@@ -34,8 +34,10 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     setReciterPreference,
     enablePrimaryAudio,
     enableSupplementalAudio,
+    enableDQ2Audio,
     setPrimaryAudioEnabled,
     setSupplementalAudioEnabled,
+    setDQ2AudioEnabled,
     includeTranslationsInSearch,
     setSearchTranslationsEnabled,
     fetchSurahVerses
@@ -374,6 +376,40 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                       <span
                         className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
                           enableSupplementalAudio ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                      />
+                    </span>
+                  </button>
+
+                  {/* DQ2 Audio Toggle */}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enableDQ2Audio}
+                    onClick={() => setDQ2AudioEnabled(!enableDQ2Audio)}
+                    className={`w-full flex items-center justify-between gap-4 rounded-lg border px-4 py-3 mt-3 transition-colors ${
+                      enableDQ2Audio
+                        ? 'border-islamic-gold bg-islamic-50'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
+                        <SafeIcon icon={FiVolume2} className="text-lg text-islamic-gold" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">DQ2 Translation Audio</p>
+                        <p className="text-xs text-slate-500">Use DQ2 custom audio in addition to default.</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        enableDQ2Audio ? 'bg-islamic-gold' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                          enableDQ2Audio ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </span>

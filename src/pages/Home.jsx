@@ -21,6 +21,15 @@ const THEME_SECONDARY_TEXT_STYLES = {
   sepia: 'text-amber-800'
 };
 
+const THEME_CARD_STYLES = {
+  green: 'bg-emerald-50/50 border border-emerald-200',
+  red: 'bg-rose-50/50 border border-rose-200',
+  blue: 'bg-blue-50/50 border border-blue-200',
+  light: 'bg-white border border-slate-200',
+  dark: 'bg-slate-800/50 border border-slate-700',
+  sepia: 'bg-amber-50/50 border border-amber-300'
+};
+
 // Rotating ayahs from Surah Ar-Rum (30:21-24)
 const ROTATING_AYAHS = [
   {
@@ -45,6 +54,7 @@ const Home = () => {
   const { surahs, loading, theme } = useQuranData();
   const textStyle = THEME_TEXT_STYLES[theme] || THEME_TEXT_STYLES.green;
   const secondaryTextStyle = THEME_SECONDARY_TEXT_STYLES[theme] || THEME_SECONDARY_TEXT_STYLES.green;
+  const cardStyle = THEME_CARD_STYLES[theme] || THEME_CARD_STYLES.green;
 
   // Rotate ayah on each visit (use date-based index to change daily or use random)
   const [currentAyahIndex] = useState(() => {
@@ -88,12 +98,9 @@ const Home = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className={`mt-6 p-6 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 border border-emerald-200 shadow-sm`}
+          className={`mt-6 p-6 rounded-xl shadow-sm ${cardStyle}`}
         >
-          <p className={`quran-text-pak text-2xl mb-4 ${textStyle}`}>
-            {currentAyah.arabic}
-          </p>
-          <p className={`text-base leading-relaxed ${secondaryTextStyle}`}>
+          <p className={`text-base leading-relaxed ${textStyle}`}>
             {currentAyah.translation}
           </p>
           <p className={`text-xs mt-3 opacity-75 ${secondaryTextStyle}`}>
