@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "115345566711",
+    "project_id": "quranreadertanzil",
+    "storage_bucket": "quranreadertanzil.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115345566711:android:94bc26daaad64996229cf2",
+        "android_client_info": {
+          "package_name": "com.nurulquran.dq"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIOoipb2-7uvYUoK2AXHithkFa1GOoqxI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
