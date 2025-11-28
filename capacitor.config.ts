@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.nurulquran.dq',
-  appName: 'Quran App',
+  appName: 'DQ Quran',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
