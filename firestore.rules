@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Custom URLs collection - public read, authenticated write
+    match /custom_urls/{urlId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+    
+    // Audio mappings collection - public read, authenticated write
+    match /audio_mappings/{mappingId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+    
+    // Tafseer entries collection - public read, authenticated write
+    match /tafseer_entries/{entryId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+  }
+}
