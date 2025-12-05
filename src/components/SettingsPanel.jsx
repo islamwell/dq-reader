@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { FaPalette } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 import { RECITERS } from '../data/reciters';
@@ -15,7 +16,8 @@ const {
   FiExternalLink,
   FiVolume2,
   FiHeadphones,
-  FiSearch
+  FiSearch,
+  FiDownloadCloud
 } = FiIcons;
 
 const themeOptions = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
@@ -40,12 +42,50 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     setDQ2AudioEnabled,
     includeTranslationsInSearch,
     setSearchTranslationsEnabled,
-    fetchSurahVerses
+    fetchSurahVerses,
+    audioCacheProgress,
+    cacheArabicAudio,
+    cacheUrduAudio
   } = useQuranData();
 
   const [versesCache, setVersionsCache] = useState({});
+  const [arabicCacheNote, setArabicCacheNote] = useState('');
+  const [urduCacheNote, setUrduCacheNote] = useState('');
 
   const topBookmarks = useMemo(() => bookmarks.slice(0, 3), [bookmarks]);
+
+  const arabicProgress = audioCacheProgress?.arabic || {};
+  const urduProgress = audioCacheProgress?.urdu || {};
+  const isArabicCaching = arabicProgress.status === 'in-progress';
+  const isUrduCaching = urduProgress.status === 'in-progress';
+
+  const formatCacheProgress = (progress) => {
+    if (!progress?.total) return '';
+    const percentage = Math.floor((progress.completed / progress.total) * 100);
+    return `${progress.completed}/${progress.total} ayat cached (${percentage}%)`;
+  };
+
+  useEffect(() => {
+    if (arabicProgress.status === 'complete') {
+      setArabicCacheNote('Arabic audio is ready for offline playback.');
+      return;
+    }
+
+    if (arabicProgress.completed > 0) {
+      setArabicCacheNote(`Arabic audio: ${formatCacheProgress(arabicProgress)}`);
+    }
+  }, [arabicProgress]);
+
+  useEffect(() => {
+    if (urduProgress.status === 'complete') {
+      setUrduCacheNote('Urdu audio is ready for offline playback.');
+      return;
+    }
+
+    if (urduProgress.completed > 0) {
+      setUrduCacheNote(`Urdu audio: ${formatCacheProgress(urduProgress)}`);
+    }
+  }, [urduProgress]);
 
   // Get current reciter name
   const currentReciterName = useMemo(() => {
@@ -109,6 +149,32 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   const handleGoToCredits = () => {
     onClose();
     navigate('/credits');
+  };
+
+  const handleCacheArabicAudio = async () => {
+    try {
+      setArabicCacheNote('Starting Arabic audio download...');
+      await cacheArabicAudio((progress) => {
+        setArabicCacheNote(`Arabic audio: ${formatCacheProgress(progress)}`);
+      });
+    } catch (error) {
+      console.error('Failed to cache Arabic audio:', error);
+      toast.error('Unable to cache Arabic audio. Please try again.');
+      setArabicCacheNote('');
+    }
+  };
+
+  const handleCacheUrduAudio = async () => {
+    try {
+      setUrduCacheNote('Starting Urdu audio download...');
+      await cacheUrduAudio((progress) => {
+        setUrduCacheNote(`Urdu audio: ${formatCacheProgress(progress)}`);
+      });
+    } catch (error) {
+      console.error('Failed to cache Urdu audio:', error);
+      toast.error('Unable to cache Urdu audio. Please try again.');
+      setUrduCacheNote('');
+    }
   };
 
   return (
@@ -414,6 +480,68 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                       />
                     </span>
                   </button>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
+                        <SafeIcon icon={FiDownloadCloud} className="text-lg text-islamic-gold" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">Cache Arabic audio</p>
+                            <p className="text-xs text-slate-500">
+                              Download the selected reciter so playback works fully offline.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCacheArabicAudio}
+                            disabled={isArabicCaching}
+                            className={`rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors ${
+                              isArabicCaching
+                                ? 'bg-slate-400 cursor-not-allowed'
+                                : 'bg-islamic-gold hover:bg-yellow-600'
+                            }`}
+                          >
+                            {isArabicCaching ? 'Caching...' : 'Cache Arabic'}
+                          </button>
+                        </div>
+                        {arabicCacheNote && <p className="text-xs text-slate-600">{arabicCacheNote}</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
+                        <SafeIcon icon={FiDownloadCloud} className="text-lg text-islamic-gold" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">Cache Urdu audio</p>
+                            <p className="text-xs text-slate-500">
+                              Save Urdu translation narration for offline listening.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCacheUrduAudio}
+                            disabled={isUrduCaching}
+                            className={`rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors ${
+                              isUrduCaching
+                                ? 'bg-slate-400 cursor-not-allowed'
+                                : 'bg-islamic-gold hover:bg-yellow-600'
+                            }`}
+                          >
+                            {isUrduCaching ? 'Caching...' : 'Cache Urdu'}
+                          </button>
+                        </div>
+                        {urduCacheNote && <p className="text-xs text-slate-600">{urduCacheNote}</p>}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
             </div>
