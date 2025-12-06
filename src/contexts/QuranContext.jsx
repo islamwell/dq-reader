@@ -896,10 +896,10 @@ export const QuranProvider = ({ children }) => {
       const nextBookmarks = prev.map((bookmark) =>
         bookmark.id === bookmarkId
           ? {
-              ...bookmark,
-              note,
-              updatedAt: Date.now()
-            }
+            ...bookmark,
+            note,
+            updatedAt: Date.now()
+          }
           : bookmark
       );
 
@@ -1685,7 +1685,7 @@ export const QuranProvider = ({ children }) => {
         return;
       }
 
-    const audioUrl = getAudioUrl(normalizedSurahNumber, normalizedAyahNumber);
+      const audioUrl = getAudioUrl(normalizedSurahNumber, normalizedAyahNumber);
       const loadingToastId = toast.loading('Loading audio...');
       const audio = new Audio(audioUrl);
       audio.preload = 'auto';
@@ -1835,9 +1835,9 @@ export const QuranProvider = ({ children }) => {
       const baseVerses = await getSurahVerses(surahNumber);
       const normalizedVerses = Array.isArray(baseVerses)
         ? baseVerses.map((verse) => ({
-            ...verse,
-            translations: Array.isArray(verse.translations) ? [...verse.translations] : []
-          }))
+          ...verse,
+          translations: Array.isArray(verse.translations) ? [...verse.translations] : []
+        }))
         : [];
 
       if (normalizedVerses.length === 0) {
@@ -2074,6 +2074,84 @@ export const QuranProvider = ({ children }) => {
     }
   }, [surahs]);
 
+  const cacheArabicAudio = useCallback(
+    async (onProgress) => {
+      if (!surahs.length) {
+        throw new Error('Surah metadata is not loaded yet.');
+      }
+
+      const totalAyahs = surahs.reduce((sum, surah) => sum + (surah.verses_count || 0), 0);
+      setAudioCacheProgress((prev) => ({
+        ...prev,
+        arabic: { status: 'in-progress', completed: 0, total: totalAyahs }
+      }));
+
+      let completed = 0;
+
+      for (const surah of surahs) {
+        const paddedSurah = String(surah.id).padStart(3, '0');
+        for (let ayahNumber = 1; ayahNumber <= surah.verses_count; ayahNumber += 1) {
+          const audioUrl = getAudioUrl(surah.id, ayahNumber);
+          const filename = `${paddedSurah}-${String(ayahNumber).padStart(3, '0')}.mp3`;
+          await cacheAudioAsset(audioUrl, filename);
+
+          completed += 1;
+          if (completed % 5 === 0 || completed === totalAyahs) {
+            const nextProgress = { status: 'in-progress', completed, total: totalAyahs };
+            setAudioCacheProgress((prev) => ({ ...prev, arabic: nextProgress }));
+            onProgress?.(nextProgress);
+          }
+        }
+      }
+
+      const finalProgress = { status: 'complete', completed: totalAyahs, total: totalAyahs };
+      setAudioCacheProgress((prev) => ({ ...prev, arabic: finalProgress }));
+      onProgress?.(finalProgress);
+      toast.success('Arabic audio cached for offline use.');
+    },
+    [cacheAudioAsset, getAudioUrl, surahs]
+  );
+
+  const cacheUrduAudio = useCallback(
+    async (onProgress) => {
+      if (!surahs.length) {
+        throw new Error('Surah metadata is not loaded yet.');
+      }
+
+      const totalAyahs = surahs.reduce((sum, surah) => sum + (surah.verses_count || 0), 0);
+      setAudioCacheProgress((prev) => ({
+        ...prev,
+        urdu: { status: 'in-progress', completed: 0, total: totalAyahs }
+      }));
+
+      let completed = 0;
+
+      for (const surah of surahs) {
+        const paddedSurah = String(surah.id).padStart(3, '0');
+        for (let ayahNumber = 1; ayahNumber <= surah.verses_count; ayahNumber += 1) {
+          const urduUrl = getCustomAudioUrl(surah.id, ayahNumber);
+          if (urduUrl) {
+            const filename = `urdu-${paddedSurah}-${String(ayahNumber).padStart(3, '0')}.mp3`;
+            await cacheAudioAsset(urduUrl, filename);
+          }
+
+          completed += 1;
+          if (completed % 5 === 0 || completed === totalAyahs) {
+            const nextProgress = { status: 'in-progress', completed, total: totalAyahs };
+            setAudioCacheProgress((prev) => ({ ...prev, urdu: nextProgress }));
+            onProgress?.(nextProgress);
+          }
+        }
+      }
+
+      const finalProgress = { status: 'complete', completed: totalAyahs, total: totalAyahs };
+      setAudioCacheProgress((prev) => ({ ...prev, urdu: finalProgress }));
+      onProgress?.(finalProgress);
+      toast.success('Urdu audio cached for offline use.');
+    },
+    [cacheAudioAsset, getCustomAudioUrl, surahs]
+  );
+
   const dataValue = useMemo(
     () => ({
       surahs,
@@ -2166,84 +2244,6 @@ export const QuranProvider = ({ children }) => {
       cacheArabicAudio,
       cacheUrduAudio
     ]
-  );
-
-  const cacheArabicAudio = useCallback(
-    async (onProgress) => {
-      if (!surahs.length) {
-        throw new Error('Surah metadata is not loaded yet.');
-      }
-
-      const totalAyahs = surahs.reduce((sum, surah) => sum + (surah.verses_count || 0), 0);
-      setAudioCacheProgress((prev) => ({
-        ...prev,
-        arabic: { status: 'in-progress', completed: 0, total: totalAyahs }
-      }));
-
-      let completed = 0;
-
-      for (const surah of surahs) {
-        const paddedSurah = String(surah.id).padStart(3, '0');
-        for (let ayahNumber = 1; ayahNumber <= surah.verses_count; ayahNumber += 1) {
-          const audioUrl = getAudioUrl(surah.id, ayahNumber);
-          const filename = `${paddedSurah}-${String(ayahNumber).padStart(3, '0')}.mp3`;
-          await cacheAudioAsset(audioUrl, filename);
-
-          completed += 1;
-          if (completed % 5 === 0 || completed === totalAyahs) {
-            const nextProgress = { status: 'in-progress', completed, total: totalAyahs };
-            setAudioCacheProgress((prev) => ({ ...prev, arabic: nextProgress }));
-            onProgress?.(nextProgress);
-          }
-        }
-      }
-
-      const finalProgress = { status: 'complete', completed: totalAyahs, total: totalAyahs };
-      setAudioCacheProgress((prev) => ({ ...prev, arabic: finalProgress }));
-      onProgress?.(finalProgress);
-      toast.success('Arabic audio cached for offline use.');
-    },
-    [cacheAudioAsset, getAudioUrl, surahs]
-  );
-
-  const cacheUrduAudio = useCallback(
-    async (onProgress) => {
-      if (!surahs.length) {
-        throw new Error('Surah metadata is not loaded yet.');
-      }
-
-      const totalAyahs = surahs.reduce((sum, surah) => sum + (surah.verses_count || 0), 0);
-      setAudioCacheProgress((prev) => ({
-        ...prev,
-        urdu: { status: 'in-progress', completed: 0, total: totalAyahs }
-      }));
-
-      let completed = 0;
-
-      for (const surah of surahs) {
-        const paddedSurah = String(surah.id).padStart(3, '0');
-        for (let ayahNumber = 1; ayahNumber <= surah.verses_count; ayahNumber += 1) {
-          const urduUrl = getCustomAudioUrl(surah.id, ayahNumber);
-          if (urduUrl) {
-            const filename = `urdu-${paddedSurah}-${String(ayahNumber).padStart(3, '0')}.mp3`;
-            await cacheAudioAsset(urduUrl, filename);
-          }
-
-          completed += 1;
-          if (completed % 5 === 0 || completed === totalAyahs) {
-            const nextProgress = { status: 'in-progress', completed, total: totalAyahs };
-            setAudioCacheProgress((prev) => ({ ...prev, urdu: nextProgress }));
-            onProgress?.(nextProgress);
-          }
-        }
-      }
-
-      const finalProgress = { status: 'complete', completed: totalAyahs, total: totalAyahs };
-      setAudioCacheProgress((prev) => ({ ...prev, urdu: finalProgress }));
-      onProgress?.(finalProgress);
-      toast.success('Urdu audio cached for offline use.');
-    },
-    [cacheAudioAsset, getCustomAudioUrl, surahs]
   );
 
   const audioValue = useMemo(
