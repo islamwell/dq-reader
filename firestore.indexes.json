@@ -29,6 +29,24 @@
       ]
     },
     {
+      "collectionGroup": "video_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "surah_number",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "start_ayah",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "end_ayah",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "custom_urls",
       "queryScope": "COLLECTION",
       "fields": [
@@ -62,6 +80,16 @@
     },
     {
       "collectionGroup": "tafseer_entries",
+      "fieldPath": "surah_number",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "video_entries",
       "fieldPath": "surah_number",
       "indexes": [
         {

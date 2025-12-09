@@ -12,6 +12,7 @@ import AdminPanel from './pages/AdminPanel';
 import ProtectedRoute from './components/ProtectedRoute';
 import Bookmarks from './pages/Bookmarks';
 import Credits from './pages/Credits';
+import Videos from './pages/Videos';
 import SettingsPanel from './components/SettingsPanel';
 import './App.css';
 
@@ -28,6 +29,7 @@ function App() {
                 <Route index element={<Home />} />
                 <Route path="/surah/:surahNumber" element={<Surah />} />
                 <Route path="/bookmarks" element={<Bookmarks />} />
+                <Route path="/videos" element={<Videos />} />
               </Route>
               <Route
                 path="/search"

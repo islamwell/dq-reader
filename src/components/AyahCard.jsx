@@ -1,10 +1,11 @@
 import React, { memo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 
-const { FiPlay, FiPause, FiBook } = FiIcons;
+const { FiPlay, FiPause, FiBook, FiVideo } = FiIcons;
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200',
@@ -53,7 +54,8 @@ const THEME_PLAYING_STYLES = {
 
 const AyahCard = ({ verse, surahNumber }) => {
   const { playAudio, pauseAudio, resumeAudio, playingAyah, isPaused } = useQuranAudio();
-  const { getTafseer, bookmarks, toggleBookmark, language, theme } = useQuranData();
+  const { getTafseer, getVideoForAyah, bookmarks, toggleBookmark, language, theme } = useQuranData();
+  const navigate = useNavigate();
   const [showTafseer, setShowTafseer] = useState(false);
 
   const ayahKey = `${surahNumber}:${verse.verse_number}`;
@@ -64,6 +66,7 @@ const AyahCard = ({ verse, surahNumber }) => {
   const accentBgStyle = THEME_ACCENT_BG_STYLES[theme] || THEME_ACCENT_BG_STYLES.green;
   const playingStyle = THEME_PLAYING_STYLES[theme] || THEME_PLAYING_STYLES.green;
   const tafseerText = getTafseer(surahNumber, verse.verse_number);
+  const videoForAyah = getVideoForAyah(surahNumber, verse.verse_number);
   const isBookmarked = bookmarks.some(
     (bookmark) => bookmark.surahNumber === surahNumber && bookmark.ayahNumber === verse.verse_number
   );
@@ -117,6 +120,17 @@ const AyahCard = ({ verse, surahNumber }) => {
             >
               <SafeIcon icon={FiBook} className="text-sm" />
               <span>{showTafseer ? 'Hide' : 'Show'} Tafseer</span>
+            </button>
+          )}
+
+          {videoForAyah && (
+            <button
+              type="button"
+              onClick={() => navigate(`/videos?videoId=${videoForAyah.id}`)}
+              className="flex items-center space-x-2 bg-slate-900/80 hover:bg-slate-800 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <SafeIcon icon={FiVideo} className="text-sm" />
+              <span>Video</span>
             </button>
           )}
 

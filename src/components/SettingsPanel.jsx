@@ -13,6 +13,7 @@ const {
   FiBookmark,
   FiArrowRight,
   FiHome,
+  FiVideo,
   FiExternalLink,
   FiVolume2,
   FiHeadphones,
@@ -144,6 +145,11 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   const handleGoHome = () => {
     onClose();
     navigate('/');
+  };
+
+  const handleGoToVideos = () => {
+    onClose();
+    navigate('/videos');
   };
 
   const handleGoToCredits = () => {
@@ -554,6 +560,14 @@ const SettingsPanel = ({ isOpen, onClose }) => {
               >
                 <SafeIcon icon={FiHome} />
                 <span>Go Home</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleGoToVideos}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-islamic-gold hover:text-islamic-gold transition-colors"
+              >
+                <SafeIcon icon={FiVideo} />
+                <span>Video</span>
               </button>
               <button
                 type="button"

@@ -99,6 +99,7 @@ export const QuranProvider = ({ children }) => {
   const [playingAyah, setPlayingAyah] = useState(null);
   const [audioMappings, setAudioMappings] = useState({});
   const [tafseerMappings, setTafseerMappings] = useState({});
+  const [videoMappings, setVideoMappings] = useState({});
   const [customUrls, setCustomUrls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentSurah, setCurrentSurah] = useState(null);
@@ -1409,6 +1410,149 @@ export const QuranProvider = ({ children }) => {
     }
   }, []);
 
+  const upsertVideoMappingState = useCallback((entry) => {
+    setVideoMappings((prev) => {
+      const next = { ...prev };
+      const surahKey = String(entry.surahNumber);
+      const existing = next[surahKey] ? [...next[surahKey]] : [];
+      const filtered = existing.filter((item) => item.id !== entry.id);
+      const updated = [...filtered, entry].sort((a, b) => a.startAyah - b.startAyah);
+      next[surahKey] = updated;
+      localStorage.setItem('quran_video_mappings', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const saveVideoMapping = useCallback(
+    async (surahNumber, startAyah, endAyah, videoUrl, title = '', videoId = null) => {
+      const normalizedSurah = Number(surahNumber);
+      const normalizedStart = Number(startAyah);
+      const normalizedEnd = Number(endAyah);
+
+      if (
+        !Number.isInteger(normalizedSurah) ||
+        normalizedSurah < 1 ||
+        normalizedSurah > 114 ||
+        !Number.isInteger(normalizedStart) ||
+        !Number.isInteger(normalizedEnd) ||
+        normalizedStart < 1 ||
+        normalizedEnd < 1
+      ) {
+        toast.error('Invalid surah or ayah range');
+        return;
+      }
+
+      const start = Math.min(normalizedStart, normalizedEnd);
+      const end = Math.max(normalizedStart, normalizedEnd);
+
+      const entry = {
+        surahNumber: normalizedSurah,
+        startAyah: start,
+        endAyah: end,
+        videoUrl,
+        title: title?.trim() || ''
+      };
+
+      try {
+        const videoEntriesRef = collection(db, 'video_entries');
+
+        if (videoId) {
+          const docRef = doc(db, 'video_entries', videoId);
+          await updateDoc(docRef, {
+            surah_number: normalizedSurah,
+            start_ayah: start,
+            end_ayah: end,
+            video_url: videoUrl,
+            title: entry.title,
+            updated_at: serverTimestamp()
+          });
+          upsertVideoMappingState({ ...entry, id: videoId });
+        } else {
+          const docRef = await addDoc(videoEntriesRef, {
+            surah_number: normalizedSurah,
+            start_ayah: start,
+            end_ayah: end,
+            video_url: videoUrl,
+            title: entry.title,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+          });
+          upsertVideoMappingState({ ...entry, id: docRef.id });
+        }
+
+        toast.success('Video mapping saved successfully');
+      } catch (error) {
+        logFirebaseError('Save Video Mapping', error);
+        const errorMessage = handleFirebaseError(error);
+        const fallbackId = videoId || `local-${Date.now()}`;
+
+        upsertVideoMappingState({ ...entry, id: fallbackId });
+        toast.error(`${errorMessage} - Saved locally instead.`);
+      }
+    },
+    [upsertVideoMappingState]
+  );
+
+  const deleteVideoMapping = useCallback(async (videoId, surahNumber) => {
+    if (!videoId) {
+      return false;
+    }
+
+    try {
+      const docRef = doc(db, 'video_entries', videoId);
+      await deleteDoc(docRef);
+
+      setVideoMappings((prev) => {
+        const next = { ...prev };
+        const surahKey = surahNumber ? String(surahNumber) : null;
+
+        if (surahKey && next[surahKey]) {
+          next[surahKey] = next[surahKey].filter((entry) => entry.id !== videoId);
+          if (next[surahKey].length === 0) {
+            delete next[surahKey];
+          }
+        } else {
+          Object.keys(next).forEach((key) => {
+            next[key] = next[key].filter((entry) => entry.id !== videoId);
+            if (next[key].length === 0) {
+              delete next[key];
+            }
+          });
+        }
+
+        localStorage.setItem('quran_video_mappings', JSON.stringify(next));
+        return next;
+      });
+
+      toast.success('Video mapping deleted successfully');
+      return true;
+    } catch (error) {
+      logFirebaseError('Delete Video Mapping', error);
+      const errorMessage = handleFirebaseError(error);
+      toast.error(errorMessage);
+      return false;
+    }
+  }, []);
+
+  const getVideoForAyah = useCallback(
+    (surahNumber, ayahNumber) => {
+      const normalizedSurah = Number(surahNumber);
+      const normalizedAyah = Number(ayahNumber);
+
+      if (!Number.isInteger(normalizedSurah) || !Number.isInteger(normalizedAyah)) {
+        return null;
+      }
+
+      const ranges = videoMappings[String(normalizedSurah)] || [];
+      return (
+        ranges.find(
+          (entry) => normalizedAyah >= Number(entry.startAyah) && normalizedAyah <= Number(entry.endAyah)
+        ) || null
+      );
+    },
+    [videoMappings]
+  );
+
   const getAudioUrl = useCallback((surahNumber, ayahNumber) => {
     const key = `${surahNumber}:${ayahNumber}`;
     const mapping = audioMappings[key];
@@ -1951,6 +2095,34 @@ export const QuranProvider = ({ children }) => {
           tafseerMap[key] = mapping.tafseer_text;
         });
         setTafseerMappings(tafseerMap);
+
+        const videoEntriesRef = collection(db, 'video_entries');
+        const videoSnapshot = await getDocs(videoEntriesRef);
+        const videoMap = {};
+
+        videoSnapshot.docs.forEach((docSnapshot) => {
+          const mapping = docSnapshot.data();
+          const surahKey = String(mapping.surah_number);
+          const entry = {
+            id: docSnapshot.id,
+            surahNumber: mapping.surah_number,
+            startAyah: mapping.start_ayah,
+            endAyah: mapping.end_ayah,
+            videoUrl: mapping.video_url,
+            title: mapping.title || ''
+          };
+
+          if (!videoMap[surahKey]) {
+            videoMap[surahKey] = [];
+          }
+          videoMap[surahKey].push(entry);
+        });
+
+        Object.keys(videoMap).forEach((key) => {
+          videoMap[key] = videoMap[key].sort((a, b) => a.startAyah - b.startAyah);
+        });
+
+        setVideoMappings(videoMap);
       } catch (error) {
         if (error.code !== 'permission-denied') {
           logFirebaseError('Fetch Mappings', error);
@@ -1966,6 +2138,11 @@ export const QuranProvider = ({ children }) => {
         const savedTafseerMappings = localStorage.getItem('quran_tafseer_mappings');
         if (savedTafseerMappings) {
           setTafseerMappings(JSON.parse(savedTafseerMappings));
+        }
+
+        const savedVideoMappings = localStorage.getItem('quran_video_mappings');
+        if (savedVideoMappings) {
+          setVideoMappings(JSON.parse(savedVideoMappings));
         }
       }
     };
@@ -2023,6 +2200,53 @@ export const QuranProvider = ({ children }) => {
       }
     );
 
+    const videoEntriesRef = collection(db, 'video_entries');
+    const unsubscribeVideos = onSnapshot(
+      videoEntriesRef,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          const data = change.doc.data();
+          const surahKey = String(data.surah_number);
+          const entry = {
+            id: change.doc.id,
+            surahNumber: data.surah_number,
+            startAyah: data.start_ayah,
+            endAyah: data.end_ayah,
+            videoUrl: data.video_url,
+            title: data.title || ''
+          };
+
+          if (change.type === 'added' || change.type === 'modified') {
+            setVideoMappings((prev) => {
+              const next = { ...prev };
+              const items = next[surahKey] ? [...next[surahKey]] : [];
+              const filtered = items.filter((item) => item.id !== entry.id);
+              next[surahKey] = [...filtered, entry].sort((a, b) => a.startAyah - b.startAyah);
+              localStorage.setItem('quran_video_mappings', JSON.stringify(next));
+              return next;
+            });
+          } else if (change.type === 'removed') {
+            setVideoMappings((prev) => {
+              const next = { ...prev };
+              if (next[surahKey]) {
+                next[surahKey] = next[surahKey].filter((item) => item.id !== entry.id);
+                if (next[surahKey].length === 0) {
+                  delete next[surahKey];
+                }
+              }
+              localStorage.setItem('quran_video_mappings', JSON.stringify(next));
+              return next;
+            });
+          }
+        });
+      },
+      (error) => {
+        if (error.code !== 'permission-denied') {
+          logFirebaseError('Video Entries Listener', error);
+        }
+      }
+    );
+
     const customUrlsRef = collection(db, 'custom_urls');
     const unsubscribeUrls = onSnapshot(
       customUrlsRef,
@@ -2044,6 +2268,7 @@ export const QuranProvider = ({ children }) => {
     return () => {
       unsubscribeAudio();
       unsubscribeTafseer();
+      unsubscribeVideos();
       unsubscribeUrls();
     };
   }, [fetchCustomUrls, fetchUpdatedAudioMapping, updateAudioMappingsWithUrl]);
@@ -2158,6 +2383,7 @@ export const QuranProvider = ({ children }) => {
       loading,
       audioMappings,
       tafseerMappings,
+      videoMappings,
       customUrls,
       currentSurah,
       lastPlayedPosition,
@@ -2173,6 +2399,8 @@ export const QuranProvider = ({ children }) => {
       deleteAudioMapping,
       saveTafseerMapping,
       deleteTafseerMapping,
+      saveVideoMapping,
+      deleteVideoMapping,
       createCustomUrl,
       updateCustomUrl,
       deleteCustomUrl,
@@ -2181,6 +2409,7 @@ export const QuranProvider = ({ children }) => {
       getAudioUrl,
       getSupplementalAudioUrl,
       getTafseer,
+      getVideoForAyah,
       fetchSurahVerses,
       fetchCustomUrls,
       setThemePreference,
@@ -2204,6 +2433,7 @@ export const QuranProvider = ({ children }) => {
       loading,
       audioMappings,
       tafseerMappings,
+      videoMappings,
       customUrls,
       currentSurah,
       lastPlayedPosition,
@@ -2218,6 +2448,8 @@ export const QuranProvider = ({ children }) => {
       deleteAudioMapping,
       saveTafseerMapping,
       deleteTafseerMapping,
+      saveVideoMapping,
+      deleteVideoMapping,
       createCustomUrl,
       updateCustomUrl,
       deleteCustomUrl,
@@ -2226,6 +2458,7 @@ export const QuranProvider = ({ children }) => {
       getAudioUrl,
       getSupplementalAudioUrl,
       getTafseer,
+      getVideoForAyah,
       fetchSurahVerses,
       fetchCustomUrls,
       setThemePreference,
