@@ -71,19 +71,34 @@ const buildTranslationStorageKey = (edition, surahNumber) => `quran_translation_
 const QuranDataContext = createContext(null);
 const QuranAudioContext = createContext(null);
 
+const sanitizeIntervals = (intervals = []) => {
+  return intervals
+    .map((interval) => ({
+      ...interval,
+      startAyah: Number(interval.startAyah),
+      endAyah: Number(interval.endAyah)
+    }))
+    .filter((interval) => Number.isFinite(interval.startAyah) && Number.isFinite(interval.endAyah))
+    .sort((a, b) => a.startAyah - b.startAyah || a.endAyah - b.endAyah);
+};
+
 const buildIntervalTree = (intervals = []) => {
-  if (!Array.isArray(intervals) || intervals.length === 0) {
+  const normalizedIntervals = sanitizeIntervals(intervals);
+
+  if (!Array.isArray(normalizedIntervals) || normalizedIntervals.length === 0) {
     return null;
   }
 
-  const starts = intervals.map((interval) => interval.startAyah).sort((a, b) => a - b);
+  const starts = normalizedIntervals
+    .map((interval) => interval.startAyah)
+    .sort((a, b) => a - b || 0);
   const center = starts[Math.floor(starts.length / 2)];
 
   const left = [];
   const right = [];
   const overlapping = [];
 
-  intervals.forEach((interval) => {
+  normalizedIntervals.forEach((interval) => {
     if (interval.endAyah < center) {
       left.push(interval);
     } else if (interval.startAyah > center) {
@@ -1615,7 +1630,14 @@ export const QuranProvider = ({ children }) => {
       }
 
       const matches = searchIntervalTree(intervalTree, normalizedAyah);
-      return matches.length > 0 ? matches[0] : null;
+
+      if (!matches.length) {
+        return null;
+      }
+
+      return matches
+        .slice()
+        .sort((a, b) => a.startAyah - b.startAyah || a.endAyah - b.endAyah)[0];
     },
     [videoIntervalTrees]
   );
