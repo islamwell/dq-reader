@@ -48,6 +48,9 @@ const Videos = () => {
 
   const videos = useMemo(() => buildVideoList(videoMappings, surahs), [videoMappings, surahs]);
   const activeVideo = useMemo(() => {
+    if (videos.length === 0) {
+      return null;
+    }
     return videos.find((video) => video.id === activeVideoId) || videos[0];
   }, [activeVideoId, videos]);
 
