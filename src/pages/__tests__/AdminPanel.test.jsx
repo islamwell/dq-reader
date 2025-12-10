@@ -98,9 +98,12 @@ describe('AdminPanel Firebase Integration', () => {
       ],
       audioMappings: {},
       tafseerMappings: {},
+      videoMappings: {},
       customUrls: [],
       saveAudioMapping: vi.fn(),
       saveTafseerMapping: vi.fn(),
+      saveVideoMapping: vi.fn(),
+      deleteVideoMapping: vi.fn(),
       saveCustomUrl: vi.fn(),
       fetchCustomUrls: vi.fn()
     };

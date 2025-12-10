@@ -21,16 +21,18 @@ describe('Firestore Security Rules', () => {
       // This test documents that all collections require authentication
       const collections = [
         'admin_users',
-        'custom_urls', 
+        'custom_urls',
         'audio_mappings',
-        'tafseer_entries'
+        'tafseer_entries',
+        'video_entries'
       ];
-      
-      expect(collections).toHaveLength(4);
+
+      expect(collections).toHaveLength(5);
       expect(collections).toContain('admin_users');
       expect(collections).toContain('custom_urls');
       expect(collections).toContain('audio_mappings');
       expect(collections).toContain('tafseer_entries');
+      expect(collections).toContain('video_entries');
     });
   });
 
@@ -53,6 +55,14 @@ describe('Firestore Security Rules', () => {
       expect(requiredFields).toContain('surah_number');
       expect(requiredFields).toContain('ayah_number');
       expect(requiredFields).toContain('tafseer_text');
+    });
+
+    it('should validate video_entries required fields', () => {
+      const requiredFields = ['surah_number', 'start_ayah', 'end_ayah', 'video_url', 'created_at', 'updated_at'];
+      expect(requiredFields).toContain('surah_number');
+      expect(requiredFields).toContain('start_ayah');
+      expect(requiredFields).toContain('end_ayah');
+      expect(requiredFields).toContain('video_url');
     });
 
     it('should validate surah_number range (1-114)', () => {
@@ -87,6 +97,11 @@ describe('Firestore Security Rules', () => {
 
     it('should document that tafseer_entries collection requires authentication', () => {
       const rule = 'Authenticated users can manage tafseer_entries with validation';
+      expect(rule).toBeTruthy();
+    });
+
+    it('should document that video_entries collection requires authentication', () => {
+      const rule = 'Authenticated users can manage video_entries with validation';
       expect(rule).toBeTruthy();
     });
   });

@@ -141,6 +141,21 @@ Find solutions for:
 
 ---
 
+## Firebase Setup for the Video Feature
+
+The video library relies on Firestore for storing video ranges. Before testing or deploying, make sure your Firebase project has:
+
+1. **Security rules that include the `video_entries` collection**
+   - Publish the latest `firestore.rules` so authenticated admins can add video ranges while public reads stay enabled.
+2. **Indexes for fast range lookups**
+   - Deploy the composite index on `video_entries` (`surah_number`, `start_ayah`, `end_ayah`) and the single-field override on `surah_number`.
+3. **Published changes**
+   - After updating rules and indexes, wait for index build completion before using the admin video tools.
+
+For command-by-command deployment steps (including PowerShell-friendly examples), see [FIRESTORE_SETUP.md](../FIRESTORE_SETUP.md).
+
+---
+
 ## Project Overview
 
 ### Technology Stack

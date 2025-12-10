@@ -25,5 +25,11 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if isAuthenticated();
     }
+
+    // Video entries collection - public read, authenticated write
+    match /video_entries/{videoId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
   }
 }
