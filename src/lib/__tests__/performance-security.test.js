@@ -50,6 +50,11 @@ describe('Performance Validation', () => {
           description: 'Lookup tafseer by verse reference'
         },
         {
+          collection: 'video_entries',
+          fields: ['surah_number', 'start_ayah', 'end_ayah'],
+          description: 'Lookup videos by ayah range'
+        },
+        {
           collection: 'custom_urls',
           fields: ['url'],
           description: 'Find custom URL by URL string'
@@ -61,7 +66,7 @@ describe('Performance Validation', () => {
         }
       ];
       
-      expect(requiredIndexes).toHaveLength(4);
+      expect(requiredIndexes).toHaveLength(5);
       expect(requiredIndexes[0].collection).toBe('audio_mappings');
       expect(requiredIndexes[1].collection).toBe('tafseer_entries');
     });
@@ -119,13 +124,14 @@ describe('Performance Validation', () => {
     it('should cache frequently accessed data', () => {
       // Document caching strategy
       const cachingStrategy = {
-        localStorage: ['audio_mappings', 'tafseer_mappings'],
+        localStorage: ['audio_mappings', 'tafseer_mappings', 'video_mappings'],
         firestore: 'persistentLocalCache',
         description: 'Use multi-layer caching for optimal performance'
       };
-      
+
       expect(cachingStrategy.localStorage).toContain('audio_mappings');
       expect(cachingStrategy.localStorage).toContain('tafseer_mappings');
+      expect(cachingStrategy.localStorage).toContain('video_mappings');
       expect(cachingStrategy.firestore).toBe('persistentLocalCache');
     });
 
@@ -148,12 +154,12 @@ describe('Performance Validation', () => {
     it('should use efficient real-time listeners', () => {
       // Document real-time listener strategy
       const listenerStrategy = {
-        collections: ['audio_mappings', 'tafseer_entries', 'custom_urls'],
+        collections: ['audio_mappings', 'tafseer_entries', 'video_entries', 'custom_urls'],
         updateStrategy: 'incremental',
         description: 'Only update changed documents, not entire collections'
       };
-      
-      expect(listenerStrategy.collections).toHaveLength(3);
+
+      expect(listenerStrategy.collections).toHaveLength(4);
       expect(listenerStrategy.updateStrategy).toBe('incremental');
     });
 
@@ -179,7 +185,8 @@ describe('Security Validation', () => {
         admin_users: 'request.auth != null',
         custom_urls: 'request.auth != null',
         audio_mappings: 'request.auth != null',
-        tafseer_entries: 'request.auth != null'
+        tafseer_entries: 'request.auth != null',
+        video_entries: 'request.auth != null'
       };
       
       Object.values(securityRules).forEach(rule => {
@@ -210,12 +217,21 @@ describe('Security Validation', () => {
           tafseer_text: 'string',
           created_at: 'timestamp',
           updated_at: 'timestamp'
+        },
+        video_entries: {
+          surah_number: 'number (1-114)',
+          start_ayah: 'number (>= 1)',
+          end_ayah: 'number (>= 1)',
+          video_url: 'string',
+          created_at: 'timestamp',
+          updated_at: 'timestamp'
         }
       };
       
       expect(validationRules.custom_urls.url).toBe('string');
       expect(validationRules.audio_mappings.surah_number).toBe('number (1-114)');
       expect(validationRules.tafseer_entries.tafseer_text).toBe('string');
+      expect(validationRules.video_entries.video_url).toBe('string');
     });
 
     it('should prevent unauthorized access to admin_users collection', () => {

@@ -9,29 +9,37 @@ import { db } from '../lib/firebase';
 import { collection, writeBatch, doc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { handleFirebaseError, logFirebaseError } from '../utils/firebaseErrorHandler';
 
-const { FiLogOut, FiMusic, FiSave, FiPlay, FiSearch, FiBook, FiDatabase, FiRefreshCw, FiLink, FiEdit, FiExternalLink, FiPlus, FiTrash2 } = FiIcons;
+const { FiLogOut, FiMusic, FiSave, FiPlay, FiSearch, FiBook, FiDatabase, FiRefreshCw, FiLink, FiEdit, FiExternalLink, FiPlus, FiVideo, FiTrash2 } = FiIcons;
 
 const AdminPanel = () => {
   const { logout, user } = useAuth();
   const {
-    surahs, 
-    audioMappings, 
-    tafseerMappings, 
+    surahs,
+    audioMappings,
+    tafseerMappings,
+    videoMappings,
     customUrls,
-    saveAudioMapping, 
+    saveAudioMapping,
     deleteAudioMapping,
     saveTafseerMapping,
     deleteTafseerMapping,
+    saveVideoMapping,
+    deleteVideoMapping,
     saveCustomUrl,
-    fetchCustomUrls 
+    fetchCustomUrls
   } = useQuranData();
   
-  const [activeTab, setActiveTab] = useState('audio'); // 'audio', 'tafseer', or 'urls'
+  const [activeTab, setActiveTab] = useState('audio'); // 'audio', 'tafseer', 'video', or 'urls'
   const [selectedSurah, setSelectedSurah] = useState('');
   const [ayahNumber, setAyahNumber] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [selectedUrlId, setSelectedUrlId] = useState('');
   const [tafseerText, setTafseerText] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoStartAyah, setVideoStartAyah] = useState('');
+  const [videoEndAyah, setVideoEndAyah] = useState('');
+  const [editingVideoId, setEditingVideoId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'success', 'error'
   const [urlModalOpen, setUrlModalOpen] = useState(false);
@@ -44,6 +52,7 @@ const AdminPanel = () => {
   const [stats, setStats] = useState({
     audioCount: 0,
     tafseerCount: 0,
+    videoCount: 0,
     urlsCount: 0,
     totalSurahs: 0
   });
@@ -53,10 +62,11 @@ const AdminPanel = () => {
     setStats({
       audioCount: Object.keys(audioMappings).length,
       tafseerCount: Object.keys(tafseerMappings).length,
+      videoCount: Object.values(videoMappings).reduce((total, entries) => total + entries.length, 0),
       urlsCount: customUrls.length,
       totalSurahs: surahs.length
     });
-  }, [audioMappings, tafseerMappings, customUrls, surahs]);
+  }, [audioMappings, tafseerMappings, videoMappings, customUrls, surahs]);
 
   useEffect(() => {
     // If a URL is selected, update the audio URL field
@@ -93,6 +103,28 @@ const AdminPanel = () => {
     saveTafseerMapping(parseInt(selectedSurah), parseInt(ayahNumber), tafseerText);
     setAyahNumber('');
     setTafseerText('');
+  };
+
+  const handleSaveVideo = () => {
+    if (!selectedSurah || !videoStartAyah || !videoEndAyah || !videoUrl) {
+      toast.error('Please fill all video fields');
+      return;
+    }
+
+    saveVideoMapping(
+      parseInt(selectedSurah),
+      parseInt(videoStartAyah),
+      parseInt(videoEndAyah),
+      videoUrl.trim(),
+      videoTitle.trim(),
+      editingVideoId
+    );
+
+    setVideoStartAyah('');
+    setVideoEndAyah('');
+    setVideoUrl('');
+    setVideoTitle('');
+    setEditingVideoId(null);
   };
 
   const handleTestAudio = () => {
@@ -181,6 +213,28 @@ const AdminPanel = () => {
     }
   };
 
+  const handleEditVideoEntry = (entry) => {
+    setActiveTab('video');
+    setSelectedSurah(String(entry.surahNumber));
+    setVideoStartAyah(String(entry.startAyah));
+    setVideoEndAyah(String(entry.endAyah));
+    setVideoUrl(entry.videoUrl || '');
+    setVideoTitle(entry.title || '');
+    setEditingVideoId(entry.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteVideoEntry = async (entry) => {
+    const confirmed = window.confirm(
+      `Delete video for Surah ${entry.surahNumber}, Ayahs ${entry.startAyah}-${entry.endAyah}?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteVideoMapping(entry.id, entry.surahNumber);
+  };
+
   // Sync local storage data with Firebase
   const syncWithFirebase = async () => {
     setSyncStatus('syncing');
@@ -188,6 +242,7 @@ const AdminPanel = () => {
       // Get local data
       const localAudio = JSON.parse(localStorage.getItem('quran_audio_mappings') || '{}');
       const localTafseer = JSON.parse(localStorage.getItem('quran_tafseer_mappings') || '{}');
+      const localVideos = JSON.parse(localStorage.getItem('quran_video_mappings') || '{}');
       
       // Prepare batch operations for audio
       const audioEntries = Object.entries(localAudio).map(([key, value]) => {
@@ -211,6 +266,18 @@ const AdminPanel = () => {
           tafseer_text: text,
           updated_at: new Date()
         };
+      });
+
+      const videoEntries = Object.entries(localVideos).flatMap(([surahKey, entries]) => {
+        return entries.map((entry) => ({
+          id: entry.id,
+          surah_number: parseInt(surahKey, 10),
+          start_ayah: parseInt(entry.startAyah, 10),
+          end_ayah: parseInt(entry.endAyah, 10),
+          video_url: entry.videoUrl,
+          title: entry.title || '',
+          updated_at: new Date()
+        }));
       });
       
       // Execute batch writes using Firestore
@@ -245,6 +312,27 @@ const AdminPanel = () => {
             batch.set(docRef, entry, { merge: true });
           });
           
+          await batch.commit();
+        }
+      }
+
+      if (videoEntries.length > 0) {
+        for (let i = 0; i < videoEntries.length; i += batchSize) {
+          const batch = writeBatch(db);
+          const batchEntries = videoEntries.slice(i, i + batchSize);
+
+          batchEntries.forEach((entry) => {
+            const isNew = !entry.id || String(entry.id).startsWith('local-');
+            const docRef = isNew
+              ? doc(collection(db, 'video_entries'))
+              : doc(db, 'video_entries', entry.id);
+
+            const data = { ...entry };
+            delete data.id;
+
+            batch.set(docRef, data, { merge: true });
+          });
+
           await batch.commit();
         }
       }
@@ -362,11 +450,32 @@ const AdminPanel = () => {
     surah.translated_name.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredUrls = customUrls.filter(url => 
+  const filteredUrls = customUrls.filter(url =>
     url.url.toLowerCase().includes(urlsSearchTerm.toLowerCase()) ||
     (url.title && url.title.toLowerCase().includes(urlsSearchTerm.toLowerCase())) ||
     (url.description && url.description.toLowerCase().includes(urlsSearchTerm.toLowerCase()))
   );
+
+  const videoEntries = Object.entries(videoMappings).flatMap(([surahId, entries]) =>
+    entries.map((entry) => ({
+      ...entry,
+      surahId: Number(surahId)
+    }))
+  );
+
+  const filteredVideoEntries = videoEntries.filter((entry) => {
+    const surah = surahs.find((item) => item.id === entry.surahId);
+    const search = searchTerm.toLowerCase();
+    const label = surah ? `${surah.name_simple} ${surah.translated_name.name}`.toLowerCase() : '';
+    const titleText = (entry.title || '').toLowerCase();
+
+    return (
+      `${entry.surahId}`.includes(search) ||
+      `${entry.startAyah}-${entry.endAyah}`.includes(search) ||
+      label.includes(search) ||
+      titleText.includes(search)
+    );
+  });
 
   const getMappingsForSurah = (surahId, mappings) => {
     return Object.entries(mappings)
@@ -473,6 +582,19 @@ const AdminPanel = () => {
             <div className="flex items-center space-x-2">
               <SafeIcon icon={FiBook} />
               <span>Tafseer Management</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('video')}
+            className={`py-3 px-6 font-medium ${
+              activeTab === 'video'
+                ? 'text-islamic-gold border-b-2 border-islamic-gold'
+                : 'text-islamic-600 hover:text-islamic-800'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <SafeIcon icon={FiVideo} />
+              <span>Video Library</span>
             </div>
           </button>
           <button
@@ -602,6 +724,174 @@ const AdminPanel = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </motion.div>
+          </div>
+        ) : activeTab === 'video' ? (
+          <div className="grid grid-cols-1 gap-8">
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="admin-panel p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <SafeIcon icon={FiVideo} className="text-islamic-gold text-2xl" />
+                <div>
+                  <h2 className="text-xl font-bold text-islamic-800">Video Range Mapping</h2>
+                  <p className="text-sm text-islamic-600">Attach long-form videos to ayah ranges for richer context.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-islamic-700 mb-2">Select Surah</label>
+                  <select
+                    value={selectedSurah}
+                    onChange={(e) => setSelectedSurah(e.target.value)}
+                    className="w-full px-4 py-3 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
+                  >
+                    <option value="">Choose a Surah</option>
+                    {surahs.map((surah) => (
+                      <option key={surah.id} value={surah.id}>
+                        {surah.id}. {surah.name_simple} - {surah.translated_name.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-islamic-700 mb-2">Start Ayah</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={videoStartAyah}
+                      onChange={(e) => setVideoStartAyah(e.target.value)}
+                      className="w-full px-4 py-3 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
+                      placeholder="Beginning ayah"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-islamic-700 mb-2">End Ayah</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={videoEndAyah}
+                      onChange={(e) => setVideoEndAyah(e.target.value)}
+                      className="w-full px-4 py-3 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
+                      placeholder="Ending ayah"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-islamic-700 mb-2">Video Title (optional)</label>
+                  <input
+                    type="text"
+                    value={videoTitle}
+                    onChange={(e) => setVideoTitle(e.target.value)}
+                    className="w-full px-4 py-3 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
+                    placeholder="Lecture name or presenter"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-islamic-700 mb-2">Video URL</label>
+                  <input
+                    type="url"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    className="w-full px-4 py-3 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
+                    placeholder="https://example.com/video.mp4"
+                  />
+                  <p className="text-xs text-islamic-500 mt-1">MP4 or streaming URLs work best. Preload is optimized for stability.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={handleSaveVideo}
+                    className="flex items-center space-x-2 bg-islamic-gold hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <SafeIcon icon={FiSave} />
+                    <span>{editingVideoId ? 'Update Video' : 'Save Video'}</span>
+                  </button>
+                  {editingVideoId && (
+                    <button
+                      onClick={() => {
+                        setEditingVideoId(null);
+                        setVideoStartAyah('');
+                        setVideoEndAyah('');
+                        setVideoUrl('');
+                        setVideoTitle('');
+                      }}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-islamic-200 text-islamic-700 hover:border-islamic-gold hover:text-islamic-gold transition-colors"
+                    >
+                      <SafeIcon icon={FiRefreshCw} />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="admin-panel p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-islamic-800">Video Library</h2>
+                <div className="relative w-72">
+                  <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-islamic-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
+                    placeholder="Search videos..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-[32rem] overflow-y-auto pr-1">
+                {filteredVideoEntries.length === 0 ? (
+                  <div className="text-sm text-islamic-500 bg-white border border-dashed border-islamic-200 rounded-lg p-6 text-center">
+                    No videos added yet. Save your first range above.
+                  </div>
+                ) : (
+                  filteredVideoEntries.map((entry) => {
+                    const surah = surahs.find((item) => item.id === entry.surahId);
+
+                    return (
+                      <div key={entry.id} className="p-4 rounded-lg border border-islamic-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-islamic-800">
+                            {surah ? `${surah.name_simple} (${surah.translated_name.name})` : `Surah ${entry.surahId}`}
+                          </p>
+                          <p className="text-xs text-islamic-600">Ayahs {entry.startAyah} - {entry.endAyah}</p>
+                          {entry.title && <p className="text-sm text-islamic-700">{entry.title}</p>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={entry.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-islamic-gold hover:text-yellow-600"
+                            title="Open video in new tab"
+                          >
+                            <SafeIcon icon={FiExternalLink} />
+                          </a>
+                          <button
+                            onClick={() => handleEditVideoEntry(entry)}
+                            className="text-islamic-600 hover:text-islamic-800"
+                            title="Edit video mapping"
+                          >
+                            <SafeIcon icon={FiEdit} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVideoEntry(entry)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Delete video mapping"
+                          >
+                            <SafeIcon icon={FiTrash2} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </motion.div>
           </div>
@@ -883,7 +1173,7 @@ const AdminPanel = () => {
           className="admin-panel p-6 mt-8"
         >
           <h2 className="text-xl font-bold text-islamic-800 mb-6">Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
             <div className="bg-islamic-50 p-4 rounded-lg">
               <div className="text-2xl font-bold text-islamic-gold">{stats.totalSurahs}</div>
               <div className="text-islamic-600">Total Surahs</div>
@@ -899,6 +1189,12 @@ const AdminPanel = () => {
                 {stats.tafseerCount}
               </div>
               <div className="text-islamic-600">Tafseer Entries</div>
+            </div>
+            <div className="bg-islamic-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-islamic-gold">
+                {stats.videoCount}
+              </div>
+              <div className="text-islamic-600">Video Ranges</div>
             </div>
             <div className="bg-islamic-50 p-4 rounded-lg">
               <div className="text-2xl font-bold text-islamic-gold">

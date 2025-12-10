@@ -60,7 +60,7 @@ describe('Firestore Indexes Configuration', () => {
       const indexesPath = path.join(process.cwd(), 'firestore.indexes.json');
       const indexesContent = fs.readFileSync(indexesPath, 'utf8');
       indexesConfig = JSON.parse(indexesContent);
-      
+
       const tafseerIndex = indexesConfig.indexes.find(
         index => index.collectionGroup === 'tafseer_entries'
       );
@@ -76,6 +76,28 @@ describe('Firestore Indexes Configuration', () => {
       expect(surahField.order).toBe('ASCENDING');
       expect(ayahField).toBeDefined();
       expect(ayahField.order).toBe('ASCENDING');
+    });
+
+    it('should have video_entries composite index for surah_number, start_ayah, and end_ayah', () => {
+      const indexesPath = path.join(process.cwd(), 'firestore.indexes.json');
+      const indexesContent = fs.readFileSync(indexesPath, 'utf8');
+      indexesConfig = JSON.parse(indexesContent);
+
+      const videoIndex = indexesConfig.indexes.find(
+        index => index.collectionGroup === 'video_entries'
+      );
+
+      expect(videoIndex).toBeDefined();
+      expect(videoIndex.queryScope).toBe('COLLECTION');
+      expect(videoIndex.fields).toHaveLength(3);
+
+      const surahField = videoIndex.fields.find(f => f.fieldPath === 'surah_number');
+      const startField = videoIndex.fields.find(f => f.fieldPath === 'start_ayah');
+      const endField = videoIndex.fields.find(f => f.fieldPath === 'end_ayah');
+
+      expect(surahField).toBeDefined();
+      expect(startField).toBeDefined();
+      expect(endField).toBeDefined();
     });
 
     it('should have custom_urls index for created_at', () => {
@@ -132,12 +154,28 @@ describe('Firestore Indexes Configuration', () => {
       const indexesPath = path.join(process.cwd(), 'firestore.indexes.json');
       const indexesContent = fs.readFileSync(indexesPath, 'utf8');
       indexesConfig = JSON.parse(indexesContent);
-      
+
       const surahNumberOverride = indexesConfig.fieldOverrides.find(
         override => override.collectionGroup === 'tafseer_entries' && 
                    override.fieldPath === 'surah_number'
       );
       
+      expect(surahNumberOverride).toBeDefined();
+      expect(surahNumberOverride.indexes).toHaveLength(1);
+      expect(surahNumberOverride.indexes[0].order).toBe('ASCENDING');
+      expect(surahNumberOverride.indexes[0].queryScope).toBe('COLLECTION');
+    });
+
+    it('should have video_entries.surah_number field override', () => {
+      const indexesPath = path.join(process.cwd(), 'firestore.indexes.json');
+      const indexesContent = fs.readFileSync(indexesPath, 'utf8');
+      indexesConfig = JSON.parse(indexesContent);
+
+      const surahNumberOverride = indexesConfig.fieldOverrides.find(
+        override => override.collectionGroup === 'video_entries' &&
+                   override.fieldPath === 'surah_number'
+      );
+
       expect(surahNumberOverride).toBeDefined();
       expect(surahNumberOverride.indexes).toHaveLength(1);
       expect(surahNumberOverride.indexes[0].order).toBe('ASCENDING');
@@ -178,6 +216,12 @@ describe('Firestore Indexes Configuration', () => {
         index => index.collectionGroup === 'tafseer_entries'
       );
       expect(tafseerIndex).toBeDefined();
+
+      // Check video_entries has composite index
+      const videoIndex = indexesConfig.indexes.find(
+        index => index.collectionGroup === 'video_entries'
+      );
+      expect(videoIndex).toBeDefined();
     });
 
     it('should cover URL relationship queries (custom_url_id)', () => {
@@ -206,10 +250,17 @@ describe('Firestore Indexes Configuration', () => {
       
       // Check tafseer_entries has surah_number override
       const tafseerSurahOverride = indexesConfig.fieldOverrides.find(
-        override => override.collectionGroup === 'tafseer_entries' && 
+        override => override.collectionGroup === 'tafseer_entries' &&
                    override.fieldPath === 'surah_number'
       );
       expect(tafseerSurahOverride).toBeDefined();
+
+      // Check video_entries has surah_number override
+      const videoSurahOverride = indexesConfig.fieldOverrides.find(
+        override => override.collectionGroup === 'video_entries' &&
+                   override.fieldPath === 'surah_number'
+      );
+      expect(videoSurahOverride).toBeDefined();
     });
 
     it('should cover URL uniqueness checks (url)', () => {
