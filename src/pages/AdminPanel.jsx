@@ -270,6 +270,7 @@ const AdminPanel = () => {
 
       const videoEntries = Object.entries(localVideos).flatMap(([surahKey, entries]) => {
         return entries.map((entry) => ({
+          id: entry.id,
           surah_number: parseInt(surahKey, 10),
           start_ayah: parseInt(entry.startAyah, 10),
           end_ayah: parseInt(entry.endAyah, 10),
@@ -321,9 +322,15 @@ const AdminPanel = () => {
           const batchEntries = videoEntries.slice(i, i + batchSize);
 
           batchEntries.forEach((entry) => {
-            const docId = `${entry.surah_number}_${entry.start_ayah}_${entry.end_ayah}`;
-            const docRef = doc(db, 'video_entries', docId);
-            batch.set(docRef, entry, { merge: true });
+            const isNew = !entry.id || String(entry.id).startsWith('local-');
+            const docRef = isNew
+              ? doc(collection(db, 'video_entries'))
+              : doc(db, 'video_entries', entry.id);
+
+            const data = { ...entry };
+            delete data.id;
+
+            batch.set(docRef, data, { merge: true });
           });
 
           await batch.commit();
