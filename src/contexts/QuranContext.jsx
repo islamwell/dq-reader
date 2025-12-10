@@ -71,6 +71,65 @@ const buildTranslationStorageKey = (edition, surahNumber) => `quran_translation_
 const QuranDataContext = createContext(null);
 const QuranAudioContext = createContext(null);
 
+const buildIntervalTree = (intervals = []) => {
+  if (!Array.isArray(intervals) || intervals.length === 0) {
+    return null;
+  }
+
+  const starts = intervals.map((interval) => interval.startAyah).sort((a, b) => a - b);
+  const center = starts[Math.floor(starts.length / 2)];
+
+  const left = [];
+  const right = [];
+  const overlapping = [];
+
+  intervals.forEach((interval) => {
+    if (interval.endAyah < center) {
+      left.push(interval);
+    } else if (interval.startAyah > center) {
+      right.push(interval);
+    } else {
+      overlapping.push(interval);
+    }
+  });
+
+  return {
+    center,
+    overlapping,
+    left: buildIntervalTree(left),
+    right: buildIntervalTree(right)
+  };
+};
+
+const searchIntervalTree = (tree, point) => {
+  if (!tree) {
+    return [];
+  }
+
+  const matches = tree.overlapping.filter(
+    (interval) => point >= interval.startAyah && point <= interval.endAyah
+  );
+
+  if (point < tree.center) {
+    return matches.concat(searchIntervalTree(tree.left, point));
+  }
+
+  if (point > tree.center) {
+    return matches.concat(searchIntervalTree(tree.right, point));
+  }
+
+  return matches
+    .concat(searchIntervalTree(tree.left, point))
+    .concat(searchIntervalTree(tree.right, point));
+};
+
+const buildVideoIntervalTrees = (mappings = {}) => {
+  return Object.keys(mappings).reduce((acc, surahKey) => {
+    acc[surahKey] = buildIntervalTree(mappings[surahKey]);
+    return acc;
+  }, {});
+};
+
 export const useQuranData = () => {
   const context = useContext(QuranDataContext);
   if (!context) {
@@ -100,6 +159,7 @@ export const QuranProvider = ({ children }) => {
   const [audioMappings, setAudioMappings] = useState({});
   const [tafseerMappings, setTafseerMappings] = useState({});
   const [videoMappings, setVideoMappings] = useState({});
+  const videoIntervalTrees = useMemo(() => buildVideoIntervalTrees(videoMappings), [videoMappings]);
   const [customUrls, setCustomUrls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentSurah, setCurrentSurah] = useState(null);
@@ -1442,8 +1502,13 @@ export const QuranProvider = ({ children }) => {
         return;
       }
 
-      const start = Math.min(normalizedStart, normalizedEnd);
-      const end = Math.max(normalizedStart, normalizedEnd);
+      if (normalizedStart > normalizedEnd) {
+        toast.error('Start ayah cannot be greater than end ayah.');
+        return;
+      }
+
+      const start = normalizedStart;
+      const end = normalizedEnd;
 
       const entry = {
         surahNumber: normalizedSurah,
@@ -1543,14 +1608,16 @@ export const QuranProvider = ({ children }) => {
         return null;
       }
 
-      const ranges = videoMappings[String(normalizedSurah)] || [];
-      return (
-        ranges.find(
-          (entry) => normalizedAyah >= Number(entry.startAyah) && normalizedAyah <= Number(entry.endAyah)
-        ) || null
-      );
+      const intervalTree = videoIntervalTrees[String(normalizedSurah)];
+
+      if (!intervalTree) {
+        return null;
+      }
+
+      const matches = searchIntervalTree(intervalTree, normalizedAyah);
+      return matches.length > 0 ? matches[0] : null;
     },
-    [videoMappings]
+    [videoIntervalTrees]
   );
 
   const getAudioUrl = useCallback((surahNumber, ayahNumber) => {
