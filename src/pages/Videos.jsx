@@ -1,20 +1,29 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
-const { FiArrowLeft, FiPlay, FiVideo, FiLink2 } = FiIcons;
+const { FiArrowLeft, FiPlay, FiVideo, FiLink2, FiSearch, FiFilter, FiList, FiBook } = FiIcons;
 
 const THEME_CARD_STYLES = {
-  green: 'bg-emerald-50/50 border border-emerald-200',
-  red: 'bg-rose-50/50 border border-rose-200',
-  blue: 'bg-blue-50/50 border border-blue-200',
-  light: 'bg-white border border-slate-200',
-  dark: 'bg-slate-800/50 border border-slate-700',
-  sepia: 'bg-amber-50/50 border border-amber-300'
+  green: 'bg-emerald-50/50 border border-emerald-200 hover:border-emerald-300',
+  red: 'bg-rose-50/50 border border-rose-200 hover:border-rose-300',
+  blue: 'bg-blue-50/50 border border-blue-200 hover:border-blue-300',
+  light: 'bg-white border border-slate-200 hover:border-slate-300',
+  dark: 'bg-slate-800/50 border border-slate-700 hover:border-slate-600',
+  sepia: 'bg-amber-50/50 border border-amber-300 hover:border-amber-400'
+};
+
+const THEME_ACTIVE_STYLES = {
+  green: 'bg-emerald-100 border-emerald-400',
+  red: 'bg-rose-100 border-rose-400',
+  blue: 'bg-blue-100 border-blue-400',
+  light: 'bg-slate-100 border-slate-400',
+  dark: 'bg-slate-700 border-slate-500',
+  sepia: 'bg-amber-100 border-amber-400'
 };
 
 const buildVideoList = (videoMappings, surahs) => {
@@ -41,12 +50,40 @@ const buildVideoList = (videoMappings, surahs) => {
 
 const Videos = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { videoMappings, surahs, theme } = useQuranData();
   const [activeVideoId, setActiveVideoId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSurahFilter, setSelectedSurahFilter] = useState('all');
   const videoRef = useRef(null);
 
   const videos = useMemo(() => buildVideoList(videoMappings, surahs), [videoMappings, surahs]);
+
+  // Extract unique surahs that have videos for the filter dropdown
+  const availableSurahs = useMemo(() => {
+    const surahIds = new Set(videos.map(v => v.surahId));
+    return surahs.filter(s => surahIds.has(s.id));
+  }, [videos, surahs]);
+
+  const filteredVideos = useMemo(() => {
+    let result = videos;
+
+    if (selectedSurahFilter !== 'all') {
+      result = result.filter(v => v.surahId === Number(selectedSurahFilter));
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(v => 
+        v.title?.toLowerCase().includes(query) || 
+        v.surah?.name_simple.toLowerCase().includes(query) ||
+        v.surah?.translated_name.name.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [videos, selectedSurahFilter, searchQuery]);
+
   const activeVideo = useMemo(() => {
     if (videos.length === 0) {
       return null;
@@ -59,13 +96,10 @@ const Videos = () => {
 
     if (highlighted && videos.some((video) => video.id === highlighted)) {
       setActiveVideoId(highlighted);
-      return;
-    }
-
-    if (!activeVideoId && videos.length > 0) {
+    } else if (!activeVideoId && videos.length > 0) {
       setActiveVideoId(videos[0].id);
     }
-  }, [activeVideoId, searchParams, videos]);
+  }, [searchParams, videos, activeVideoId]);
 
   const handleVideoError = () => {
     toast.error('Unable to load the video stream. Please verify the URL.');
@@ -73,24 +107,32 @@ const Videos = () => {
 
   const handleSelectVideo = (videoId) => {
     setActiveVideoId(videoId);
-    videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setSearchParams({ videoId });
+    // Scroll to top on mobile only
+    if (window.innerWidth < 1024) {
+      videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const cardStyle = THEME_CARD_STYLES[theme] || THEME_CARD_STYLES.green;
+  const activeStyle = THEME_ACTIVE_STYLES[theme] || THEME_ACTIVE_STYLES.green;
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-islamic-800 flex items-center gap-2">
             <SafeIcon icon={FiVideo} /> Video Library
           </h1>
-          <p className="text-islamic-600">Browse and play long-form videos linked to ayah ranges.</p>
+          <p className="text-islamic-600 text-sm mt-1">
+            Curated long-form videos linked to Quranic ayah ranges.
+          </p>
         </div>
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-islamic-gold hover:text-islamic-gold transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-islamic-gold hover:text-islamic-gold transition-colors self-start md:self-auto"
         >
           <SafeIcon icon={FiArrowLeft} />
           <span>Back to Home</span>
@@ -101,95 +143,177 @@ const Videos = () => {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`rounded-xl p-8 shadow-lg text-center ${cardStyle}`}
+          className={`rounded-xl p-12 shadow-sm text-center border-2 border-dashed border-slate-200 ${cardStyle}`}
         >
-          <p className="text-islamic-700">No videos available yet. Add a video range from the Admin Panel.</p>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
+            <SafeIcon icon={FiVideo} className="text-3xl" />
+          </div>
+          <h3 className="text-lg font-medium text-islamic-800 mb-2">No Videos Available</h3>
+          <p className="text-islamic-600">Add video ranges from the Admin Panel to see them here.</p>
         </motion.div>
       ) : (
-        <>
-          <motion.div
-            ref={videoRef}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`rounded-2xl shadow-xl overflow-hidden ${cardStyle}`}
-          >
-            <div className="p-5 border-b border-islamic-100/70 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gradient-to-r from-islamic-50 to-white">
-              <div>
-                <p className="text-sm text-islamic-500 uppercase">Now Playing</p>
-                <h2 className="text-2xl font-semibold text-islamic-800">
-                  {activeVideo?.title || 'Untitled Video'}
-                </h2>
-                {activeVideo && (
-                  <p className="text-sm text-islamic-600">
-                    Surah {activeVideo.surahId}: Ayahs {activeVideo.startAyah}-{activeVideo.endAyah}
-                  </p>
-                )}
-              </div>
-              {activeVideo?.videoUrl && (
-                <a
-                  href={activeVideo.videoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-islamic-gold text-white hover:bg-yellow-600 transition-colors"
-                >
-                  <SafeIcon icon={FiLink2} />
-                  <span>Open Source</span>
-                </a>
-              )}
-            </div>
-
-            <div className="bg-slate-900 p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
+          {/* Main Video Player Area - Takes 2 cols on lg screens */}
+          <div className="lg:col-span-2 space-y-4" ref={videoRef}>
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-2xl overflow-hidden shadow-2xl bg-slate-900 aspect-video relative group"
+            >
               {activeVideo?.videoUrl ? (
                 <video
                   key={activeVideo.id}
                   controls
-                  controlsList="nodownload noremoteplayback"
-                  className="w-full rounded-xl shadow-lg max-h-[480px] object-contain bg-black"
+                  controlsList="nodownload"
+                  className="w-full h-full object-contain"
                   preload="metadata"
                   playsInline
                   onError={handleVideoError}
+                  poster={null} 
                 >
                   <source src={activeVideo.videoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
               ) : (
-                <div className="text-center text-slate-200 py-8">No video selected.</div>
-              )}
-            </div>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {videos.map((video) => (
-              <motion.button
-                key={video.id}
-                type="button"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => handleSelectVideo(video.id)}
-                className={`text-left p-4 rounded-xl border transition-all hover:-translate-y-1 hover:shadow-lg ${
-                  activeVideo?.id === video.id
-                    ? 'border-islamic-gold bg-islamic-50'
-                    : 'border-islamic-200 bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-islamic-800 flex items-center gap-2">
-                      <SafeIcon icon={FiVideo} /> Surah {video.surahId}
-                    </p>
-                    {video.surah && (
-                      <p className="text-xs text-islamic-600">{video.surah.name_simple} • {video.surah.translated_name.name}</p>
-                    )}
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs text-islamic-700 bg-islamic-50 border border-islamic-100 px-2 py-1 rounded-full">
-                    <SafeIcon icon={FiPlay} /> {video.startAyah}-{video.endAyah}
-                  </span>
+                <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                  <SafeIcon icon={FiVideo} className="text-5xl mb-4 opacity-50" />
+                  <p>Select a video to play</p>
                 </div>
-                {video.title && <p className="text-sm text-islamic-700 line-clamp-2">{video.title}</p>}
-              </motion.button>
-            ))}
+              )}
+            </motion.div>
+
+            {activeVideo && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-6 rounded-xl shadow-sm border ${cardStyle} bg-opacity-40 backdrop-blur-sm`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-islamic-900 mb-2">
+                      {activeVideo.title || 'Untitled Video'}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-islamic-700">
+                       <span className="flex items-center gap-1 bg-islamic-100/50 px-2 py-1 rounded">
+                        <SafeIcon icon={FiBook} className="text-islamic-600" />
+                        Surah {activeVideo.surah?.name_simple} ({activeVideo.surahId})
+                      </span>
+                      <span className="flex items-center gap-1 bg-islamic-100/50 px-2 py-1 rounded">
+                        <SafeIcon icon={FiPlay} className="text-islamic-600" />
+                        Ayahs {activeVideo.startAyah}-{activeVideo.endAyah}
+                      </span>
+                    </div>
+                  </div>
+                  {activeVideo.videoUrl && (
+                    <a
+                      href={activeVideo.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-islamic-50 text-islamic-700 hover:bg-islamic-100 transition-colors border border-islamic-200 text-sm font-medium whitespace-nowrap"
+                    >
+                      <SafeIcon icon={FiLink2} />
+                      Open Source
+                    </a>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
-        </>
+
+          {/* Sidebar Video List - Takes 1 col on lg screens */}
+          <div className="lg:col-span-1 flex flex-col h-full gap-4">
+            
+            {/* Search and Filter Controls */}
+            <div className="bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm backdrop-blur-sm sticky top-4 z-10">
+              <div className="space-y-3">
+                <div className="relative">
+                  <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search videos..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-islamic-gold/50 focus:border-islamic-gold text-sm"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                   <SafeIcon icon={FiFilter} className="text-slate-400" />
+                   <select
+                    value={selectedSurahFilter}
+                    onChange={(e) => setSelectedSurahFilter(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-islamic-gold/50 focus:border-islamic-gold text-sm bg-white"
+                   >
+                     <option value="all">All Surahs</option>
+                     {availableSurahs.map(surah => (
+                       <option key={surah.id} value={surah.id}>
+                         {surah.id}. {surah.name_simple}
+                       </option>
+                     ))}
+                   </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollable List */}
+            <div className="flex-1 overflow-y-auto max-h-[600px] pr-1 space-y-3 custom-scrollbar">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <SafeIcon icon={FiList} /> Up Next
+                </h3>
+                <span className="text-xs text-slate-400">{filteredVideos.length} videos</span>
+              </div>
+              
+              <AnimatePresence initial={false}>
+                {filteredVideos.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-8 text-slate-500 text-sm"
+                  >
+                    No videos match your search.
+                  </motion.div>
+                ) : (
+                  filteredVideos.map((video) => (
+                    <motion.button
+                      key={video.id}
+                      layout
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      onClick={() => handleSelectVideo(video.id)}
+                      className={`w-full text-left p-3 rounded-xl border transition-all duration-200 group ${
+                        activeVideoId === video.id
+                          ? activeStyle + ' shadow-md ring-1 ring-islamic-gold/30'
+                          : cardStyle + ' hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex gap-3">
+                        <div className={`flex-shrink-0 w-20 h-14 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 group-hover:bg-islamic-50 group-hover:text-islamic-500 transition-colors`}>
+                           <SafeIcon icon={FiPlay} className="text-xl" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold line-clamp-2 mb-1 ${
+                            activeVideoId === video.id ? 'text-islamic-900' : 'text-slate-700'
+                          }`}>
+                            {video.title || `Video for Surah ${video.surahId}`}
+                          </p>
+                          <div className="flex items-center text-xs text-slate-500 gap-2">
+                            <span className="truncate">{video.surah?.name_simple}</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                            <span>{video.startAyah}-{video.endAyah}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
