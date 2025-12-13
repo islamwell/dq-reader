@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
+import InlineAyahVideo from './InlineAyahVideo';
 
 const { FiPlay, FiPause, FiBook, FiVideo } = FiIcons;
 
@@ -57,6 +58,7 @@ const AyahCard = ({ verse, surahNumber }) => {
   const { getTafseer, getVideoForAyah, bookmarks, toggleBookmark, language, theme } = useQuranData();
   const navigate = useNavigate();
   const [showTafseer, setShowTafseer] = useState(false);
+  const [showInlineVideo, setShowInlineVideo] = useState(false);
 
   const ayahKey = `${surahNumber}:${verse.verse_number}`;
   const isPlaying = playingAyah === ayahKey;
@@ -124,14 +126,27 @@ const AyahCard = ({ verse, surahNumber }) => {
           )}
 
           {videoForAyah && (
-            <button
-              type="button"
-              onClick={() => navigate(`/videos?videoId=${videoForAyah.id}`)}
-              className="flex items-center space-x-2 bg-slate-900/80 hover:bg-slate-800 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              <SafeIcon icon={FiVideo} className="text-sm" />
-              <span>Video</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowInlineVideo((prev) => !prev)}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors shadow-sm ${
+                  showInlineVideo
+                    ? 'bg-islamic-gold text-slate-900 hover:bg-yellow-500'
+                    : 'bg-slate-900/80 text-white hover:bg-slate-800'
+                }`}
+              >
+                <SafeIcon icon={FiVideo} className="text-sm" />
+                <span>{showInlineVideo ? 'Hide Video' : 'Watch Inline'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/videos?videoId=${videoForAyah.id}`)}
+                className="text-sm font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+              >
+                Open in library
+              </button>
+            </div>
           )}
 
           <button
@@ -161,6 +176,10 @@ const AyahCard = ({ verse, surahNumber }) => {
             <p className={`text-sm font-medium mb-2 ${secondaryTextStyle}`}>Tafseer:</p>
             <p className={textStyle}>{tafseerText}</p>
           </div>
+        )}
+
+        {showInlineVideo && videoForAyah && (
+          <InlineAyahVideo video={videoForAyah} />
         )}
       </div>
     </motion.div>

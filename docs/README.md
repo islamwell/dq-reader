@@ -154,6 +154,28 @@ The video library relies on Firestore for storing video ranges. Before testing o
 
 For command-by-command deployment steps (including PowerShell-friendly examples), see [FIRESTORE_SETUP.md](../FIRESTORE_SETUP.md).
 
+### Inline Ayah Video Playback UX Guidelines
+
+Use these best-practice patterns to keep video playback inline with each ayah while remaining distraction-free and accessible:
+
+- **Trigger placement and styling:** Keep a compact play button adjacent to each ayah line (or grouped ayah card). Pair a play icon with a short label such as “Play Tafsir” for clarity, and reuse the app’s primary accent color at ~70–80% opacity with hover/pressed states and a visible focus ring for keyboard users.
+- **Inline player behavior:** When a video is opened, expand an inline 16:9 container beneath the ayah with a skeleton loader, thumbnail, and title/subtitle (Surah/ayah range). Auto-scroll the ayah into view and preserve reading order so text remains readable above the fold.
+- **Core controls:** Include play/pause, a visible timeline, mute, captions toggle (default on when available), playback speed (0.75–1.5×), and **quick seek ±10s** for fine-grained navigation. Keep primary controls reachable within one tap.
+- **Repeat options:** Provide a single-tap repeat toggle plus **A–B looping** scoped to the current ayah range for memorization. Make loop state clearly indicated and persist it only for the current session to avoid surprises.
+- **View modes:** Offer both **Picture-in-Picture** (for following along while scrolling other ayat) and a **Fullscreen** button. Use PiP as an opt-in; return focus to the ayah when PiP closes. In fullscreen, keep captions and the A–B loop indicators visible and allow double-tap to pause/play.
+- **Accessibility and typography:** Maintain at least 4.5:1 contrast on controls, 44×44px touch targets, and legible typography that matches the Quran text sizing scale. Provide keyboard shortcuts (Space for play/pause, ←/→ for ±10s, R for repeat) and ARIA labels for all controls.
+- **Error and network handling:** Show a graceful retry state with a “Reload video” button and short helper text if the stream fails. Defer loading until the user taps play; prefetch the next ayah’s thumbnail when the current video nears completion.
+
+### Inline Ayah Video Player (Implemented)
+
+The ayah cards now render a refined inline player that matches the above guidance:
+
+- **Inline trigger:** A dual-action “Watch Inline” button with accent styling plus a secondary “Open in library” link keeps the inline view and the dedicated video page discoverable.
+- **Cinematic container:** An on-card 16:9 canvas with a gradient overlay, buffered state indicator, and typography aligned to the Quran text scale.
+- **Granular controls:** Custom controls include play/pause, ±10s jumps, restart, classic repeat, and A–B looping with visible A/B chips and disabled safeguards until both points are set.
+- **View modes:** One-tap Picture-in-Picture (when supported) and fullscreen toggles return focus to the ayah container, keeping navigation consistent.
+- **Status feedback:** Time badges, buffering pill, and inline error helper keep playback transparent without leaving the page.
+
 ---
 
 ## Project Overview
