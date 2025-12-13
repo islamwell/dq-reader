@@ -17,12 +17,14 @@ All collections require authentication (`request.auth != null`):
 - `custom_urls` - Custom audio URLs
 - `audio_mappings` - Verse-to-audio mappings
 - `tafseer_entries` - Verse interpretations
+- `video_entries` - Verse-to-video mappings
 
 ### Data Validation
 The rules enforce:
 - **custom_urls**: Required fields (url, title, timestamps), string type validation
 - **audio_mappings**: Required fields (surah_number, ayah_number, custom_url_id, timestamps), integer validation, surah range (1-114), ayah minimum (1)
 - **tafseer_entries**: Required fields (surah_number, ayah_number, tafseer_text, timestamps), integer and string validation, surah range (1-114), ayah minimum (1)
+- **video_entries**: Required fields (surah_number, start_ayah, end_ayah, video_url, timestamps), integer validation, surah range (1-114), ayah minimum (1)
 
 ## Indexes Summary
 
@@ -40,6 +42,9 @@ These indexes optimize queries that filter on multiple fields:
 3. **custom_urls**: `created_at` (DESC)
    - Optimizes queries for listing URLs by creation date
    - Used for displaying custom URLs in chronological order
+4. **video_entries**: `surah_number` (ASC), `start_ayah` (ASC), `end_ayah` (ASC)
+   - Optimizes video lookups by verse range for admin and client queries
+   - Used in: `QuranContext.fetchUpdatedVideoMapping()` and admin video list filtering
 
 ### Single-Field Indexes (Field Overrides)
 These indexes optimize queries that filter on a single field:
@@ -56,7 +61,11 @@ These indexes optimize queries that filter on a single field:
    - Optimizes queries for finding all tafseer entries for a specific surah
    - Used for displaying tafseer entries by surah in the admin panel
 
-4. **custom_urls.url** (ASC)
+4. **video_entries.surah_number** (ASC)
+   - Optimizes queries for fetching all video ranges for a specific surah
+   - Used for building interval trees in `QuranContext.buildVideoIntervalTrees()`
+
+5. **custom_urls.url** (ASC)
    - Optimizes queries for checking if a URL already exists
    - Used in: `QuranContext.saveCustomUrl()` to prevent duplicate URLs
 
@@ -78,9 +87,11 @@ These indexes optimize queries that filter on a single field:
    - **audio_mappings**: Add fields `surah_number` (Ascending), `ayah_number` (Ascending)
    - **tafseer_entries**: Add fields `surah_number` (Ascending), `ayah_number` (Ascending)
    - **custom_urls**: Add field `created_at` (Descending)
+   - **video_entries**: Add fields `surah_number` (Ascending), `start_ayah` (Ascending), `end_ayah` (Ascending)
 3. For single-field indexes, Firestore will automatically create them when needed, or you can manually add them:
    - **audio_mappings**: `custom_url_id` (Ascending), `surah_number` (Ascending)
    - **tafseer_entries**: `surah_number` (Ascending)
+   - **video_entries**: `surah_number` (Ascending)
    - **custom_urls**: `url` (Ascending)
 4. Wait for indexes to build (can take a few minutes for large datasets)
 
