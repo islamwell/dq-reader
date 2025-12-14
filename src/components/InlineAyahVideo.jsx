@@ -1,11 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
 const { FiPlay, FiPause, FiVolume2, FiVolumeX, FiLoader } = FiIcons;
 
-const InlineAyahVideo = ({ video, surahNumber, ayahNumber }) => {
+const InlineAyahVideo = ({
+  video,
+  surahNumber,
+  ayahNumber,
+  position,
+  onPositionChange,
+  size,
+  onSizeChange,
+  onClose
+}) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -13,9 +22,11 @@ const InlineAyahVideo = ({ video, surahNumber, ayahNumber }) => {
   const [hasError, setHasError] = useState(false);
   const [cachedSrc, setCachedSrc] = useState(video.videoUrl);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  const [size, setSize] = useState({ width: 220 });
+  const [frameSize, setFrameSize] = useState({ width: size?.width || 260 });
   const [isResizing, setIsResizing] = useState(false);
   const resizeState = useRef({ startX: 0, startWidth: 220 });
+  const x = useMotionValue(position?.x ?? 16);
+  const y = useMotionValue(position?.y ?? 16);
 
   const labelSegments = [surahNumber || video?.surahId, ayahNumber || video?.startAyah].filter(Boolean);
   const label = labelSegments.length === 2 ? `${labelSegments[0]}:${labelSegments[1]}` : labelSegments[0] || '';
@@ -114,8 +125,9 @@ const InlineAyahVideo = ({ video, surahNumber, ayahNumber }) => {
       if (!isResizing) return;
 
       const deltaX = event.clientX - resizeState.current.startX;
-      const nextWidth = Math.min(420, Math.max(180, resizeState.current.startWidth + deltaX));
-      setSize({ width: nextWidth });
+      const maxWidth = Math.min(720, Math.max(260, window.innerWidth - 48));
+      const nextWidth = Math.min(maxWidth, Math.max(180, resizeState.current.startWidth + deltaX));
+      setFrameSize({ width: nextWidth });
     };
 
     const stopResizing = () => setIsResizing(false);
@@ -151,19 +163,45 @@ const InlineAyahVideo = ({ video, surahNumber, ayahNumber }) => {
 
   const handleResizeStart = (event) => {
     event.preventDefault();
-    resizeState.current = { startX: event.clientX, startWidth: size.width };
+    event.stopPropagation();
+    resizeState.current = { startX: event.clientX, startWidth: frameSize.width };
     setIsResizing(true);
   };
 
-  const computedHeight = size.width / (aspectRatio || 1.7778);
+  useEffect(() => {
+    if (typeof position?.x === 'number') {
+      x.set(position.x);
+    }
+    if (typeof position?.y === 'number') {
+      y.set(position.y);
+    }
+  }, [position?.x, position?.y, x, y]);
+
+  useEffect(() => {
+    if (size?.width && size.width !== frameSize.width) {
+      setFrameSize({ width: size.width });
+    }
+  }, [frameSize.width, size?.width]);
+
+  useEffect(() => {
+    onSizeChange?.(frameSize);
+  }, [frameSize, onSizeChange]);
+
+  const handleDragEnd = () => {
+    const nextPosition = { x: x.get(), y: y.get() };
+    onPositionChange?.(nextPosition);
+  };
+
+  const computedHeight = frameSize.width / (aspectRatio || 1.7778);
 
   return (
     <motion.div
-      drag
+      drag={!isResizing}
       dragMomentum={false}
       dragElastic={0.12}
-      className="absolute left-full top-0 ml-3 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-20 cursor-move"
-      style={{ width: size.width, height: computedHeight }}
+      onDragEnd={handleDragEnd}
+      className="fixed left-0 top-0 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-30 cursor-move"
+      style={{ width: frameSize.width, height: computedHeight, x, y }}
     >
       <div className="relative h-full bg-slate-900">
         {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-2 z-10 animate-spin text-white" />}
@@ -172,6 +210,14 @@ const InlineAyahVideo = ({ video, surahNumber, ayahNumber }) => {
             {label}
           </div>
         )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute left-2 top-2 z-10 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/70 transition"
+          aria-label="Close video"
+        >
+          ×
+        </button>
         <video
           ref={videoRef}
           src={cachedSrc}

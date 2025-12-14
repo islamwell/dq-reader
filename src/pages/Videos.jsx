@@ -57,6 +57,7 @@ const Videos = () => {
   const [selectedSurahFilter, setSelectedSurahFilter] = useState('all');
   const playerContainerRef = useRef(null);
   const playerRef = useRef(null);
+  const [playerAspectRatio, setPlayerAspectRatio] = useState(16 / 9);
 
   const videos = useMemo(() => buildVideoList(videoMappings, surahs), [videoMappings, surahs]);
 
@@ -162,6 +163,16 @@ const Videos = () => {
   const cardStyle = THEME_CARD_STYLES[theme] || THEME_CARD_STYLES.green;
   const activeStyle = THEME_ACTIVE_STYLES[theme] || THEME_ACTIVE_STYLES.green;
 
+  const handleLoadedMetadata = (event) => {
+    const element = event?.target;
+    if (!element || !element.videoWidth || !element.videoHeight) return;
+
+    const ratio = element.videoWidth / element.videoHeight;
+    if (Number.isFinite(ratio) && ratio > 0) {
+      setPlayerAspectRatio(ratio);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -205,7 +216,8 @@ const Videos = () => {
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="rounded-2xl overflow-hidden shadow-2xl bg-slate-900 aspect-video relative group"
+              className="rounded-2xl overflow-hidden shadow-2xl bg-slate-900 relative group"
+              style={{ aspectRatio: playerAspectRatio || 16 / 9 }}
             >
               {activeVideo?.videoUrl ? (
                 <video
@@ -214,11 +226,12 @@ const Videos = () => {
                   controls
                   controlsList="nodownload noremoteplayback"
                   autoPlay
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                   preload="metadata"
                   playsInline
                   onError={handleVideoError}
                   onEnded={handleVideoEnded}
+                  onLoadedMetadata={handleLoadedMetadata}
                   poster={null}
                 >
                   <source src={activeVideo.videoUrl} type="video/mp4" />

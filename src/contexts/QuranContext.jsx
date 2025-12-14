@@ -226,6 +226,7 @@ export const QuranProvider = ({ children }) => {
   const searchIndexRef = useRef(null);
   const searchIndexPromiseRef = useRef(null);
   const translationPrefetchRef = useRef(false);
+  const [floatingVideo, setFloatingVideo] = useState(null);
 
   const persistAudioPreferences = useCallback((primaryEnabled, supplementalEnabled) => {
     try {
@@ -966,6 +967,74 @@ export const QuranProvider = ({ children }) => {
 
     toast.success('Bookmark removed');
   }, []);
+
+  const clampFloatingPosition = useCallback((position = {}, width = 260) => {
+    if (typeof window === 'undefined') {
+      return { x: position.x ?? 16, y: position.y ?? 16 };
+    }
+
+    const safeWidth = Math.max(160, Math.min(width || 260, window.innerWidth - 32));
+    const maxX = Math.max(12, window.innerWidth - safeWidth - 12);
+    const maxY = Math.max(12, window.innerHeight - 140);
+
+    return {
+      x: Math.max(12, Math.min(position.x ?? 16, maxX)),
+      y: Math.max(12, Math.min(position.y ?? 16, maxY))
+    };
+  }, []);
+
+  const showFloatingVideo = useCallback(
+    ({ video, surahNumber, ayahNumber, position, size } = {}) => {
+      setFloatingVideo((current) => {
+        const nextSize = size || current?.size || { width: 260 };
+        const nextPosition = clampFloatingPosition(
+          position || current?.position || { x: 20, y: 20 },
+          nextSize.width
+        );
+
+        return {
+          video: video || current?.video,
+          surahNumber: surahNumber || current?.surahNumber,
+          ayahNumber: ayahNumber || current?.ayahNumber,
+          position: nextPosition,
+          size: nextSize
+        };
+      });
+    },
+    [clampFloatingPosition]
+  );
+
+  const hideFloatingVideo = useCallback(() => {
+    setFloatingVideo(null);
+  }, []);
+
+  const updateFloatingVideoPosition = useCallback(
+    (position) => {
+      setFloatingVideo((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          position: clampFloatingPosition(position, current?.size?.width)
+        };
+      });
+    },
+    [clampFloatingPosition]
+  );
+
+  const updateFloatingVideoSize = useCallback((size) => {
+    setFloatingVideo((current) => {
+      if (!current) return current;
+
+      const normalizedWidth = Math.max(180, Math.min(size?.width || 240, 720));
+      const nextSize = { ...current.size, width: normalizedWidth };
+      return {
+        ...current,
+        size: nextSize,
+        position: clampFloatingPosition(current.position, normalizedWidth)
+      };
+    });
+  }, [clampFloatingPosition]);
 
   const updateBookmarkNote = useCallback((bookmarkId, note) => {
     setBookmarks((prev) => {
@@ -2483,6 +2552,7 @@ export const QuranProvider = ({ children }) => {
       enableSupplementalAudio,
       enableDQ2Audio,
       bookmarks,
+      floatingVideo,
       setCurrentSurah,
       saveAudioMapping,
       deleteAudioMapping,
@@ -2513,6 +2583,10 @@ export const QuranProvider = ({ children }) => {
       toggleBookmark,
       removeBookmark,
       updateBookmarkNote,
+      showFloatingVideo,
+      hideFloatingVideo,
+      updateFloatingVideoPosition,
+      updateFloatingVideoSize,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio
@@ -2533,6 +2607,7 @@ export const QuranProvider = ({ children }) => {
       enableSupplementalAudio,
       enableDQ2Audio,
       bookmarks,
+      floatingVideo,
       saveAudioMapping,
       deleteAudioMapping,
       saveTafseerMapping,
@@ -2562,6 +2637,10 @@ export const QuranProvider = ({ children }) => {
       toggleBookmark,
       removeBookmark,
       updateBookmarkNote,
+      showFloatingVideo,
+      hideFloatingVideo,
+      updateFloatingVideoPosition,
+      updateFloatingVideoSize,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio

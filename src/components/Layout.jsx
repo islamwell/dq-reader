@@ -6,6 +6,7 @@ import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 import SettingsPanel from './SettingsPanel';
 import SearchBar from './SearchBar';
+import FloatingVideoViewport from './FloatingVideoViewport';
 
 const { FiBook, FiSettings, FiCornerDownRight } = FiIcons;
 
@@ -163,6 +164,7 @@ const Layout = () => {
       </main>
 
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <FloatingVideoViewport />
     </div>
   );
 };

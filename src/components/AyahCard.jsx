@@ -1,10 +1,9 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
-import InlineAyahVideo from './InlineAyahVideo';
 
 const { FiPlay, FiPause, FiBook, FiVideo, FiPlayCircle } = FiIcons;
 
@@ -55,10 +54,20 @@ const THEME_PLAYING_STYLES = {
 
 const AyahCard = ({ verse, surahNumber }) => {
   const { playAudio, pauseAudio, resumeAudio, playingAyah, isPaused } = useQuranAudio();
-  const { getTafseer, getVideoForAyah, bookmarks, toggleBookmark, language, theme } = useQuranData();
+  const {
+    getTafseer,
+    getVideoForAyah,
+    bookmarks,
+    toggleBookmark,
+    language,
+    theme,
+    floatingVideo,
+    showFloatingVideo,
+    hideFloatingVideo
+  } = useQuranData();
   const navigate = useNavigate();
   const [showTafseer, setShowTafseer] = useState(false);
-  const [showInlineVideo, setShowInlineVideo] = useState(false);
+  const videoButtonRef = useRef(null);
 
   const ayahKey = `${surahNumber}:${verse.verse_number}`;
   const isPlaying = playingAyah === ayahKey;
@@ -75,6 +84,10 @@ const AyahCard = ({ verse, surahNumber }) => {
   const translationMeta = verse.translations && verse.translations[0] ? verse.translations[0] : null;
   const translationLabel = translationMeta?.label || translationMeta?.language || language;
   const isUrduTranslation = translationLabel?.includes('Junagarhi') || translationLabel?.toLowerCase().includes('urdu');
+  const isVideoActive =
+    floatingVideo?.video?.id === videoForAyah?.id &&
+    floatingVideo?.surahNumber === surahNumber &&
+    floatingVideo?.ayahNumber === verse.verse_number;
 
   const handlePlayAudio = () => {
     if (isPlaying && !isPaused) {
@@ -92,6 +105,31 @@ const AyahCard = ({ verse, surahNumber }) => {
 
   const handleToggleBookmark = () => {
     toggleBookmark(surahNumber, verse.verse_number);
+  };
+
+  const handleToggleVideo = () => {
+    if (!videoForAyah) return;
+
+    if (isVideoActive) {
+      hideFloatingVideo();
+      return;
+    }
+
+    const rect = videoButtonRef.current?.getBoundingClientRect();
+    const targetPosition = rect
+      ? {
+          x: rect.left + rect.width + 12 + window.scrollX,
+          y: rect.top + window.scrollY - 8
+        }
+      : { x: 24, y: 24 };
+
+    showFloatingVideo({
+      video: videoForAyah,
+      surahNumber,
+      ayahNumber: verse.verse_number,
+      position: targetPosition,
+      size: floatingVideo?.size
+    });
   };
 
   return (
@@ -113,10 +151,6 @@ const AyahCard = ({ verse, surahNumber }) => {
           >
             {verse.verse_number}
           </button>
-
-          {showInlineVideo && videoForAyah && (
-            <InlineAyahVideo video={videoForAyah} surahNumber={surahNumber} ayahNumber={verse.verse_number} />
-          )}
         </div>
 
         <div className="flex items-center space-x-2">
@@ -135,13 +169,14 @@ const AyahCard = ({ verse, surahNumber }) => {
             <div className="flex items-center space-x-2">
               <button
                 type="button"
-                onClick={() => setShowInlineVideo((prev) => !prev)}
+                ref={videoButtonRef}
+                onClick={handleToggleVideo}
                 className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors shadow-sm ${
-                  showInlineVideo
+                  isVideoActive
                     ? 'bg-slate-900 text-amber-300 hover:bg-slate-800'
                     : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
                 }`}
-                aria-label={showInlineVideo ? 'Hide ayah video' : 'Play ayah video in PiP'}
+                aria-label={isVideoActive ? 'Hide ayah video' : 'Play ayah video in PiP'}
               >
                 <SafeIcon icon={FiVideo} className="text-lg" />
               </button>
