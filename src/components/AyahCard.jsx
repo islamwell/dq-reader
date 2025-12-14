@@ -6,7 +6,7 @@ import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 import InlineAyahVideo from './InlineAyahVideo';
 
-const { FiPlay, FiPause, FiBook, FiVideo } = FiIcons;
+const { FiPlay, FiPause, FiBook, FiVideo, FiPlayCircle } = FiIcons;
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200',
@@ -102,18 +102,22 @@ const AyahCard = ({ verse, surahNumber }) => {
       className={`ayah-card rounded-xl p-6 shadow-md ${isPlaying ? playingStyle : cardStyle}`}
       data-ayah={verse.verse_number}
     >
-      <div className="flex items-start justify-between mb-4">
-        <button
-          type="button"
-          onClick={handleToggleBookmark}
-          className={`verse-number ${isBookmarked ? 'bookmarked' : ''}`}
-          aria-pressed={isBookmarked}
-          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-        >
-          {verse.verse_number}
-        </button>
+      <div className="flex items-start justify-between mb-4 relative">
+        <div className="relative flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleToggleBookmark}
+            className={`verse-number ${isBookmarked ? 'bookmarked' : ''}`}
+            aria-pressed={isBookmarked}
+            title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          >
+            {verse.verse_number}
+          </button>
 
-        <div className="flex space-x-2">
+          {showInlineVideo && videoForAyah && <InlineAyahVideo video={videoForAyah} />}
+        </div>
+
+        <div className="flex items-center space-x-2">
           {tafseerText && (
             <button
               type="button"
@@ -130,21 +134,22 @@ const AyahCard = ({ verse, surahNumber }) => {
               <button
                 type="button"
                 onClick={() => setShowInlineVideo((prev) => !prev)}
-                className={`flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors shadow-sm ${
+                className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors shadow-sm ${
                   showInlineVideo
-                    ? 'bg-islamic-gold text-slate-900 hover:bg-yellow-500'
-                    : 'bg-slate-900/80 text-white hover:bg-slate-800'
+                    ? 'bg-slate-900 text-amber-300 hover:bg-slate-800'
+                    : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
                 }`}
+                aria-label={showInlineVideo ? 'Hide ayah video' : 'Play ayah video in PiP'}
               >
-                <SafeIcon icon={FiVideo} className="text-sm" />
-                <span>{showInlineVideo ? 'Hide Video' : 'Watch Inline'}</span>
+                <SafeIcon icon={FiVideo} className="text-lg" />
               </button>
               <button
                 type="button"
                 onClick={() => navigate(`/videos?videoId=${videoForAyah.id}`)}
-                className="text-sm font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+                className="flex items-center justify-center w-10 h-10 rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
+                aria-label="Open ayah video in library"
               >
-                Open in library
+                <SafeIcon icon={FiPlayCircle} className="text-lg" />
               </button>
             </div>
           )}
@@ -178,9 +183,6 @@ const AyahCard = ({ verse, surahNumber }) => {
           </div>
         )}
 
-        {showInlineVideo && videoForAyah && (
-          <InlineAyahVideo video={videoForAyah} />
-        )}
       </div>
     </motion.div>
   );

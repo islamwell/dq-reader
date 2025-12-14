@@ -168,13 +168,17 @@ Use these best-practice patterns to keep video playback inline with each ayah wh
 
 ### Inline Ayah Video Player (Implemented)
 
-The ayah cards now render a refined inline player that matches the above guidance:
+The ayah cards now focus on a compact picture-in-picture view beside each ayah number:
 
-- **Inline trigger:** A dual-action “Watch Inline” button with accent styling plus a secondary “Open in library” link keeps the inline view and the dedicated video page discoverable.
-- **Cinematic container:** An on-card 16:9 canvas with a gradient overlay, buffered state indicator, and typography aligned to the Quran text scale.
-- **Granular controls:** Custom controls include play/pause, ±10s jumps, restart, classic repeat, and A–B looping with visible A/B chips and disabled safeguards until both points are set.
-- **View modes:** One-tap Picture-in-Picture (when supported) and fullscreen toggles return focus to the ayah container, keeping navigation consistent.
-- **Status feedback:** Time badges, buffering pill, and inline error helper keep playback transparent without leaving the page.
+- **Icon-only triggers:** Inline play and library actions are icon-only buttons with distinct colors to reduce clutter while remaining screen-reader friendly.
+- **PiP beside the ayah:** Tapping the play icon opens a small floating player next to the circular ayah number (no large inline canvas) with native controls, auto-looping, and a default volume set to ~3%.
+- **Bandwidth friendly:** Videos prefetch and cache when possible via the Cache API and a local blob URL to reduce repeated downloads.
+- **Quick control strip:** Mini controls for play/pause and mute sit over the PiP window with clear looping status text.
+
+### Video Library Playback (Implemented)
+
+- **Auto-advance:** Videos on `/videos` auto-play at low volume and advance to the next item when they end.
+- **Ayah jump:** A dedicated “Go to ayah” control takes viewers straight to the relevant surah/ayah route (e.g., `#/surah/1?ayah=7`).
 
 ---
 

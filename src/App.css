@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Scheherazade+New:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Scheherazade+New:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap');
 
 .app-container {
   min-height: 100vh;
@@ -19,6 +19,14 @@
 .english-text {
   font-family: 'Inter', sans-serif;
   line-height: 1.7;
+}
+
+.urdu-text {
+  font-family: 'Noto Nastaliq Urdu', 'Scheherazade New', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2;
+  font-size: 1.1rem;
 }
 
 .ayah-card {

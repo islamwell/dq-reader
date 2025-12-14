@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
-const { FiArrowLeft, FiPlay, FiVideo, FiLink2, FiSearch, FiFilter, FiList, FiBook } = FiIcons;
+const { FiArrowLeft, FiPlay, FiVideo, FiLink2, FiSearch, FiFilter, FiList, FiBook, FiExternalLink } = FiIcons;
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200 hover:border-emerald-300',
@@ -55,7 +55,8 @@ const Videos = () => {
   const [activeVideoId, setActiveVideoId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSurahFilter, setSelectedSurahFilter] = useState('all');
-  const videoRef = useRef(null);
+  const playerContainerRef = useRef(null);
+  const playerRef = useRef(null);
 
   const videos = useMemo(() => buildVideoList(videoMappings, surahs), [videoMappings, surahs]);
 
@@ -92,6 +93,24 @@ const Videos = () => {
   }, [activeVideoId, videos]);
 
   useEffect(() => {
+    const element = playerRef.current;
+
+    if (!element || !activeVideo) {
+      return;
+    }
+
+    element.volume = 0.03;
+    element.loop = false;
+    element.autoplay = true;
+    element.currentTime = 0;
+
+    const playPromise = element.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {});
+    }
+  }, [activeVideo]);
+
+  useEffect(() => {
     const highlighted = searchParams.get('videoId');
 
     if (highlighted && videos.some((video) => video.id === highlighted)) {
@@ -101,18 +120,44 @@ const Videos = () => {
     }
   }, [searchParams, videos, activeVideoId]);
 
+  useEffect(() => {
+    if (!filteredVideos.length) {
+      return;
+    }
+
+    const isActiveInFiltered = filteredVideos.some((video) => video.id === activeVideoId);
+    if (!isActiveInFiltered) {
+      const fallbackVideo = filteredVideos[0];
+      setActiveVideoId(fallbackVideo.id);
+      setSearchParams({ videoId: fallbackVideo.id });
+    }
+  }, [activeVideoId, filteredVideos, setSearchParams]);
+
   const handleVideoError = () => {
     toast.error('Unable to load the video stream. Please verify the URL.');
   };
 
-  const handleSelectVideo = (videoId) => {
-    setActiveVideoId(videoId);
-    setSearchParams({ videoId });
-    // Scroll to top on mobile only
-    if (window.innerWidth < 1024) {
-      videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const handleSelectVideo = useCallback(
+    (videoId) => {
+      setActiveVideoId(videoId);
+      setSearchParams({ videoId });
+      // Scroll to top on mobile only
+      if (window.innerWidth < 1024) {
+        playerContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
+    [setSearchParams]
+  );
+
+  const handleVideoEnded = useCallback(() => {
+    if (!activeVideo) return;
+
+    const currentIndex = filteredVideos.findIndex((video) => video.id === activeVideo.id);
+    if (currentIndex !== -1 && currentIndex < filteredVideos.length - 1) {
+      const nextVideo = filteredVideos[currentIndex + 1];
+      handleSelectVideo(nextVideo.id);
     }
-  };
+  }, [activeVideo, filteredVideos, handleSelectVideo]);
 
   const cardStyle = THEME_CARD_STYLES[theme] || THEME_CARD_STYLES.green;
   const activeStyle = THEME_ACTIVE_STYLES[theme] || THEME_ACTIVE_STYLES.green;
@@ -155,7 +200,7 @@ const Videos = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
           {/* Main Video Player Area - Takes 2 cols on lg screens */}
-          <div className="lg:col-span-2 space-y-4" ref={videoRef}>
+          <div className="lg:col-span-2 space-y-4" ref={playerContainerRef}>
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}
@@ -165,13 +210,16 @@ const Videos = () => {
               {activeVideo?.videoUrl ? (
                 <video
                   key={activeVideo.id}
+                  ref={playerRef}
                   controls
-                  controlsList="nodownload"
+                  controlsList="nodownload noremoteplayback"
+                  autoPlay
                   className="w-full h-full object-contain"
                   preload="metadata"
                   playsInline
                   onError={handleVideoError}
-                  poster={null} 
+                  onEnded={handleVideoEnded}
+                  poster={null}
                 >
                   <source src={activeVideo.videoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
@@ -206,17 +254,33 @@ const Videos = () => {
                       </span>
                     </div>
                   </div>
-                  {activeVideo.videoUrl && (
-                    <a
-                      href={activeVideo.videoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-islamic-50 text-islamic-700 hover:bg-islamic-100 transition-colors border border-islamic-200 text-sm font-medium whitespace-nowrap"
-                    >
-                      <SafeIcon icon={FiLink2} />
-                      Open Source
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {activeVideo && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            `/surah/${activeVideo.surahId}?ayah=${activeVideo.endAyah || activeVideo.startAyah || 1}`
+                          )
+                        }
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors text-sm font-medium whitespace-nowrap"
+                      >
+                        <SafeIcon icon={FiExternalLink} />
+                        Go to ayah
+                      </button>
+                    )}
+                    {activeVideo?.videoUrl && (
+                      <a
+                        href={activeVideo.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-islamic-50 text-islamic-700 hover:bg-islamic-100 transition-colors border border-islamic-200 text-sm font-medium whitespace-nowrap"
+                      >
+                        <SafeIcon icon={FiLink2} />
+                        Open Source
+                      </a>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}

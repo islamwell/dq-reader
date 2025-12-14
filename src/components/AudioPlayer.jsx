@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 
-const { FiPlay, FiPause, FiArrowLeft, FiArrowUp, FiShare2 } = FiIcons;
+const { FiPlay, FiPause, FiArrowLeft, FiArrowUp, FiShare2, FiX } = FiIcons;
 
 const THEME_PLAYER_STYLES = {
   green: 'bg-gradient-to-r from-emerald-600 to-emerald-700 border-emerald-800',
@@ -21,6 +21,7 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
   const { theme, getSupplementalAudioUrl } = useQuranData();
 
   const [isVisible, setIsVisible] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const [currentVerse, setCurrentVerse] = useState(null);
   const progressContainerRef = useRef(null);
   const progressBarRef = useRef(null);
@@ -41,7 +42,7 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
   useEffect(() => {
     const verse = getCurrentlyPlayingVerse();
 
-    if (verse) {
+    if (verse && !isDismissed) {
       setCurrentVerse(verse);
       setIsVisible(true);
       return;
@@ -50,8 +51,15 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
     if (!playingAyah) {
       setCurrentVerse(null);
       setIsVisible(false);
+      setIsDismissed(false);
     }
-  }, [getCurrentlyPlayingVerse, playingAyah]);
+  }, [getCurrentlyPlayingVerse, isDismissed, playingAyah]);
+
+  useEffect(() => {
+    if (playingAyah) {
+      setIsDismissed(false);
+    }
+  }, [playingAyah]);
 
   const handlePlayPause = useCallback(() => {
     if (!currentVerse) return;
@@ -75,7 +83,7 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
 
   const handleNextAyah = useCallback(() => {
     if (!currentVerse || !surah || currentVerse.verse_number >= surah.verses_count) return;
-    
+
     const nextAyahNumber = currentVerse.verse_number + 1;
     playAudio(parseInt(surahNumber), nextAyahNumber);
     if (onScrollToAyah) {
@@ -92,6 +100,12 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
   const handleScrollToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  const handleClosePlayer = useCallback(() => {
+    pauseAudio();
+    setIsVisible(false);
+    setIsDismissed(true);
+  }, [pauseAudio]);
 
   const currentVerseNumber = currentVerse?.verse_number ?? null;
 
@@ -435,6 +449,14 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
           <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
+              onClick={handleClosePlayer}
+              className="shrink-0 w-7 h-7 md:w-8 md:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition-colors"
+              title="Close audio player"
+            >
+              <SafeIcon icon={FiX} className="text-sm md:text-base" />
+            </button>
+            <button
+              type="button"
               onClick={handleShareCurrentAyah}
               className="shrink-0 w-7 h-7 md:w-8 md:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition-colors"
               title="Share this ayah"
@@ -457,7 +479,7 @@ const AudioPlayer = ({ verses, surah, surahNumber, onScrollToAyah }) => {
 
   const playerStyle = THEME_PLAYER_STYLES[theme] || THEME_PLAYER_STYLES.light;
 
-  if (!isVisible) return null;
+  if (!isVisible || isDismissed) return null;
 
   return (
     <motion.div 
