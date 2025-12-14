@@ -58,6 +58,7 @@ const Videos = () => {
   const playerContainerRef = useRef(null);
   const playerRef = useRef(null);
   const [playerAspectRatio, setPlayerAspectRatio] = useState(16 / 9);
+  const [playerWidth, setPlayerWidth] = useState(null);
 
   const videos = useMemo(() => buildVideoList(videoMappings, surahs), [videoMappings, surahs]);
 
@@ -112,6 +113,22 @@ const Videos = () => {
   }, [activeVideo]);
 
   useEffect(() => {
+    const container = playerContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      if (!entries || !entries.length) return;
+      const { width } = entries[0].contentRect;
+      setPlayerWidth(width);
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const highlighted = searchParams.get('videoId');
 
     if (highlighted && videos.some((video) => video.id === highlighted)) {
@@ -137,6 +154,10 @@ const Videos = () => {
   const handleVideoError = () => {
     toast.error('Unable to load the video stream. Please verify the URL.');
   };
+
+  useEffect(() => {
+    setPlayerAspectRatio(16 / 9);
+  }, [activeVideo?.id]);
 
   const handleSelectVideo = useCallback(
     (videoId) => {
@@ -172,6 +193,8 @@ const Videos = () => {
       setPlayerAspectRatio(ratio);
     }
   };
+
+  const computedPlayerHeight = playerWidth && playerAspectRatio ? Math.round(playerWidth / playerAspectRatio) : undefined;
 
   return (
     <div className="space-y-6">
@@ -217,7 +240,10 @@ const Videos = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="rounded-2xl overflow-hidden shadow-2xl bg-slate-900 relative group"
-              style={{ aspectRatio: playerAspectRatio || 16 / 9 }}
+              style={{
+                aspectRatio: computedPlayerHeight ? undefined : playerAspectRatio || 16 / 9,
+                height: computedPlayerHeight || undefined
+              }}
             >
               {activeVideo?.videoUrl ? (
                 <video

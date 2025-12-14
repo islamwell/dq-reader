@@ -227,6 +227,7 @@ export const QuranProvider = ({ children }) => {
   const searchIndexPromiseRef = useRef(null);
   const translationPrefetchRef = useRef(false);
   const [floatingVideo, setFloatingVideo] = useState(null);
+  const DEFAULT_FLOATING_VIDEO_WIDTH = Math.round(260 * 1.7);
 
   const persistAudioPreferences = useCallback((primaryEnabled, supplementalEnabled) => {
     try {
@@ -968,12 +969,12 @@ export const QuranProvider = ({ children }) => {
     toast.success('Bookmark removed');
   }, []);
 
-  const clampFloatingPosition = useCallback((position = {}, width = 260) => {
+  const clampFloatingPosition = useCallback((position = {}, width = DEFAULT_FLOATING_VIDEO_WIDTH) => {
     if (typeof window === 'undefined') {
       return { x: position.x ?? 16, y: position.y ?? 16 };
     }
 
-    const safeWidth = Math.max(160, Math.min(width || 260, window.innerWidth - 32));
+    const safeWidth = Math.max(200, Math.min(width || DEFAULT_FLOATING_VIDEO_WIDTH, window.innerWidth - 32));
     const maxX = Math.max(12, window.innerWidth - safeWidth - 12);
     const maxY = Math.max(12, window.innerHeight - 140);
 
@@ -986,7 +987,7 @@ export const QuranProvider = ({ children }) => {
   const showFloatingVideo = useCallback(
     ({ video, surahNumber, ayahNumber, position, size } = {}) => {
       setFloatingVideo((current) => {
-        const nextSize = size || current?.size || { width: 260 };
+        const nextSize = size || current?.size || { width: DEFAULT_FLOATING_VIDEO_WIDTH };
         const nextPosition = clampFloatingPosition(
           position || current?.position || { x: 20, y: 20 },
           nextSize.width
@@ -1026,7 +1027,7 @@ export const QuranProvider = ({ children }) => {
     setFloatingVideo((current) => {
       if (!current) return current;
 
-      const normalizedWidth = Math.max(180, Math.min(size?.width || 240, 720));
+      const normalizedWidth = Math.max(220, Math.min(size?.width || DEFAULT_FLOATING_VIDEO_WIDTH, 900));
       const nextSize = { ...current.size, width: normalizedWidth };
       return {
         ...current,

@@ -1,9 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue } from 'framer-motion';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiPlay, FiPause, FiVolume2, FiVolumeX, FiLoader } = FiIcons;
+const { FiPlay, FiPause, FiVolume2, FiVolumeX, FiLoader, FiRefreshCcw, FiMove } = FiIcons;
+
+const DEFAULT_WIDTH = Math.round(260 * 1.7);
+const MIN_WIDTH = 220;
+const MAX_WIDTH = 820;
+
+const clampPosition = (position = {}, width = DEFAULT_WIDTH, aspectRatio = 16 / 9) => {
+  if (typeof window === 'undefined') {
+    return { x: position.x ?? 16, y: position.y ?? 16 };
+  }
+
+  const height = width / (aspectRatio || 16 / 9);
+  const margin = 12;
+  const maxX = Math.max(margin, window.innerWidth - width - margin);
+  const maxY = Math.max(margin, window.innerHeight - height - margin);
+
+  return {
+    x: Math.max(margin, Math.min(position.x ?? margin, maxX)),
+    y: Math.max(margin, Math.min(position.y ?? margin, maxY))
+  };
+};
 
 const InlineAyahVideo = ({
   video,
@@ -16,17 +35,21 @@ const InlineAyahVideo = ({
   onClose
 }) => {
   const videoRef = useRef(null);
+  const dragState = useRef({ startX: 0, startY: 0, originX: 0, originY: 0 });
+  const resizeState = useRef({ startX: 0, startWidth: DEFAULT_WIDTH });
+  const [cachedSrc, setCachedSrc] = useState(video.videoUrl);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [loopEnabled, setLoopEnabled] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [cachedSrc, setCachedSrc] = useState(video.videoUrl);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  const [frameSize, setFrameSize] = useState({ width: size?.width || 260 });
+  const [frameSize, setFrameSize] = useState({ width: size?.width || DEFAULT_WIDTH });
+  const [dragPosition, setDragPosition] = useState(() =>
+    clampPosition(position || { x: 16, y: 16 }, size?.width || DEFAULT_WIDTH, aspectRatio)
+  );
+  const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const resizeState = useRef({ startX: 0, startWidth: 220 });
-  const x = useMotionValue(position?.x ?? 16);
-  const y = useMotionValue(position?.y ?? 16);
 
   const labelSegments = [surahNumber || video?.surahId, ayahNumber || video?.startAyah].filter(Boolean);
   const label = labelSegments.length === 2 ? `${labelSegments[0]}:${labelSegments[1]}` : labelSegments[0] || '';
@@ -64,6 +87,9 @@ const InlineAyahVideo = ({
       }
     };
 
+    setIsBuffering(true);
+    setHasError(false);
+    setLoopEnabled(false);
     primeVideo();
 
     return () => {
@@ -79,13 +105,13 @@ const InlineAyahVideo = ({
     if (!element) return;
 
     element.volume = 0.03;
-    element.loop = true;
+    element.loop = loopEnabled;
     const playPromise = element.play();
 
     if (playPromise?.catch) {
       playPromise.catch(() => setHasError(true));
     }
-  }, [cachedSrc]);
+  }, [cachedSrc, loopEnabled]);
 
   useEffect(() => {
     const element = videoRef.current;
@@ -100,6 +126,7 @@ const InlineAyahVideo = ({
       if (element.videoWidth && element.videoHeight) {
         const ratio = element.videoWidth / element.videoHeight;
         setAspectRatio(ratio);
+        setDragPosition((prev) => clampPosition(prev, frameSize.width, ratio));
       }
     };
 
@@ -118,30 +145,112 @@ const InlineAyahVideo = ({
       element.removeEventListener('error', handleError);
       element.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, []);
+  }, [frameSize.width]);
 
   useEffect(() => {
-    const handlePointerMove = (event) => {
+    const widthFromProps = size?.width;
+    if (widthFromProps && widthFromProps !== frameSize.width) {
+      setFrameSize({ width: Math.max(MIN_WIDTH, Math.min(widthFromProps, MAX_WIDTH)) });
+    }
+  }, [size?.width, frameSize.width]);
+
+  useEffect(() => {
+    if (typeof position?.x === 'number' || typeof position?.y === 'number') {
+      setDragPosition((prev) =>
+        clampPosition(
+          {
+            x: typeof position.x === 'number' ? position.x : prev.x,
+            y: typeof position.y === 'number' ? position.y : prev.y
+          },
+          frameSize.width,
+          aspectRatio
+        )
+      );
+    }
+  }, [position?.x, position?.y, frameSize.width, aspectRatio]);
+
+  useEffect(() => {
+    onSizeChange?.(frameSize);
+  }, [frameSize, onSizeChange]);
+
+  const handleDragMove = useCallback(
+    (event) => {
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - dragState.current.startX;
+      const deltaY = event.clientY - dragState.current.startY;
+      const nextPosition = clampPosition(
+        {
+          x: dragState.current.originX + deltaX,
+          y: dragState.current.originY + deltaY
+        },
+        frameSize.width,
+        aspectRatio
+      );
+      setDragPosition(nextPosition);
+    },
+    [aspectRatio, frameSize.width, isDragging]
+  );
+
+  const handleDragStart = useCallback(
+    (event) => {
+      if (event.button === 2) return;
+      event.preventDefault();
+      setIsDragging(true);
+      dragState.current = {
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: dragPosition.x,
+        originY: dragPosition.y
+      };
+    },
+    [dragPosition.x, dragPosition.y]
+  );
+
+  const handleResizeMove = useCallback(
+    (event) => {
       if (!isResizing) return;
 
       const deltaX = event.clientX - resizeState.current.startX;
-      const maxWidth = Math.min(720, Math.max(260, window.innerWidth - 48));
-      const nextWidth = Math.min(maxWidth, Math.max(180, resizeState.current.startWidth + deltaX));
+      const unclampedWidth = resizeState.current.startWidth + deltaX;
+      const maxAllowed = Math.min(MAX_WIDTH, window.innerWidth - 32);
+      const nextWidth = Math.max(MIN_WIDTH, Math.min(unclampedWidth, maxAllowed));
+
       setFrameSize({ width: nextWidth });
-    };
+      setDragPosition((prev) => clampPosition(prev, nextWidth, aspectRatio));
+    },
+    [aspectRatio, isResizing]
+  );
 
-    const stopResizing = () => setIsResizing(false);
+  const stopInteractions = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      onPositionChange?.(dragPosition);
+    }
+    if (isResizing) {
+      setIsResizing(false);
+      onSizeChange?.(frameSize);
+      onPositionChange?.(dragPosition);
+    }
+  }, [dragPosition, frameSize, isDragging, isResizing, onPositionChange, onSizeChange]);
 
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', stopResizing);
+  useEffect(() => {
+    window.addEventListener('pointermove', handleDragMove);
+    window.addEventListener('pointermove', handleResizeMove);
+    window.addEventListener('pointerup', stopInteractions);
 
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', stopResizing);
+      window.removeEventListener('pointermove', handleDragMove);
+      window.removeEventListener('pointermove', handleResizeMove);
+      window.removeEventListener('pointerup', stopInteractions);
     };
-  }, [isResizing]);
+  }, [handleDragMove, handleResizeMove, stopInteractions]);
 
-  const togglePlay = () => {
+  useEffect(() => {
+    setDragPosition((prev) => clampPosition(prev, frameSize.width, aspectRatio));
+  }, [aspectRatio, frameSize.width]);
+
+  const togglePlay = useCallback(() => {
     const element = videoRef.current;
     if (!element) return;
 
@@ -150,16 +259,26 @@ const InlineAyahVideo = ({
     } else {
       element.pause();
     }
-  };
+  }, []);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const element = videoRef.current;
     if (!element) return;
 
     const nextMuted = !element.muted;
     element.muted = nextMuted;
     setIsMuted(nextMuted);
-  };
+  }, []);
+
+  const toggleLoop = useCallback(() => {
+    setLoopEnabled((prev) => {
+      const next = !prev;
+      if (videoRef.current) {
+        videoRef.current.loop = next;
+      }
+      return next;
+    });
+  }, []);
 
   const handleResizeStart = (event) => {
     event.preventDefault();
@@ -168,56 +287,48 @@ const InlineAyahVideo = ({
     setIsResizing(true);
   };
 
-  useEffect(() => {
-    if (typeof position?.x === 'number') {
-      x.set(position.x);
-    }
-    if (typeof position?.y === 'number') {
-      y.set(position.y);
-    }
-  }, [position?.x, position?.y, x, y]);
-
-  useEffect(() => {
-    if (size?.width && size.width !== frameSize.width) {
-      setFrameSize({ width: size.width });
-    }
-  }, [frameSize.width, size?.width]);
-
-  useEffect(() => {
-    onSizeChange?.(frameSize);
-  }, [frameSize, onSizeChange]);
-
-  const handleDragEnd = () => {
-    const nextPosition = { x: x.get(), y: y.get() };
-    onPositionChange?.(nextPosition);
-  };
-
   const computedHeight = frameSize.width / (aspectRatio || 1.7778);
 
   return (
-    <motion.div
-      drag={!isResizing}
-      dragMomentum={false}
-      dragElastic={0.12}
-      onDragEnd={handleDragEnd}
-      className="fixed left-0 top-0 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-30 cursor-move"
-      style={{ width: frameSize.width, height: computedHeight, x, y }}
+    <div
+      className="fixed left-0 top-0 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-30"
+      style={{ width: frameSize.width, height: computedHeight, transform: `translate(${dragPosition.x}px, ${dragPosition.y}px)` }}
     >
-      <div className="relative h-full bg-slate-900">
-        {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-2 z-10 animate-spin text-white" />}
-        {label && (
-          <div className="absolute right-2 top-2 z-10 rounded-full bg-black/60 px-2 py-1 text-[11px] text-white font-semibold">
-            {label}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-2 top-2 z-10 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/70 transition"
-          aria-label="Close video"
+      <div className="relative h-full bg-slate-900 select-none">
+        <div
+          className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-2 bg-gradient-to-b from-black/50 to-transparent text-white text-xs"
+          onPointerDown={handleDragStart}
+          role="presentation"
         >
-          ×
-        </button>
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 font-semibold">
+            <SafeIcon icon={FiMove} className="text-[12px]" />
+            {label || 'Ayah video'}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleLoop}
+              className={`h-8 w-8 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition ${
+                loopEnabled ? 'ring-2 ring-emerald-300/70' : ''
+              }`}
+              aria-pressed={loopEnabled}
+              aria-label="Toggle repeat"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <SafeIcon icon={FiRefreshCcw} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg"
+              aria-label="Close video"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-12 z-10 animate-spin text-white" />}
         <video
           ref={videoRef}
           src={cachedSrc}
@@ -236,7 +347,7 @@ const InlineAyahVideo = ({
             <button
               type="button"
               onClick={togglePlay}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
               aria-label={isPlaying ? 'Pause video' : 'Play video'}
             >
               <SafeIcon icon={isPlaying ? FiPause : FiPlay} />
@@ -244,22 +355,22 @@ const InlineAyahVideo = ({
             <button
               type="button"
               onClick={toggleMute}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
               aria-label={isMuted ? 'Unmute video' : 'Mute video'}
             >
               <SafeIcon icon={isMuted ? FiVolumeX : FiVolume2} />
             </button>
           </div>
-          <div className="flex items-center gap-1 text-[10px] bg-black/40 px-2 py-1 rounded-full">
-            <span className="sr-only">Loop enabled at low volume</span>
-            <div className="h-1.5 w-5 rounded-full bg-emerald-300/80" />
-            <div className="h-1.5 w-5 rounded-full bg-amber-200/80" />
+          <div className="flex items-center gap-2 text-[11px]">
+            {label && (
+              <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
+            )}
           </div>
         </div>
         <button
           type="button"
           onPointerDown={handleResizeStart}
-          className={`absolute bottom-1 right-1 h-4 w-4 rounded-sm border border-white/60 bg-black/40 text-white cursor-se-resize ${
+          className={`absolute bottom-1 right-1 h-5 w-5 rounded-sm border border-white/60 bg-black/40 text-white cursor-se-resize ${
             isResizing ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-black/30' : ''
           }`}
           aria-label="Resize video"
@@ -267,10 +378,8 @@ const InlineAyahVideo = ({
           <span className="sr-only">Resize</span>
         </button>
       </div>
-      {hasError && (
-        <div className="px-3 py-2 text-xs text-rose-700 bg-rose-50">Unable to play this ayah video right now.</div>
-      )}
-    </motion.div>
+      {hasError && <div className="px-3 py-2 text-xs text-rose-700 bg-rose-50">Unable to play this ayah video right now.</div>}
+    </div>
   );
 };
 
