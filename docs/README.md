@@ -175,12 +175,13 @@ The ayah cards now focus on a compact picture-in-picture view beside each ayah n
 - **Bandwidth friendly:** Videos prefetch and cache when possible via the Cache API and a local blob URL to reduce repeated downloads.
 - **Quick control strip:** Mini controls for play/pause, mute, and a repeat toggle sit over the PiP window; the only in-player text is the Surah:Ayah badge.
 - **Resizable, movable, and persistent:** The PiP window preserves the incoming video aspect ratio, starts 70% larger for better legibility, can be dragged away from the ayah anchor, resized with a corner handle without oscillation, and stays alive across surah navigation until closed.
+- **Stability safeguards:** Drag/resize listeners only attach while interacting, positions re-clamp on viewport resize, and size sync feedback loops are suppressed to avoid render-depth errors while keeping Surah:Ayah labeling minimal.
 
 ### Video Library Playback (Implemented)
 
 - **Auto-advance:** Videos on `/videos` auto-play at low volume and advance to the next item when they end.
 - **Ayah jump:** A dedicated “Go to ayah” control takes viewers straight to the relevant surah/ayah route (e.g., `#/surah/1?ayah=7`).
-- **Aspect-ratio aware playback:** The main player now measures its container and sizes itself to the source video’s aspect ratio in pixels to avoid letterboxing gaps.
+- **Aspect-ratio aware playback:** The main player now uses CSS `aspect-ratio` with metadata-driven sizing to better match the source video and trim the top/bottom letterbox lines.
 
 ---
 
