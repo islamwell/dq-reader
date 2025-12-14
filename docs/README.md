@@ -173,7 +173,8 @@ The ayah cards now focus on a compact picture-in-picture view beside each ayah n
 - **Icon-only triggers:** Inline play and library actions are icon-only buttons with distinct colors to reduce clutter while remaining screen-reader friendly.
 - **PiP beside the ayah:** Tapping the play icon opens a small floating player next to the circular ayah number (no large inline canvas) with native controls, auto-looping, and a default volume set to ~3%.
 - **Bandwidth friendly:** Videos prefetch and cache when possible via the Cache API and a local blob URL to reduce repeated downloads.
-- **Quick control strip:** Mini controls for play/pause and mute sit over the PiP window with clear looping status text.
+- **Quick control strip:** Mini controls for play/pause and mute sit over the PiP window; the only in-player text is the Surah:Ayah badge.
+- **Resizable and movable:** The PiP window preserves the incoming video aspect ratio, can be dragged away from the ayah anchor, and resized with a corner handle for accessibility needs.
 
 ### Video Library Playback (Implemented)
 

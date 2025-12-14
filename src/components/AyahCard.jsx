@@ -114,7 +114,9 @@ const AyahCard = ({ verse, surahNumber }) => {
             {verse.verse_number}
           </button>
 
-          {showInlineVideo && videoForAyah && <InlineAyahVideo video={videoForAyah} />}
+          {showInlineVideo && videoForAyah && (
+            <InlineAyahVideo video={videoForAyah} surahNumber={surahNumber} ayahNumber={verse.verse_number} />
+          )}
         </div>
 
         <div className="flex items-center space-x-2">
