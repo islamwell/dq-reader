@@ -344,10 +344,10 @@ const InlineAyahVideo = ({
           className="h-full w-full object-cover"
           playsInline
           preload="auto"
-          controls
-          controlsList="nodownload noremoteplayback"
+          controlsList="nodownload noremoteplayback noplaybackrate"
           muted={isMuted}
           onLoadedData={() => setIsBuffering(false)}
+          disablePictureInPicture
         >
           <track kind="captions" />
         </video>

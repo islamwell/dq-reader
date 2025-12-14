@@ -93,6 +93,11 @@ const Videos = () => {
     return videos.find((video) => video.id === activeVideoId) || videos[0];
   }, [activeVideoId, videos]);
 
+  const firstPlayableVideo = useMemo(
+    () => filteredVideos.find((video) => Boolean(video.videoUrl)) || filteredVideos[0] || null,
+    [filteredVideos]
+  );
+
   useEffect(() => {
     const element = playerRef.current;
 
@@ -116,26 +121,40 @@ const Videos = () => {
 
     if (highlighted && videos.some((video) => video.id === highlighted)) {
       setActiveVideoId(highlighted);
-    } else if (!activeVideoId && videos.length > 0) {
-      setActiveVideoId(videos[0].id);
+    } else if (!activeVideoId && firstPlayableVideo) {
+      setActiveVideoId(firstPlayableVideo.id);
     }
-  }, [searchParams, videos, activeVideoId]);
+  }, [searchParams, videos, activeVideoId, firstPlayableVideo]);
 
   useEffect(() => {
-    if (!filteredVideos.length) {
+    if (!filteredVideos.length || !firstPlayableVideo) {
       return;
     }
 
     const isActiveInFiltered = filteredVideos.some((video) => video.id === activeVideoId);
     if (!isActiveInFiltered) {
-      const fallbackVideo = filteredVideos[0];
-      setActiveVideoId(fallbackVideo.id);
-      setSearchParams({ videoId: fallbackVideo.id });
+      setActiveVideoId(firstPlayableVideo.id);
+      setSearchParams({ videoId: firstPlayableVideo.id });
     }
-  }, [activeVideoId, filteredVideos, setSearchParams]);
+  }, [activeVideoId, filteredVideos, firstPlayableVideo, setSearchParams]);
+
+  useEffect(() => {
+    if (activeVideo && !activeVideo.videoUrl) {
+      const nextVideo = getNextPlayableVideo(activeVideo.id) || firstPlayableVideo;
+      if (nextVideo && nextVideo.id !== activeVideo.id) {
+        handleSelectVideo(nextVideo.id);
+      }
+    }
+  }, [activeVideo, firstPlayableVideo, getNextPlayableVideo, handleSelectVideo]);
 
   const handleVideoError = () => {
     toast.error('Unable to load the video stream. Please verify the URL.');
+    if (activeVideo) {
+      const nextVideo = getNextPlayableVideo(activeVideo.id) || firstPlayableVideo;
+      if (nextVideo && nextVideo.id !== activeVideo.id) {
+        handleSelectVideo(nextVideo.id);
+      }
+    }
   };
 
   useEffect(() => {
@@ -154,15 +173,33 @@ const Videos = () => {
     [setSearchParams]
   );
 
+  const getNextPlayableVideo = useCallback(
+    (currentId) => {
+      if (!filteredVideos.length) return null;
+
+      const startIndex = filteredVideos.findIndex((video) => video.id === currentId);
+      const beginIndex = startIndex === -1 ? -1 : startIndex;
+
+      for (let i = beginIndex + 1; i < filteredVideos.length; i += 1) {
+        const candidate = filteredVideos[i];
+        if (candidate?.videoUrl) {
+          return candidate;
+        }
+      }
+
+      return null;
+    },
+    [filteredVideos]
+  );
+
   const handleVideoEnded = useCallback(() => {
     if (!activeVideo) return;
 
-    const currentIndex = filteredVideos.findIndex((video) => video.id === activeVideo.id);
-    if (currentIndex !== -1 && currentIndex < filteredVideos.length - 1) {
-      const nextVideo = filteredVideos[currentIndex + 1];
+    const nextVideo = getNextPlayableVideo(activeVideo.id);
+    if (nextVideo) {
       handleSelectVideo(nextVideo.id);
     }
-  }, [activeVideo, filteredVideos, handleSelectVideo]);
+  }, [activeVideo, getNextPlayableVideo, handleSelectVideo]);
 
   const cardStyle = THEME_CARD_STYLES[theme] || THEME_CARD_STYLES.green;
   const activeStyle = THEME_ACTIVE_STYLES[theme] || THEME_ACTIVE_STYLES.green;
