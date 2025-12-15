@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as FiIcons from 'react-icons/fi';
-import { MuxPlayer } from '@mux/mux-player-react';
+import MuxPlayer from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
@@ -339,6 +339,7 @@ const InlineAyahVideo = ({
           preload="auto"
           onLoadedData={() => setIsBuffering(false)}
           onEnded={handleAdvance}
+          onError={handleAdvance}
           poster=""
           style={{ '--controls': 'auto', '--seek-backward-button': 'true', '--pip-button': 'true' }}
         />

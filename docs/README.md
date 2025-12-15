@@ -177,6 +177,7 @@ The ayah cards now focus on a compact picture-in-picture view beside each ayah n
 - **Resizable, movable, and persistent:** The PiP window preserves the incoming video aspect ratio, starts 70% larger for better legibility, can be dragged away from the ayah anchor, resized with a corner handle without oscillation, and stays alive across surah navigation until closed or auto-advanced to the next available ayah clip.
 - **Stability safeguards:** Drag/resize listeners only attach while interacting, positions re-clamp on viewport resize, and size sync feedback loops are suppressed to avoid render-depth errors while keeping Surah:Ayah labeling minimal.
 - **Auto-advance with fallbacks:** When a clip ends (or errors), playback jumps to the next available ayah video in sequence, skipping any missing items so continuous viewing never stalls.
+- **Mux player stability:** Both the inline PiP and the video library use the default Mux Player React export to avoid import-time white screens while keeping the timeline and PiP controls available across tabs.
 
 ### Video Library Playback (Implemented)
 
@@ -184,6 +185,7 @@ The ayah cards now focus on a compact picture-in-picture view beside each ayah n
 - **Stability fix:** The library now initializes its next-video helper before use and avoids duplicate handler declarations, preventing white screens during playback.
 - **Ayah jump:** A dedicated “Go to ayah” control takes viewers straight to the relevant surah/ayah route (e.g., `#/surah/1?ayah=7`).
 - **Aspect-ratio aware playback:** The main player now uses CSS `aspect-ratio` with metadata-driven sizing to better match the source video and trim the top/bottom letterbox lines, while Mux Player handles the timeline and UI.
+- **Mux import fix:** The library now consumes the default Mux React export to prevent build/runtime import errors that previously caused a blank page on `/videos`.
 
 ---
 

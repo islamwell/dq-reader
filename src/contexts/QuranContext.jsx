@@ -988,6 +988,8 @@ export const QuranProvider = ({ children }) => {
     (currentId) => {
       if (!currentId || !videoMappings) return null;
 
+      const currentKey = String(currentId);
+
       const flattened = Object.entries(videoMappings || {})
         .flatMap(([surahId, entries]) =>
           (entries || []).map((entry) => ({
@@ -1003,7 +1005,7 @@ export const QuranProvider = ({ children }) => {
           return a.surahId - b.surahId;
         });
 
-      const startIndex = flattened.findIndex((video) => video.id === currentId);
+      const startIndex = flattened.findIndex((video) => String(video.id) === currentKey);
       const beginIndex = startIndex === -1 ? -1 : startIndex;
 
       for (let i = beginIndex + 1; i < flattened.length; i += 1) {
