@@ -181,6 +181,7 @@ The ayah cards now focus on a compact picture-in-picture view beside each ayah n
 ### Video Library Playback (Implemented)
 
 - **Auto-advance with gaps handled:** Videos on `/videos` auto-play at low volume and advance to the next item when they end, automatically skipping missing or broken entries to keep the playlist flowing.
+- **Stability fix:** The library now initializes its next-video helper before use and avoids duplicate handler declarations, preventing white screens during playback.
 - **Ayah jump:** A dedicated “Go to ayah” control takes viewers straight to the relevant surah/ayah route (e.g., `#/surah/1?ayah=7`).
 - **Aspect-ratio aware playback:** The main player now uses CSS `aspect-ratio` with metadata-driven sizing to better match the source video and trim the top/bottom letterbox lines, while Mux Player handles the timeline and UI.
 

@@ -193,7 +193,6 @@ const Videos = () => {
     setPlayerAspectRatio(16 / 9);
   }, [activeVideo?.id]);
 
-  const handleSelectVideo = useCallback(
   const handleVideoEnded = useCallback(() => {
     if (!activeVideo) return;
 
