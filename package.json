@@ -30,6 +30,7 @@
     "@capacitor/status-bar": "^7.0.3",
     "@emotion/is-prop-valid": "^1.4.0",
     "@questlabs/react-sdk": "^2.2.4",
+    "@mux/mux-player-react": "^2.5.0",
     "axios": "^1.6.0",
     "date-fns": "4.1.0",
     "echarts": "^5.5.0",

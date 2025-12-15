@@ -171,17 +171,18 @@ Use these best-practice patterns to keep video playback inline with each ayah wh
 The ayah cards now focus on a compact picture-in-picture view beside each ayah number:
 
 - **Icon-only triggers:** Inline play and library actions are icon-only buttons with distinct colors to reduce clutter while remaining screen-reader friendly.
-- **PiP beside the ayah:** Tapping the play icon opens a compact floating player next to the circular ayah number (no large inline canvas) with native controls and a default volume set to ~3%.
+- **PiP beside the ayah:** Tapping the play icon opens a compact floating player next to the circular ayah number (no large inline canvas) powered by Mux Player with a default volume set to ~3% and a visible seek bar.
 - **Bandwidth friendly:** Videos prefetch and cache when possible via the Cache API and a local blob URL to reduce repeated downloads.
-- **Quick control strip:** Mini controls for play/pause, mute, and a repeat toggle sit over the PiP window; native controls and extra PiP menus are suppressed so only one set of controls and the Surah:Ayah badge remain visible.
-- **Resizable, movable, and persistent:** The PiP window preserves the incoming video aspect ratio, starts 70% larger for better legibility, can be dragged away from the ayah anchor, resized with a corner handle without oscillation, and stays alive across surah navigation until closed.
+- **Streamlined controls:** Only the Mux control bar (timeline, PiP, seek forward/backward) and the minimal Surah:Ayah badge remain; repeat is opt-in via the loop button while native overlays are otherwise suppressed to avoid duplicate play/pause buttons.
+- **Resizable, movable, and persistent:** The PiP window preserves the incoming video aspect ratio, starts 70% larger for better legibility, can be dragged away from the ayah anchor, resized with a corner handle without oscillation, and stays alive across surah navigation until closed or auto-advanced to the next available ayah clip.
 - **Stability safeguards:** Drag/resize listeners only attach while interacting, positions re-clamp on viewport resize, and size sync feedback loops are suppressed to avoid render-depth errors while keeping Surah:Ayah labeling minimal.
+- **Auto-advance with fallbacks:** When a clip ends (or errors), playback jumps to the next available ayah video in sequence, skipping any missing items so continuous viewing never stalls.
 
 ### Video Library Playback (Implemented)
 
 - **Auto-advance with gaps handled:** Videos on `/videos` auto-play at low volume and advance to the next item when they end, automatically skipping missing or broken entries to keep the playlist flowing.
 - **Ayah jump:** A dedicated “Go to ayah” control takes viewers straight to the relevant surah/ayah route (e.g., `#/surah/1?ayah=7`).
-- **Aspect-ratio aware playback:** The main player now uses CSS `aspect-ratio` with metadata-driven sizing to better match the source video and trim the top/bottom letterbox lines.
+- **Aspect-ratio aware playback:** The main player now uses CSS `aspect-ratio` with metadata-driven sizing to better match the source video and trim the top/bottom letterbox lines, while Mux Player handles the timeline and UI.
 
 ---
 

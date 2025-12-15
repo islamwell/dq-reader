@@ -984,6 +984,40 @@ export const QuranProvider = ({ children }) => {
     };
   }, []);
 
+  const getNextVideoById = useCallback(
+    (currentId) => {
+      if (!currentId || !videoMappings) return null;
+
+      const flattened = Object.entries(videoMappings || {})
+        .flatMap(([surahId, entries]) =>
+          (entries || []).map((entry) => ({
+            ...entry,
+            surahId: Number(surahId)
+          }))
+        )
+        .filter(Boolean)
+        .sort((a, b) => {
+          if (a.surahId === b.surahId) {
+            return (a.startAyah || 0) - (b.startAyah || 0);
+          }
+          return a.surahId - b.surahId;
+        });
+
+      const startIndex = flattened.findIndex((video) => video.id === currentId);
+      const beginIndex = startIndex === -1 ? -1 : startIndex;
+
+      for (let i = beginIndex + 1; i < flattened.length; i += 1) {
+        const candidate = flattened[i];
+        if (candidate?.videoUrl) {
+          return candidate;
+        }
+      }
+
+      return null;
+    },
+    [videoMappings]
+  );
+
   const showFloatingVideo = useCallback(
     ({ video, surahNumber, ayahNumber, position, size } = {}) => {
       setFloatingVideo((current) => {
@@ -2588,6 +2622,7 @@ export const QuranProvider = ({ children }) => {
       hideFloatingVideo,
       updateFloatingVideoPosition,
       updateFloatingVideoSize,
+      getNextVideoById,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio
@@ -2642,6 +2677,7 @@ export const QuranProvider = ({ children }) => {
       hideFloatingVideo,
       updateFloatingVideoPosition,
       updateFloatingVideoSize,
+      getNextVideoById,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { MuxPlayer } from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
@@ -98,6 +99,37 @@ const Videos = () => {
     [filteredVideos]
   );
 
+  const handleSelectVideo = useCallback(
+    (videoId) => {
+      setActiveVideoId(videoId);
+      setSearchParams({ videoId });
+      // Scroll to top on mobile only
+      if (window.innerWidth < 1024) {
+        playerContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
+    [setSearchParams]
+  );
+
+  const getNextPlayableVideo = useCallback(
+    (currentId) => {
+      if (!filteredVideos.length) return null;
+
+      const startIndex = filteredVideos.findIndex((video) => video.id === currentId);
+      const beginIndex = startIndex === -1 ? -1 : startIndex;
+
+      for (let i = beginIndex + 1; i < filteredVideos.length; i += 1) {
+        const candidate = filteredVideos[i];
+        if (candidate?.videoUrl) {
+          return candidate;
+        }
+      }
+
+      return null;
+    },
+    [filteredVideos]
+  );
+
   useEffect(() => {
     const element = playerRef.current;
 
@@ -162,36 +194,6 @@ const Videos = () => {
   }, [activeVideo?.id]);
 
   const handleSelectVideo = useCallback(
-    (videoId) => {
-      setActiveVideoId(videoId);
-      setSearchParams({ videoId });
-      // Scroll to top on mobile only
-      if (window.innerWidth < 1024) {
-        playerContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    },
-    [setSearchParams]
-  );
-
-  const getNextPlayableVideo = useCallback(
-    (currentId) => {
-      if (!filteredVideos.length) return null;
-
-      const startIndex = filteredVideos.findIndex((video) => video.id === currentId);
-      const beginIndex = startIndex === -1 ? -1 : startIndex;
-
-      for (let i = beginIndex + 1; i < filteredVideos.length; i += 1) {
-        const candidate = filteredVideos[i];
-        if (candidate?.videoUrl) {
-          return candidate;
-        }
-      }
-
-      return null;
-    },
-    [filteredVideos]
-  );
-
   const handleVideoEnded = useCallback(() => {
     if (!activeVideo) return;
 
@@ -261,23 +263,20 @@ const Videos = () => {
               style={{ aspectRatio: playerAspectRatio || 16 / 9 }}
             >
               {activeVideo?.videoUrl ? (
-                <video
+                <MuxPlayer
                   key={activeVideo.id}
                   ref={playerRef}
-                  controls
-                  controlsList="nodownload noremoteplayback"
+                  src={activeVideo.videoUrl}
+                  streamType="on-demand"
                   autoPlay
-                  className="w-full h-full object-cover"
-                  preload="metadata"
                   playsInline
+                  preload="metadata"
+                  className="w-full h-full"
+                  style={{ '--controls': 'auto' }}
                   onError={handleVideoError}
                   onEnded={handleVideoEnded}
                   onLoadedMetadata={handleLoadedMetadata}
-                  poster={null}
-                >
-                  <source src={activeVideo.videoUrl} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400">
                   <SafeIcon icon={FiVideo} className="text-5xl mb-4 opacity-50" />

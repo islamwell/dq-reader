@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as FiIcons from 'react-icons/fi';
+import { MuxPlayer } from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
+import { useQuranData } from '../contexts/QuranContext';
 
-const { FiPlay, FiPause, FiVolume2, FiVolumeX, FiLoader, FiRefreshCcw, FiMove } = FiIcons;
+const { FiLoader, FiRefreshCcw, FiMove } = FiIcons;
 
 const DEFAULT_WIDTH = Math.round(260 * 1.7);
 const MIN_WIDTH = 220;
@@ -34,12 +36,11 @@ const InlineAyahVideo = ({
   onSizeChange,
   onClose
 }) => {
+  const { showFloatingVideo, hideFloatingVideo, getNextVideoById } = useQuranData();
   const videoRef = useRef(null);
   const dragState = useRef({ startX: 0, startY: 0, originX: 0, originY: 0 });
   const resizeState = useRef({ startX: 0, startWidth: DEFAULT_WIDTH });
   const [cachedSrc, setCachedSrc] = useState(video.videoUrl);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -119,8 +120,6 @@ const InlineAyahVideo = ({
 
     const handleWaiting = () => setIsBuffering(true);
     const handlePlaying = () => setIsBuffering(false);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
     const handleError = () => setHasError(true);
     const handleLoadedMetadata = () => {
       if (element.videoWidth && element.videoHeight) {
@@ -132,16 +131,12 @@ const InlineAyahVideo = ({
 
     element.addEventListener('waiting', handleWaiting);
     element.addEventListener('playing', handlePlaying);
-    element.addEventListener('play', handlePlay);
-    element.addEventListener('pause', handlePause);
     element.addEventListener('error', handleError);
     element.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     return () => {
       element.removeEventListener('waiting', handleWaiting);
       element.removeEventListener('playing', handlePlaying);
-      element.removeEventListener('play', handlePlay);
-      element.removeEventListener('pause', handlePause);
       element.removeEventListener('error', handleError);
       element.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
@@ -259,26 +254,6 @@ const InlineAyahVideo = ({
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [aspectRatio, frameSize.width]);
 
-  const togglePlay = useCallback(() => {
-    const element = videoRef.current;
-    if (!element) return;
-
-    if (element.paused) {
-      element.play().catch(() => setHasError(true));
-    } else {
-      element.pause();
-    }
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    const element = videoRef.current;
-    if (!element) return;
-
-    const nextMuted = !element.muted;
-    element.muted = nextMuted;
-    setIsMuted(nextMuted);
-  }, []);
-
   const toggleLoop = useCallback(() => {
     setLoopEnabled((prev) => {
       const next = !prev;
@@ -288,6 +263,23 @@ const InlineAyahVideo = ({
       return next;
     });
   }, []);
+
+  const handleAdvance = useCallback(() => {
+    if (!video?.id) return;
+
+    const nextVideo = getNextVideoById?.(video.id);
+    if (nextVideo?.videoUrl) {
+      showFloatingVideo({
+        video: nextVideo,
+        surahNumber: nextVideo.surahId,
+        ayahNumber: nextVideo.startAyah,
+        position: dragPosition,
+        size: frameSize
+      });
+    } else {
+      hideFloatingVideo();
+    }
+  }, [dragPosition, frameSize, getNextVideoById, hideFloatingVideo, showFloatingVideo, video?.id]);
 
   const handleResizeStart = (event) => {
     event.preventDefault();
@@ -338,43 +330,22 @@ const InlineAyahVideo = ({
           </div>
         </div>
         {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-12 z-10 animate-spin text-white" />}
-        <video
+        <MuxPlayer
           ref={videoRef}
           src={cachedSrc}
-          className="h-full w-full object-cover"
+          streamType="on-demand"
+          autoPlay
           playsInline
           preload="auto"
-          controlsList="nodownload noremoteplayback noplaybackrate"
-          muted={isMuted}
           onLoadedData={() => setIsBuffering(false)}
-          disablePictureInPicture
-        >
-          <track kind="captions" />
-        </video>
-        <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-between bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
-              aria-label={isPlaying ? 'Pause video' : 'Play video'}
-            >
-              <SafeIcon icon={isPlaying ? FiPause : FiPlay} />
-            </button>
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
-              aria-label={isMuted ? 'Unmute video' : 'Mute video'}
-            >
-              <SafeIcon icon={isMuted ? FiVolumeX : FiVolume2} />
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            {label && (
-              <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
-            )}
-          </div>
+          onEnded={handleAdvance}
+          poster=""
+          style={{ '--controls': 'auto', '--seek-backward-button': 'true', '--pip-button': 'true' }}
+        />
+        <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-end bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs">
+          {label && (
+            <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
+          )}
         </div>
         <button
           type="button"
