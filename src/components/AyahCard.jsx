@@ -1,11 +1,10 @@
 import React, { memo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 
-const { FiPlay, FiPause, FiBook, FiVideo, FiPlayCircle } = FiIcons;
+const { FiPlay, FiPause, FiBook, FiVideo } = FiIcons;
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200',
@@ -65,7 +64,6 @@ const AyahCard = ({ verse, surahNumber }) => {
     showFloatingVideo,
     hideFloatingVideo
   } = useQuranData();
-  const navigate = useNavigate();
   const [showTafseer, setShowTafseer] = useState(false);
   const videoButtonRef = useRef(null);
 
@@ -179,14 +177,6 @@ const AyahCard = ({ verse, surahNumber }) => {
                 aria-label={isVideoActive ? 'Hide ayah video' : 'Play ayah video in PiP'}
               >
                 <SafeIcon icon={FiVideo} className="text-lg" />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(`/videos?videoId=${videoForAyah.id}`)}
-                className="flex items-center justify-center w-10 h-10 rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
-                aria-label="Open ayah video in library"
-              >
-                <SafeIcon icon={FiPlayCircle} className="text-lg" />
               </button>
             </div>
           )}

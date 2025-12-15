@@ -158,22 +158,22 @@ For command-by-command deployment steps (including PowerShell-friendly examples)
 
 Use these best-practice patterns to keep video playback inline with each ayah while remaining distraction-free and accessible:
 
-- **Trigger placement and styling:** Keep a compact play button adjacent to each ayah line (or grouped ayah card). Pair a play icon with a short label such as “Play Tafsir” for clarity, and reuse the app’s primary accent color at ~70–80% opacity with hover/pressed states and a visible focus ring for keyboard users.
+- **Trigger placement and styling:** Keep a compact play icon adjacent to each ayah line (or grouped ayah card). Favor icon-only triggers with the app’s primary accent color at ~70–80% opacity plus hover/pressed states and a visible focus ring for keyboard users.
 - **Inline player behavior:** When a video is opened, expand an inline 16:9 container beneath the ayah with a skeleton loader, thumbnail, and title/subtitle (Surah/ayah range). Auto-scroll the ayah into view and preserve reading order so text remains readable above the fold.
-- **Core controls:** Include play/pause, a visible timeline, mute, captions toggle (default on when available), playback speed (0.75–1.5×), and **quick seek ±10s** for fine-grained navigation. Keep primary controls reachable within one tap.
+- **Core controls:** Include play/pause pinned near the bottom control bar alongside the visible timeline, mute, captions toggle (default on when available), playback speed (0.75–1.5×), Picture-in-Picture, and fullscreen. Keep primary controls reachable within one tap without duplicating play/pause overlays.
 - **Repeat options:** Provide a single-tap repeat toggle plus **A–B looping** scoped to the current ayah range for memorization. Make loop state clearly indicated and persist it only for the current session to avoid surprises.
 - **View modes:** Offer both **Picture-in-Picture** (for following along while scrolling other ayat) and a **Fullscreen** button. Use PiP as an opt-in; return focus to the ayah when PiP closes. In fullscreen, keep captions and the A–B loop indicators visible and allow double-tap to pause/play.
-- **Accessibility and typography:** Maintain at least 4.5:1 contrast on controls, 44×44px touch targets, and legible typography that matches the Quran text sizing scale. Provide keyboard shortcuts (Space for play/pause, ←/→ for ±10s, R for repeat) and ARIA labels for all controls.
+- **Accessibility and typography:** Maintain at least 4.5:1 contrast on controls, 44×44px touch targets, and legible typography that matches the Quran text sizing scale. Provide keyboard shortcuts (Space for play/pause, arrow keys for scrubbing), and ARIA labels for all controls.
 - **Error and network handling:** Show a graceful retry state with a “Reload video” button and short helper text if the stream fails. Defer loading until the user taps play; prefetch the next ayah’s thumbnail when the current video nears completion.
 
 ### Inline Ayah Video Player (Implemented)
 
 The ayah cards now focus on a compact picture-in-picture view beside each ayah number:
 
-- **Icon-only triggers:** Inline play and library actions are icon-only buttons with distinct colors to reduce clutter while remaining screen-reader friendly.
+- **Icon-only triggers:** Inline play actions are icon-only buttons to reduce clutter while remaining screen-reader friendly. The library shortcut has been removed to keep a single PiP entry point on each ayah.
 - **PiP beside the ayah:** Tapping the play icon opens a compact floating player next to the circular ayah number (no large inline canvas) powered by Mux Player with a default volume set to ~3% and a visible seek bar.
 - **Bandwidth friendly:** Videos prefetch and cache when possible via the Cache API and a local blob URL to reduce repeated downloads.
-- **Streamlined controls:** Only the Mux control bar (timeline, PiP, seek forward/backward) and the minimal Surah:Ayah badge remain; repeat is opt-in via the loop button while native overlays are otherwise suppressed to avoid duplicate play/pause buttons.
+- **Streamlined controls:** Only the Mux control bar (timeline, PiP, fullscreen, and pause) and the minimal Surah:Ayah badge remain; repeat is opt-in via the loop button. Native overlays and quick-seek buttons are suppressed to avoid duplicate controls.
 - **Resizable, movable, and persistent:** The PiP window preserves the incoming video aspect ratio, starts 70% larger for better legibility, can be dragged away from the ayah anchor, resized with a corner handle without oscillation, and stays alive across surah navigation until closed or auto-advanced to the next available ayah clip.
 - **Stability safeguards:** Drag/resize listeners only attach while interacting, positions re-clamp on viewport resize, and size sync feedback loops are suppressed to avoid render-depth errors while keeping Surah:Ayah labeling minimal.
 - **Auto-advance with fallbacks:** When a clip ends (or errors), playback jumps to the next available ayah video in sequence, skipping any missing items so continuous viewing never stalls.
@@ -185,7 +185,9 @@ The ayah cards now focus on a compact picture-in-picture view beside each ayah n
 - **Stability fix:** The library now initializes its next-video helper before use and avoids duplicate handler declarations, preventing white screens during playback.
 - **Ayah jump:** A dedicated “Go to ayah” control takes viewers straight to the relevant surah/ayah route (e.g., `#/surah/1?ayah=7`).
 - **Aspect-ratio aware playback:** The main player now uses CSS `aspect-ratio` with metadata-driven sizing to better match the source video and trim the top/bottom letterbox lines, while Mux Player handles the timeline and UI.
+- **Collapsible playlist panel:** The Up Next list can slide left to hide and reclaim space for the player; a toggle button brings the playlist back into view.
 - **Mux import fix:** The library now consumes the default Mux React export to prevent build/runtime import errors that previously caused a blank page on `/videos`.
+- **Single-ayah mappings:** Admins can attach a video to a single ayah by filling only the start ayah; the end field is optional and defaults to the start when left blank.
 
 ---
 

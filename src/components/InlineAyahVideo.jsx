@@ -337,11 +337,11 @@ const InlineAyahVideo = ({
           autoPlay
           playsInline
           preload="auto"
+          className="w-full h-full pip-player"
           onLoadedData={() => setIsBuffering(false)}
           onEnded={handleAdvance}
           onError={handleAdvance}
           poster=""
-          style={{ '--controls': 'auto', '--seek-backward-button': 'true', '--pip-button': 'true' }}
         />
         <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-end bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs">
           {label && (

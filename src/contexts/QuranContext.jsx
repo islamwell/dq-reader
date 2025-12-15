@@ -1608,7 +1608,7 @@ export const QuranProvider = ({ children }) => {
     async (surahNumber, startAyah, endAyah, videoUrl, title = '', videoId = null) => {
       const normalizedSurah = Number(surahNumber);
       const normalizedStart = Number(startAyah);
-      const normalizedEnd = Number(endAyah);
+      const normalizedEnd = endAyah ? Number(endAyah) : normalizedStart;
 
       if (
         !Number.isInteger(normalizedSurah) ||

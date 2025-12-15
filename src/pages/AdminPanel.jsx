@@ -106,15 +106,17 @@ const AdminPanel = () => {
   };
 
   const handleSaveVideo = () => {
-    if (!selectedSurah || !videoStartAyah || !videoEndAyah || !videoUrl) {
+    if (!selectedSurah || !videoStartAyah || !videoUrl) {
       toast.error('Please fill all video fields');
       return;
     }
 
+    const normalizedEnd = videoEndAyah || videoStartAyah;
+
     saveVideoMapping(
-      parseInt(selectedSurah),
-      parseInt(videoStartAyah),
-      parseInt(videoEndAyah),
+      parseInt(selectedSurah, 10),
+      parseInt(videoStartAyah, 10),
+      parseInt(normalizedEnd, 10),
       videoUrl.trim(),
       videoTitle.trim(),
       editingVideoId
@@ -217,7 +219,7 @@ const AdminPanel = () => {
     setActiveTab('video');
     setSelectedSurah(String(entry.surahNumber));
     setVideoStartAyah(String(entry.startAyah));
-    setVideoEndAyah(String(entry.endAyah));
+    setVideoEndAyah(String(entry.endAyah ?? entry.startAyah ?? ''));
     setVideoUrl(entry.videoUrl || '');
     setVideoTitle(entry.title || '');
     setEditingVideoId(entry.id);
@@ -768,14 +770,14 @@ const AdminPanel = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-islamic-700 mb-2">End Ayah</label>
+                    <label className="block text-sm font-medium text-islamic-700 mb-2">End Ayah (optional)</label>
                     <input
                       type="number"
                       min="1"
                       value={videoEndAyah}
                       onChange={(e) => setVideoEndAyah(e.target.value)}
                       className="w-full px-4 py-3 border border-islamic-200 rounded-lg focus:ring-2 focus:ring-islamic-gold focus:border-transparent outline-none"
-                      placeholder="Ending ayah"
+                      placeholder="Ending ayah or leave blank for a single ayah"
                     />
                   </div>
                 </div>
@@ -860,7 +862,10 @@ const AdminPanel = () => {
                           <p className="text-sm font-semibold text-islamic-800">
                             {surah ? `${surah.name_simple} (${surah.translated_name.name})` : `Surah ${entry.surahId}`}
                           </p>
-                          <p className="text-xs text-islamic-600">Ayahs {entry.startAyah} - {entry.endAyah}</p>
+                          <p className="text-xs text-islamic-600">
+                            Ayah{entry.startAyah === entry.endAyah ? '' : 's'} {entry.startAyah}
+                            {entry.startAyah === entry.endAyah ? '' : ` - ${entry.endAyah}`}
+                          </p>
                           {entry.title && <p className="text-sm text-islamic-700">{entry.title}</p>}
                         </div>
                         <div className="flex items-center gap-3">

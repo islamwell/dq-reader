@@ -7,7 +7,19 @@ import MuxPlayer from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
-const { FiArrowLeft, FiPlay, FiVideo, FiLink2, FiSearch, FiFilter, FiList, FiBook, FiExternalLink } = FiIcons;
+const {
+  FiArrowLeft,
+  FiPlay,
+  FiVideo,
+  FiLink2,
+  FiSearch,
+  FiFilter,
+  FiList,
+  FiBook,
+  FiExternalLink,
+  FiChevronLeft,
+  FiChevronRight
+} = FiIcons;
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200 hover:border-emerald-300',
@@ -59,6 +71,7 @@ const Videos = () => {
   const playerContainerRef = useRef(null);
   const playerRef = useRef(null);
   const [playerAspectRatio, setPlayerAspectRatio] = useState(16 / 9);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const videos = useMemo(() => buildVideoList(videoMappings, surahs), [videoMappings, surahs]);
 
@@ -251,9 +264,9 @@ const Videos = () => {
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* Main Video Player Area - Takes 2 cols on lg screens */}
-          <div className="lg:col-span-2 space-y-4" ref={playerContainerRef}>
+
+          {/* Main Video Player Area - Takes 2 cols on lg screens, expands when sidebar hidden */}
+          <div className={`${isSidebarOpen ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-4`} ref={playerContainerRef}>
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}
@@ -270,8 +283,7 @@ const Videos = () => {
                   autoPlay
                   playsInline
                   preload="metadata"
-                  className="w-full h-full"
-                  style={{ '--controls': 'auto' }}
+                  className="w-full h-full library-player"
                   onError={handleVideoError}
                   onEnded={handleVideoEnded}
                   onLoadedMetadata={handleLoadedMetadata}
@@ -302,7 +314,8 @@ const Videos = () => {
                       </span>
                       <span className="flex items-center gap-1 bg-islamic-100/50 px-2 py-1 rounded">
                         <SafeIcon icon={FiPlay} className="text-islamic-600" />
-                        Ayahs {activeVideo.startAyah}-{activeVideo.endAyah}
+                        Ayah{activeVideo.startAyah === activeVideo.endAyah ? '' : 's'} {activeVideo.startAyah}
+                        {activeVideo.startAyah === activeVideo.endAyah ? '' : `-${activeVideo.endAyah}`}
                       </span>
                     </div>
                   </div>
@@ -339,95 +352,131 @@ const Videos = () => {
           </div>
 
           {/* Sidebar Video List - Takes 1 col on lg screens */}
-          <div className="lg:col-span-1 flex flex-col h-full gap-4">
-            
-            {/* Search and Filter Controls */}
-            <div className="bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm backdrop-blur-sm sticky top-4 z-10">
-              <div className="space-y-3">
-                <div className="relative">
-                  <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search videos..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-islamic-gold/50 focus:border-islamic-gold text-sm"
-                  />
-                </div>
-                
-                <div className="flex items-center gap-2">
-                   <SafeIcon icon={FiFilter} className="text-slate-400" />
-                   <select
-                    value={selectedSurahFilter}
-                    onChange={(e) => setSelectedSurahFilter(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-islamic-gold/50 focus:border-islamic-gold text-sm bg-white"
-                   >
-                     <option value="all">All Surahs</option>
-                     {availableSurahs.map(surah => (
-                       <option key={surah.id} value={surah.id}>
-                         {surah.id}. {surah.name_simple}
-                       </option>
-                     ))}
-                   </select>
-                </div>
-              </div>
-            </div>
+          <div className="lg:col-span-1 relative">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+              className="absolute -left-3 top-2 z-20 hidden lg:flex items-center justify-center h-10 w-10 rounded-full border border-slate-200 bg-white shadow hover:bg-slate-50"
+              aria-label={isSidebarOpen ? 'Hide video list' : 'Show video list'}
+            >
+              <SafeIcon icon={isSidebarOpen ? FiChevronLeft : FiChevronRight} />
+            </button>
 
-            {/* Scrollable List */}
-            <div className="flex-1 overflow-y-auto max-h-[600px] pr-1 space-y-3 custom-scrollbar">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  <SafeIcon icon={FiList} /> Up Next
-                </h3>
-                <span className="text-xs text-slate-400">{filteredVideos.length} videos</span>
-              </div>
-              
-              <AnimatePresence initial={false}>
-                {filteredVideos.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-8 text-slate-500 text-sm"
-                  >
-                    No videos match your search.
-                  </motion.div>
-                ) : (
-                  filteredVideos.map((video) => (
-                    <motion.button
-                      key={video.id}
-                      layout
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      onClick={() => handleSelectVideo(video.id)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all duration-200 group ${
-                        activeVideoId === video.id
-                          ? activeStyle + ' shadow-md ring-1 ring-islamic-gold/30'
-                          : cardStyle + ' hover:shadow-md'
-                      }`}
-                    >
-                      <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-20 h-14 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 group-hover:bg-islamic-50 group-hover:text-islamic-500 transition-colors`}>
-                           <SafeIcon icon={FiPlay} className="text-xl" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-semibold line-clamp-2 mb-1 ${
-                            activeVideoId === video.id ? 'text-islamic-900' : 'text-slate-700'
-                          }`}>
-                            {video.title || `Video for Surah ${video.surahId}`}
-                          </p>
-                          <div className="flex items-center text-xs text-slate-500 gap-2">
-                            <span className="truncate">{video.surah?.name_simple}</span>
-                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                            <span>{video.startAyah}-{video.endAyah}</span>
-                          </div>
-                        </div>
+            <AnimatePresence initial={false}>
+              {isSidebarOpen && (
+                <motion.div
+                  key="sidebar"
+                  initial={{ x: 140, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: '-110%', opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+                  className="flex flex-col h-full gap-4"
+                >
+                  {/* Search and Filter Controls */}
+                  <div className="bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm backdrop-blur-sm sticky top-4 z-10">
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search videos..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-islamic-gold/50 focus:border-islamic-gold text-sm"
+                        />
                       </div>
-                    </motion.button>
-                  ))
-                )}
-              </AnimatePresence>
-            </div>
+
+                      <div className="flex items-center gap-2">
+                         <SafeIcon icon={FiFilter} className="text-slate-400" />
+                         <select
+                          value={selectedSurahFilter}
+                          onChange={(e) => setSelectedSurahFilter(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-islamic-gold/50 focus:border-islamic-gold text-sm bg-white"
+                         >
+                           <option value="all">All Surahs</option>
+                           {availableSurahs.map(surah => (
+                             <option key={surah.id} value={surah.id}>
+                               {surah.id}. {surah.name_simple}
+                             </option>
+                           ))}
+                         </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scrollable List */}
+                  <div className="flex-1 overflow-y-auto max-h-[600px] pr-1 space-y-3 custom-scrollbar">
+                    <div className="flex items-center justify-between px-1">
+                      <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <SafeIcon icon={FiList} /> Up Next
+                      </h3>
+                      <span className="text-xs text-slate-400">{filteredVideos.length} videos</span>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                      {filteredVideos.length === 0 ? (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="text-center py-8 text-slate-500 text-sm"
+                        >
+                          No videos match your search.
+                        </motion.div>
+                      ) : (
+                        filteredVideos.map((video) => (
+                          <motion.button
+                            key={video.id}
+                            layout
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            onClick={() => handleSelectVideo(video.id)}
+                            className={`w-full text-left p-3 rounded-xl border transition-all duration-200 group ${
+                              activeVideoId === video.id
+                                ? activeStyle + ' shadow-md ring-1 ring-islamic-gold/30'
+                                : cardStyle + ' hover:shadow-md'
+                            }`}
+                          >
+                            <div className="flex gap-3">
+                              <div className={`flex-shrink-0 w-20 h-14 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 group-hover:bg-islamic-50 group-hover:text-islamic-500 transition-colors`}>
+                                 <SafeIcon icon={FiPlay} className="text-xl" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-semibold line-clamp-2 mb-1 ${
+                                  activeVideoId === video.id ? 'text-islamic-900' : 'text-slate-700'
+                                }`}>
+                                  {video.title || `Video for Surah ${video.surahId}`}
+                                </p>
+                                <div className="flex items-center text-xs text-slate-500 gap-2">
+                                  <span className="truncate">{video.surah?.name_simple}</span>
+                                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                  <span>
+                                    Ayah{video.startAyah === video.endAyah ? '' : 's'} {video.startAyah}
+                                    {video.startAyah === video.endAyah ? '' : `-${video.endAyah}`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.button>
+                        ))
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!isSidebarOpen && (
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="hidden lg:flex items-center gap-2 self-start px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white shadow"
+              >
+                <SafeIcon icon={FiChevronRight} />
+                Show list
+              </button>
+            )}
           </div>
         </div>
       )}
