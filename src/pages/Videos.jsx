@@ -161,28 +161,33 @@ const Videos = () => {
     }
   }, [activeVideo]);
 
+  // Sync activeVideoId from URL on mount or URL change
   useEffect(() => {
     const highlighted = searchParams.get('videoId');
-
     if (highlighted && videos.some((video) => video.id === highlighted)) {
       setActiveVideoId(highlighted);
     } else if (!activeVideoId && firstPlayableVideo) {
       setActiveVideoId(firstPlayableVideo.id);
     }
-  }, [searchParams, videos, activeVideoId, firstPlayableVideo]);
+    // Intentionally only react to searchParams and videos loading,
+    // not activeVideoId or firstPlayableVideo, to avoid loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, videos]);
 
+  // When the filter changes and the current video is no longer in the list,
+  // switch to the first available video.
   useEffect(() => {
-    if (!filteredVideos.length || !firstPlayableVideo) {
-      return;
-    }
+    if (!filteredVideos.length || !firstPlayableVideo) return;
 
     const isActiveInFiltered = filteredVideos.some((video) => video.id === activeVideoId);
     if (!isActiveInFiltered) {
       setActiveVideoId(firstPlayableVideo.id);
-      setSearchParams({ videoId: firstPlayableVideo.id });
+      setSearchParams({ videoId: firstPlayableVideo.id }, { replace: true });
     }
-  }, [activeVideoId, filteredVideos, firstPlayableVideo, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredVideos, firstPlayableVideo]);
 
+  // If the active video has no URL, advance to the next playable one
   useEffect(() => {
     if (activeVideo && !activeVideo.videoUrl) {
       const nextVideo = getNextPlayableVideo(activeVideo.id) || firstPlayableVideo;
@@ -190,7 +195,8 @@ const Videos = () => {
         handleSelectVideo(nextVideo.id);
       }
     }
-  }, [activeVideo, firstPlayableVideo, getNextPlayableVideo, handleSelectVideo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeVideo?.id, activeVideo?.videoUrl]);
 
   const handleVideoError = () => {
     toast.error('Unable to load the video stream. Please verify the URL.');
@@ -304,7 +310,7 @@ const Videos = () => {
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-islamic-900 mb-2">
+                <h2 className="text-2xl font-bold text-islamic-900 mb-2" key={activeVideo.id}>
                       {activeVideo.title || 'Untitled Video'}
                     </h2>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-islamic-700">

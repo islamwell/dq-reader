@@ -221,6 +221,60 @@
   background-color: #94a3b8;
 }
 
+/* Video button laser animation */
+.video-button-laser {
+  position: relative;
+  overflow: visible;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.video-button-laser::before,
+.video-button-laser::after {
+  display: none;
+}
+
+/* Enhanced laser effect for active video button */
+.video-button-laser.active {
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.video-button-laser.active::before {
+  display: none;
+}
+
+.video-button-laser.active::after {
+  display: none;
+}
+
+/* Laser particles effect for video buttons */
+.video-button-laser {
+  --particle-color-1: #00ffff;
+  --particle-color-2: #ff00ff;
+  --particle-color-3: #ffff00;
+  --particle-color-4: #00ff00;
+}
+
+.video-button-laser:hover::before {
+  display: none;
+}
+
+.video-button-laser:hover::after {
+  display: none;
+}
+
+/* Special effect for large video play buttons */
+.video-button-laser.large-play {
+  --laser-size: 80px;
+}
+
+.video-button-laser.large-play::before {
+  display: none;
+}
+
+.video-button-laser.large-play::after {
+  display: none;
+}
+
 /* Mux player control layout refinements */
 .pip-player::part(seek-backward-button),
 .pip-player::part(seek-forward-button),

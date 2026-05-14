@@ -7,8 +7,14 @@ const FloatingVideoViewport = () => {
     floatingVideo,
     hideFloatingVideo,
     updateFloatingVideoPosition,
-    updateFloatingVideoSize
+    updateFloatingVideoSize,
+    isDocPipActive
   } = useQuranData();
+
+  // Don't show the in-page player when Document PiP window is open
+  if (isDocPipActive) {
+    return null;
+  }
 
   if (!floatingVideo?.video) {
     return null;
@@ -21,6 +27,7 @@ const FloatingVideoViewport = () => {
       ayahNumber={floatingVideo.ayahNumber}
       position={floatingVideo.position}
       size={floatingVideo.size}
+      autoMaximize={floatingVideo.autoMaximize}
       onPositionChange={updateFloatingVideoPosition}
       onSizeChange={updateFloatingVideoSize}
       onClose={hideFloatingVideo}

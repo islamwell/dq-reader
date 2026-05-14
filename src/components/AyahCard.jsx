@@ -1,10 +1,12 @@
 import React, { memo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
+import { FaLightbulb } from 'react-icons/fa';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
+import { isDocumentPiPSupported, buildPiPPlayer } from '../utils/documentPiP';
 
-const { FiPlay, FiPause, FiBook, FiVideo } = FiIcons;
+const { FiPlay, FiPause, FiVideo } = FiIcons;
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200',
@@ -62,7 +64,13 @@ const AyahCard = ({ verse, surahNumber }) => {
     theme,
     floatingVideo,
     showFloatingVideo,
-    hideFloatingVideo
+    hideFloatingVideo,
+    getNextVideoById,
+    docPipWindowRef,
+    docPipPlayerRef,
+    isDocPipActive,
+    setIsDocPipActive,
+    closeDocPiP
   } = useQuranData();
   const [showTafseer, setShowTafseer] = useState(false);
   const videoButtonRef = useRef(null);
@@ -105,14 +113,102 @@ const AyahCard = ({ verse, surahNumber }) => {
     toggleBookmark(surahNumber, verse.verse_number);
   };
 
-  const handleToggleVideo = () => {
+  const handleToggleVideo = async () => {
     if (!videoForAyah) return;
 
     if (isVideoActive) {
+      closeDocPiP();
       hideFloatingVideo();
       return;
     }
 
+    // Close any existing Document PiP window first
+    closeDocPiP();
+
+    const ayahLabel = `${surahNumber}:${verse.verse_number}`;
+
+    // --- Try Document Picture-in-Picture (floats outside browser) ---
+    if (isDocumentPiPSupported()) {
+      try {
+        const pipWindow = await documentPictureInPicture.requestWindow({
+          width: 480,
+          height: 300,
+        });
+
+        // Store refs
+        docPipWindowRef.current = pipWindow;
+
+        // Set floating video state so the card shows as active
+        showFloatingVideo({
+          video: videoForAyah,
+          surahNumber,
+          ayahNumber: verse.verse_number,
+          position: { x: 24, y: 24 },
+          size: floatingVideo?.size
+        });
+
+        let isMaximizing = false;
+
+        // Build the player inside the PiP window
+        const player = buildPiPPlayer(pipWindow, {
+          videoUrl: videoForAyah.videoUrl,
+          label: ayahLabel,
+          onClose: () => {
+            closeDocPiP();
+            hideFloatingVideo();
+          },
+          onMaximize: () => {
+            isMaximizing = true;
+            // Close PiP, show maximized in-page player
+            closeDocPiP();
+            showFloatingVideo({
+              video: videoForAyah,
+              surahNumber,
+              ayahNumber: verse.verse_number,
+              position: floatingVideo?.position || { x: 24, y: 24 },
+              size: floatingVideo?.size,
+              autoMaximize: true
+            });
+          },
+          onEnded: () => {
+            const nextVideo = getNextVideoById?.(videoForAyah.id);
+            if (nextVideo?.videoUrl) {
+              const nextLabel = `${nextVideo.surahId}:${nextVideo.startAyah}`;
+              player.updateSource(nextVideo.videoUrl, nextLabel);
+              showFloatingVideo({
+                video: nextVideo,
+                surahNumber: nextVideo.surahId,
+                ayahNumber: nextVideo.startAyah,
+                position: floatingVideo?.position,
+                size: floatingVideo?.size
+              });
+            } else {
+              closeDocPiP();
+              hideFloatingVideo();
+            }
+          },
+        });
+
+        docPipPlayerRef.current = player;
+        setIsDocPipActive(true);
+
+        // Clean up when the user closes the PiP window via its title bar
+        pipWindow.addEventListener('pagehide', () => {
+          docPipWindowRef.current = null;
+          docPipPlayerRef.current = null;
+          setIsDocPipActive(false);
+          if (!isMaximizing) {
+            hideFloatingVideo();
+          }
+        });
+
+        return;
+      } catch (err) {
+        console.warn('Document PiP failed, using in-page fallback:', err.message);
+      }
+    }
+
+    // --- Fallback: in-page floating player ---
     const rect = videoButtonRef.current?.getBoundingClientRect();
     const targetPosition = rect
       ? {
@@ -156,10 +252,15 @@ const AyahCard = ({ verse, surahNumber }) => {
             <button
               type="button"
               onClick={() => setShowTafseer((prev) => !prev)}
-              className="flex items-center space-x-2 bg-islamic-600 hover:bg-islamic-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-sm ${
+                showTafseer
+                  ? 'bg-amber-400 text-amber-900 shadow-amber-300/60 shadow-md ring-2 ring-amber-300'
+                  : 'bg-slate-200 text-slate-500 hover:bg-amber-100 hover:text-amber-600'
+              }`}
+              aria-pressed={showTafseer}
+              title={showTafseer ? 'Hide Tafseer' : 'Show Tafseer'}
             >
-              <SafeIcon icon={FiBook} className="text-sm" />
-              <span>{showTafseer ? 'Hide' : 'Show'} Tafseer</span>
+              <FaLightbulb className={`text-base transition-transform ${showTafseer ? 'scale-90' : 'scale-100'}`} />
             </button>
           )}
 
@@ -169,7 +270,9 @@ const AyahCard = ({ verse, surahNumber }) => {
                 type="button"
                 ref={videoButtonRef}
                 onClick={handleToggleVideo}
-                className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors shadow-sm ${
+                className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors shadow-sm video-button-laser ${
+                  isVideoActive ? 'active' : ''
+                } ${
                   isVideoActive
                     ? 'bg-slate-900 text-amber-300 hover:bg-slate-800'
                     : 'bg-slate-200 text-slate-800 hover:bg-slate-300'

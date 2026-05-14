@@ -853,11 +853,12 @@ const AdminPanel = () => {
                     No videos added yet. Save your first range above.
                   </div>
                 ) : (
-                  filteredVideoEntries.map((entry) => {
+                  filteredVideoEntries.map((entry, index) => {
                     const surah = surahs.find((item) => item.id === entry.surahId);
+                    const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-islamic-100';
 
                     return (
-                      <div key={entry.id} className="p-4 rounded-lg border border-islamic-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div key={entry.id} className={`p-4 rounded-lg border border-islamic-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors hover:bg-islamic-200 ${bgClass}`}>
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-islamic-800">
                             {surah ? `${surah.name_simple} (${surah.translated_name.name})` : `Surah ${entry.surahId}`}
@@ -873,21 +874,21 @@ const AdminPanel = () => {
                             href={entry.videoUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-islamic-gold hover:text-yellow-600"
+                            className="p-2 rounded-full border border-islamic-200 text-islamic-gold hover:bg-yellow-50 hover:text-yellow-600 hover:border-islamic-300 transition-all flex items-center justify-center"
                             title="Open video in new tab"
                           >
                             <SafeIcon icon={FiExternalLink} />
                           </a>
                           <button
                             onClick={() => handleEditVideoEntry(entry)}
-                            className="text-islamic-600 hover:text-islamic-800"
+                            className="p-2 rounded-full border border-islamic-200 text-islamic-600 hover:bg-islamic-100 hover:text-islamic-800 hover:border-islamic-300 transition-all flex items-center justify-center"
                             title="Edit video mapping"
                           >
                             <SafeIcon icon={FiEdit} />
                           </button>
                           <button
                             onClick={() => handleDeleteVideoEntry(entry)}
-                            className="text-red-500 hover:text-red-700"
+                            className="p-2 rounded-full border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all flex items-center justify-center"
                             title="Delete video mapping"
                           >
                             <SafeIcon icon={FiTrash2} />

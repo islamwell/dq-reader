@@ -4,7 +4,7 @@ import MuxPlayer from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
-const { FiLoader, FiRefreshCcw, FiMove } = FiIcons;
+const { FiLoader, FiRefreshCcw, FiMove, FiMaximize2, FiMinimize2 } = FiIcons;
 
 const DEFAULT_WIDTH = Math.round(260 * 1.7);
 const MIN_WIDTH = 220;
@@ -34,13 +34,13 @@ const InlineAyahVideo = ({
   onPositionChange,
   size,
   onSizeChange,
-  onClose
+  onClose,
+  autoMaximize
 }) => {
   const { showFloatingVideo, hideFloatingVideo, getNextVideoById } = useQuranData();
   const videoRef = useRef(null);
   const dragState = useRef({ startX: 0, startY: 0, originX: 0, originY: 0 });
   const resizeState = useRef({ startX: 0, startWidth: DEFAULT_WIDTH });
-  const [cachedSrc, setCachedSrc] = useState(video.videoUrl);
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -51,55 +51,22 @@ const InlineAyahVideo = ({
   );
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(!!autoMaximize);
+  // Store the pre-maximize size/position so we can restore them
+  const preMaxStateRef = useRef({ position: null, size: null });
+
+  const isPlayingRef = useRef(false);
 
   const labelSegments = [surahNumber || video?.surahId, ayahNumber || video?.startAyah].filter(Boolean);
   const label = labelSegments.length === 2 ? `${labelSegments[0]}:${labelSegments[1]}` : labelSegments[0] || '';
 
   useEffect(() => {
-    let isMounted = true;
-    let objectUrl;
-
-    const primeVideo = async () => {
-      if (!video?.videoUrl) return;
-
-      try {
-        const response = await fetch(video.videoUrl, { cache: 'force-cache' });
-        const clone = response.clone();
-        const blob = await response.blob();
-
-        if (!isMounted) return;
-
-        objectUrl = URL.createObjectURL(blob);
-        setCachedSrc(objectUrl);
-
-        if (typeof caches !== 'undefined') {
-          try {
-            const cache = await caches.open('ayah-video-cache');
-            await cache.put(video.videoUrl, clone);
-          } catch (cacheError) {
-            console.warn('Skipping cache storage', cacheError);
-          }
-        }
-      } catch (error) {
-        console.warn('Prefetch skipped', error);
-        if (isMounted) {
-          setCachedSrc(video.videoUrl);
-        }
-      }
-    };
-
     setIsBuffering(true);
     setHasError(false);
     setLoopEnabled(false);
-    primeVideo();
-
-    return () => {
-      isMounted = false;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [video]);
+    isPlayingRef.current = false;
+    setIsMaximized(!!autoMaximize);
+  }, [video, autoMaximize]);
 
   useEffect(() => {
     const element = videoRef.current;
@@ -107,20 +74,12 @@ const InlineAyahVideo = ({
 
     element.volume = 0.03;
     element.loop = loopEnabled;
-    const playPromise = element.play();
-
-    if (playPromise?.catch) {
-      playPromise.catch(() => setHasError(true));
-    }
-  }, [cachedSrc, loopEnabled]);
+  }, [loopEnabled]);
 
   useEffect(() => {
     const element = videoRef.current;
     if (!element) return undefined;
 
-    const handleWaiting = () => setIsBuffering(true);
-    const handlePlaying = () => setIsBuffering(false);
-    const handleError = () => setHasError(true);
     const handleLoadedMetadata = () => {
       if (element.videoWidth && element.videoHeight) {
         const ratio = element.videoWidth / element.videoHeight;
@@ -129,15 +88,9 @@ const InlineAyahVideo = ({
       }
     };
 
-    element.addEventListener('waiting', handleWaiting);
-    element.addEventListener('playing', handlePlaying);
-    element.addEventListener('error', handleError);
     element.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     return () => {
-      element.removeEventListener('waiting', handleWaiting);
-      element.removeEventListener('playing', handlePlaying);
-      element.removeEventListener('error', handleError);
       element.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
   }, [frameSize.width]);
@@ -282,85 +235,159 @@ const InlineAyahVideo = ({
   }, [dragPosition, frameSize, getNextVideoById, hideFloatingVideo, showFloatingVideo, video?.id]);
 
   const handleResizeStart = (event) => {
+    if (isMaximized) return; // no manual resize when maximized
     event.preventDefault();
     event.stopPropagation();
     resizeState.current = { startX: event.clientX, startWidth: frameSize.width };
     setIsResizing(true);
   };
 
-  const computedHeight = frameSize.width / (aspectRatio || 1.7778);
+  const toggleMaximize = useCallback(() => {
+    setIsMaximized((prev) => {
+      if (!prev) {
+        // Save current state before maximizing
+        preMaxStateRef.current = {
+          position: { ...dragPosition },
+          size: { ...frameSize }
+        };
+      } else {
+        // Restore previous state
+        const saved = preMaxStateRef.current;
+        if (saved.position) setDragPosition(saved.position);
+        if (saved.size) setFrameSize(saved.size);
+      }
+      return !prev;
+    });
+  }, [dragPosition, frameSize]);
+
+  // Escape key exits maximized mode
+  useEffect(() => {
+    if (!isMaximized) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') toggleMaximize();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMaximized, toggleMaximize]);
+
+  const computedHeight = isMaximized
+    ? undefined
+    : frameSize.width / (aspectRatio || 1.7778);
+
+  const containerStyle = isMaximized
+    ? { inset: 16 }
+    : { width: frameSize.width, height: computedHeight, left: dragPosition.x, top: dragPosition.y };
 
   return (
-    <div
-      className="fixed rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-30"
-      style={{ width: frameSize.width, height: computedHeight, left: dragPosition.x, top: dragPosition.y }}
-    >
-      <div className="relative h-full bg-slate-900 select-none">
+    <>
+      {/* Backdrop when maximized */}
+      {isMaximized && (
         <div
-          className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-2 bg-gradient-to-b from-black/50 to-transparent text-white text-xs"
-          onPointerDown={handleDragStart}
-          role="presentation"
-        >
-          <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 font-semibold">
-            <SafeIcon icon={FiMove} className="text-[12px]" />
-            {label}
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleLoop}
-              className={`h-8 w-8 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition ${
-                loopEnabled ? 'ring-2 ring-emerald-300/70' : ''
-              }`}
-              aria-pressed={loopEnabled}
-              aria-label="Toggle repeat"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <SafeIcon icon={FiRefreshCcw} />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg"
-              aria-label="Close video"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-        {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-12 z-10 animate-spin text-white" />}
-        <MuxPlayer
-          ref={videoRef}
-          src={cachedSrc}
-          streamType="on-demand"
-          autoPlay
-          playsInline
-          preload="auto"
-          className="w-full h-full pip-player"
-          onLoadedData={() => setIsBuffering(false)}
-          onEnded={handleAdvance}
-          onError={handleAdvance}
-          poster=""
+          className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm"
+          onClick={toggleMaximize}
         />
-        <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-end bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs">
-          {label && (
-            <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
+      )}
+      <div
+        className={`fixed rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden ${
+          isMaximized ? 'z-30 inset-4' : 'z-30'
+        }`}
+        style={containerStyle}
+      >
+        <div className="relative h-full bg-slate-900 select-none">
+          <div
+            className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-2 bg-gradient-to-b from-black/50 to-transparent text-white text-xs"
+            onPointerDown={isMaximized ? undefined : handleDragStart}
+            role="presentation"
+          >
+            <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 font-semibold">
+              {!isMaximized && <SafeIcon icon={FiMove} className="text-[12px]" />}
+              {label}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleLoop}
+                className={`h-8 w-8 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition ${
+                  loopEnabled ? 'ring-2 ring-emerald-300/70' : ''
+                }`}
+                aria-pressed={loopEnabled}
+                aria-label="Toggle repeat"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <SafeIcon icon={FiRefreshCcw} />
+              </button>
+              {/* Maximize / Restore */}
+              <button
+                type="button"
+                onClick={toggleMaximize}
+                className={`h-8 w-8 rounded-full border border-white/20 flex items-center justify-center transition ${
+                  isMaximized
+                    ? 'bg-amber-500/80 hover:bg-amber-400/90 ring-2 ring-amber-300/50'
+                    : 'bg-white/15 hover:bg-white/25'
+                }`}
+                aria-label={isMaximized ? 'Restore size' : 'Maximize'}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <SafeIcon icon={isMaximized ? FiMinimize2 : FiMaximize2} />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg"
+                aria-label="Close video"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-12 z-10 animate-spin text-white" />}
+          <MuxPlayer
+            ref={videoRef}
+            key={video.videoUrl}
+            src={video.videoUrl}
+            streamType="on-demand"
+            autoPlay
+            playsInline
+            preload="auto"
+            className="w-full h-full pip-player"
+            onLoadedData={() => setIsBuffering(false)}
+            onLoadedMetadata={(e) => {
+              const el = e.target;
+              if (el?.videoWidth && el?.videoHeight) {
+                const ratio = el.videoWidth / el.videoHeight;
+                setAspectRatio(ratio);
+                setDragPosition((prev) => clampPosition(prev, frameSize.width, ratio));
+              }
+            }}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => { isPlayingRef.current = true; setIsBuffering(false); }}
+            onPause={() => { isPlayingRef.current = false; }}
+            onEnded={handleAdvance}
+            onError={handleAdvance}
+            poster=""
+          />
+          <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-end bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs">
+            {label && (
+              <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
+            )}
+          </div>
+          {!isMaximized && (
+            <button
+              type="button"
+              onPointerDown={handleResizeStart}
+              className={`absolute bottom-1 right-1 h-5 w-5 rounded-sm border border-white/60 bg-black/40 text-white cursor-se-resize ${
+                isResizing ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-black/30' : ''
+              }`}
+              aria-label="Resize video"
+            >
+              <span className="sr-only">Resize</span>
+            </button>
           )}
         </div>
-        <button
-          type="button"
-          onPointerDown={handleResizeStart}
-          className={`absolute bottom-1 right-1 h-5 w-5 rounded-sm border border-white/60 bg-black/40 text-white cursor-se-resize ${
-            isResizing ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-black/30' : ''
-          }`}
-          aria-label="Resize video"
-        >
-          <span className="sr-only">Resize</span>
-        </button>
+        {hasError && <div className="px-3 py-2 text-xs text-rose-700 bg-rose-50">Unable to play this ayah video right now.</div>}
       </div>
-      {hasError && <div className="px-3 py-2 text-xs text-rose-700 bg-rose-50">Unable to play this ayah video right now.</div>}
-    </div>
+    </>
   );
 };
 

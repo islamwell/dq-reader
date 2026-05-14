@@ -228,6 +228,21 @@ export const QuranProvider = ({ children }) => {
   const translationPrefetchRef = useRef(false);
   const [floatingVideo, setFloatingVideo] = useState(null);
   const DEFAULT_FLOATING_VIDEO_WIDTH = Math.round(260 * 1.7);
+  const docPipWindowRef = useRef(null);
+  const docPipPlayerRef = useRef(null);
+  const [isDocPipActive, setIsDocPipActive] = useState(false);
+
+  const closeDocPiP = useCallback(() => {
+    if (docPipPlayerRef.current) {
+      docPipPlayerRef.current.destroy();
+      docPipPlayerRef.current = null;
+    }
+    if (docPipWindowRef.current && !docPipWindowRef.current.closed) {
+      docPipWindowRef.current.close();
+    }
+    docPipWindowRef.current = null;
+    setIsDocPipActive(false);
+  }, []);
 
   const persistAudioPreferences = useCallback((primaryEnabled, supplementalEnabled) => {
     try {
@@ -2625,6 +2640,11 @@ export const QuranProvider = ({ children }) => {
       updateFloatingVideoPosition,
       updateFloatingVideoSize,
       getNextVideoById,
+      docPipWindowRef,
+      docPipPlayerRef,
+      isDocPipActive,
+      setIsDocPipActive,
+      closeDocPiP,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio
@@ -2680,6 +2700,8 @@ export const QuranProvider = ({ children }) => {
       updateFloatingVideoPosition,
       updateFloatingVideoSize,
       getNextVideoById,
+      isDocPipActive,
+      closeDocPiP,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio
