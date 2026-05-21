@@ -4,11 +4,17 @@ import MuxPlayer from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
-const { FiLoader, FiRefreshCcw, FiMove, FiMaximize2, FiMinimize2 } = FiIcons;
+const { FiLoader, FiRefreshCcw, FiMove, FiMaximize2, FiMinimize2, FiRotateCw, FiX } = FiIcons;
 
 const DEFAULT_WIDTH = Math.round(260 * 1.7);
 const MIN_WIDTH = 220;
 const MAX_WIDTH = 820;
+
+// On mobile, clamp default width so the player doesn't overflow
+const getMobileClampedWidth = (width) => {
+  if (typeof window === 'undefined') return width;
+  return Math.min(width, window.innerWidth - 32);
+};
 
 const clampPosition = (position = {}, width = DEFAULT_WIDTH, aspectRatio = 16 / 9) => {
   if (typeof window === 'undefined') {
@@ -37,7 +43,14 @@ const InlineAyahVideo = ({
   onClose,
   autoMaximize
 }) => {
-  const { showFloatingVideo, hideFloatingVideo, getNextVideoById } = useQuranData();
+  const {
+    showFloatingVideo,
+    hideFloatingVideo,
+    getNextVideoById,
+    saveVideoTimestamp,
+    getVideoTimestamp,
+    clearVideoTimestamp
+  } = useQuranData();
   const videoRef = useRef(null);
   const dragState = useRef({ startX: 0, startY: 0, originX: 0, originY: 0 });
   const resizeState = useRef({ startX: 0, startWidth: DEFAULT_WIDTH });
@@ -45,28 +58,107 @@ const InlineAyahVideo = ({
   const [isBuffering, setIsBuffering] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  const [frameSize, setFrameSize] = useState({ width: size?.width || DEFAULT_WIDTH });
+  const [frameSize, setFrameSize] = useState({
+    width: getMobileClampedWidth(size?.width || DEFAULT_WIDTH)
+  });
   const [dragPosition, setDragPosition] = useState(() =>
-    clampPosition(position || { x: 16, y: 16 }, size?.width || DEFAULT_WIDTH, aspectRatio)
+    clampPosition(position || { x: 16, y: 16 }, getMobileClampedWidth(size?.width || DEFAULT_WIDTH), aspectRatio)
   );
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isMaximized, setIsMaximized] = useState(!!autoMaximize);
+  const [isLandscape, setIsLandscape] = useState(false);
   // Store the pre-maximize size/position so we can restore them
   const preMaxStateRef = useRef({ position: null, size: null });
+  const timestampSaveInterval = useRef(null);
 
   const isPlayingRef = useRef(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   const labelSegments = [surahNumber || video?.surahId, ayahNumber || video?.startAyah].filter(Boolean);
   const label = labelSegments.length === 2 ? `${labelSegments[0]}:${labelSegments[1]}` : labelSegments[0] || '';
 
+  // --- Resume: restore timestamp when video loads ---
   useEffect(() => {
     setIsBuffering(true);
     setHasError(false);
     setLoopEnabled(false);
     isPlayingRef.current = false;
     setIsMaximized(!!autoMaximize);
+    setIsLandscape(false);
   }, [video, autoMaximize]);
+
+  // --- Resume: save timestamp periodically ---
+  useEffect(() => {
+    timestampSaveInterval.current = setInterval(() => {
+      const el = videoRef.current;
+      if (el && video?.id && isPlayingRef.current) {
+        saveVideoTimestamp(video.id, el.currentTime);
+      }
+    }, 2000);
+
+    return () => clearInterval(timestampSaveInterval.current);
+  }, [video?.id, saveVideoTimestamp]);
+
+  // --- Resume: seek to saved position on load ---
+  const handleLoadedData = useCallback(() => {
+    setIsBuffering(false);
+    if (video?.id) {
+      const savedTime = getVideoTimestamp(video.id);
+      const el = videoRef.current;
+      if (savedTime > 0 && el) {
+        el.currentTime = savedTime;
+      }
+    }
+  }, [video?.id, getVideoTimestamp]);
+
+  // --- Media Session API for background audio (Android/desktop) ---
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: video?.title || `Ayah ${label}`,
+      artist: 'NurulQuran',
+      album: `Surah ${surahNumber || video?.surahId || ''}`
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      videoRef.current?.play().catch(() => {});
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      videoRef.current?.pause();
+    });
+    navigator.mediaSession.setActionHandler('stop', () => {
+      if (typeof onClose === 'function') onClose();
+    });
+
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('stop', null);
+      } catch (_) { /* ignore */ }
+    };
+  }, [video, label, surahNumber, onClose]);
+
+  // --- PiP when browser minimized (Video PiP API) ---
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const el = videoRef.current;
+      if (!el || !document.pictureInPictureEnabled) return;
+
+      if (document.hidden && isPlayingRef.current) {
+        // Browser minimized/tab switched — enter PiP
+        el.requestPictureInPicture?.().catch(() => {});
+      } else if (!document.hidden && document.pictureInPictureElement === el) {
+        // Returned to tab — exit PiP
+        document.exitPictureInPicture?.().catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     const element = videoRef.current;
@@ -98,7 +190,7 @@ const InlineAyahVideo = ({
   useEffect(() => {
     const widthFromProps = size?.width;
     if (widthFromProps && widthFromProps !== frameSize.width) {
-      const normalized = Math.max(MIN_WIDTH, Math.min(widthFromProps, MAX_WIDTH));
+      const normalized = Math.max(MIN_WIDTH, Math.min(getMobileClampedWidth(widthFromProps), MAX_WIDTH));
       setFrameSize({ width: normalized });
       setDragPosition((prev) => clampPosition(prev, normalized, aspectRatio));
     }
@@ -123,8 +215,10 @@ const InlineAyahVideo = ({
     (event) => {
       if (!isDragging) return;
 
-      const deltaX = event.clientX - dragState.current.startX;
-      const deltaY = event.clientY - dragState.current.startY;
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+      const deltaX = clientX - dragState.current.startX;
+      const deltaY = clientY - dragState.current.startY;
       const nextPosition = clampPosition(
         {
           x: dragState.current.originX + deltaX,
@@ -143,9 +237,11 @@ const InlineAyahVideo = ({
       if (event.button === 2) return;
       event.preventDefault();
       setIsDragging(true);
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
       dragState.current = {
-        startX: event.clientX,
-        startY: event.clientY,
+        startX: clientX,
+        startY: clientY,
         originX: dragPosition.x,
         originY: dragPosition.y
       };
@@ -157,7 +253,8 @@ const InlineAyahVideo = ({
     (event) => {
       if (!isResizing) return;
 
-      const deltaX = event.clientX - resizeState.current.startX;
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const deltaX = clientX - resizeState.current.startX;
       const unclampedWidth = resizeState.current.startWidth + deltaX;
       const maxAllowed = Math.min(MAX_WIDTH, window.innerWidth - 32);
       const nextWidth = Math.max(MIN_WIDTH, Math.min(unclampedWidth, maxAllowed));
@@ -220,6 +317,9 @@ const InlineAyahVideo = ({
   const handleAdvance = useCallback(() => {
     if (!video?.id) return;
 
+    // Clear timestamp for finished video
+    clearVideoTimestamp(video.id);
+
     const nextVideo = getNextVideoById?.(video.id);
     if (nextVideo?.videoUrl) {
       showFloatingVideo({
@@ -232,17 +332,19 @@ const InlineAyahVideo = ({
     } else {
       hideFloatingVideo();
     }
-  }, [dragPosition, frameSize, getNextVideoById, hideFloatingVideo, showFloatingVideo, video?.id]);
+  }, [clearVideoTimestamp, dragPosition, frameSize, getNextVideoById, hideFloatingVideo, showFloatingVideo, video?.id]);
 
   const handleResizeStart = (event) => {
     if (isMaximized) return; // no manual resize when maximized
     event.preventDefault();
     event.stopPropagation();
-    resizeState.current = { startX: event.clientX, startWidth: frameSize.width };
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    resizeState.current = { startX: clientX, startWidth: frameSize.width };
     setIsResizing(true);
   };
 
   const toggleMaximize = useCallback(() => {
+    setIsLandscape(false); // exit landscape when toggling maximize
     setIsMaximized((prev) => {
       if (!prev) {
         // Save current state before maximizing
@@ -260,15 +362,34 @@ const InlineAyahVideo = ({
     });
   }, [dragPosition, frameSize]);
 
-  // Escape key exits maximized mode
+  const toggleLandscape = useCallback(() => {
+    setIsLandscape((prev) => !prev);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    // Save current position before closing
+    const el = videoRef.current;
+    if (el && video?.id) {
+      saveVideoTimestamp(video.id, el.currentTime);
+    }
+    if (typeof onClose === 'function') onClose();
+  }, [onClose, saveVideoTimestamp, video?.id]);
+
+  // Escape key exits maximized/landscape mode
   useEffect(() => {
-    if (!isMaximized) return;
+    if (!isMaximized && !isLandscape) return;
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') toggleMaximize();
+      if (e.key === 'Escape') {
+        if (isLandscape) {
+          setIsLandscape(false);
+        } else {
+          toggleMaximize();
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMaximized, toggleMaximize]);
+  }, [isMaximized, isLandscape, toggleMaximize]);
 
   const computedHeight = isMaximized
     ? undefined
@@ -278,70 +399,101 @@ const InlineAyahVideo = ({
     ? { inset: 16 }
     : { width: frameSize.width, height: computedHeight, left: dragPosition.x, top: dragPosition.y };
 
+  // Landscape rotation: swap width/height and rotate 90deg
+  const landscapeStyle = isLandscape
+    ? {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        width: '100vh',
+        height: '100vw',
+        transform: 'rotate(90deg)',
+        transformOrigin: 'top left',
+        left: '100vw',
+        top: 0
+      }
+    : {};
+
+  const btnClass =
+    'h-10 w-10 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition text-sm';
+
   return (
     <>
-      {/* Backdrop when maximized */}
-      {isMaximized && (
+      {/* Backdrop when maximized or landscape */}
+      {(isMaximized || isLandscape) && (
         <div
           className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm"
-          onClick={toggleMaximize}
+          onClick={isLandscape ? toggleLandscape : toggleMaximize}
         />
       )}
       <div
         className={`fixed rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden ${
-          isMaximized ? 'z-30 inset-4' : 'z-30'
+          isMaximized ? 'z-30 inset-4' : isLandscape ? 'z-50' : 'z-30'
         }`}
-        style={containerStyle}
+        style={isLandscape ? landscapeStyle : containerStyle}
       >
         <div className="relative h-full bg-slate-900 select-none">
+          {/* Top control bar */}
           <div
-            className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-2 bg-gradient-to-b from-black/50 to-transparent text-white text-xs"
-            onPointerDown={isMaximized ? undefined : handleDragStart}
+            className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-2 bg-gradient-to-b from-black/60 to-transparent text-white text-xs"
+            onPointerDown={isMaximized || isLandscape ? undefined : handleDragStart}
             role="presentation"
           >
             <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 font-semibold">
-              {!isMaximized && <SafeIcon icon={FiMove} className="text-[12px]" />}
+              {!isMaximized && !isLandscape && <SafeIcon icon={FiMove} className="text-[12px]" />}
               {label}
             </span>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-3">
+              {/* Loop */}
               <button
                 type="button"
                 onClick={toggleLoop}
-                className={`h-8 w-8 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition ${
-                  loopEnabled ? 'ring-2 ring-emerald-300/70' : ''
-                }`}
+                className={`${btnClass} ${loopEnabled ? 'ring-2 ring-emerald-300/70 bg-emerald-500/40' : ''}`}
                 aria-pressed={loopEnabled}
                 aria-label="Toggle repeat"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <SafeIcon icon={FiRefreshCcw} />
               </button>
+              {/* Landscape toggle (mobile only) */}
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={toggleLandscape}
+                  className={`${btnClass} ${isLandscape ? 'ring-2 ring-blue-300/70 bg-blue-500/40' : ''}`}
+                  aria-label={isLandscape ? 'Portrait mode' : 'Landscape mode'}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <SafeIcon icon={FiRotateCw} />
+                </button>
+              )}
               {/* Maximize / Restore */}
               <button
                 type="button"
                 onClick={toggleMaximize}
-                className={`h-8 w-8 rounded-full border border-white/20 flex items-center justify-center transition ${
+                className={`${btnClass} ${
                   isMaximized
                     ? 'bg-amber-500/80 hover:bg-amber-400/90 ring-2 ring-amber-300/50'
-                    : 'bg-white/15 hover:bg-white/25'
+                    : ''
                 }`}
                 aria-label={isMaximized ? 'Restore size' : 'Maximize'}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <SafeIcon icon={isMaximized ? FiMinimize2 : FiMaximize2} />
               </button>
+              {/* Close — prominent red button */}
               <button
                 type="button"
-                onClick={onClose}
-                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg"
+                onClick={handleClose}
+                className="h-10 w-10 rounded-full bg-red-600/80 hover:bg-red-500 border border-red-400/40 flex items-center justify-center transition text-white text-base font-bold shadow-lg"
                 aria-label="Close video"
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                ×
+                <SafeIcon icon={FiX} />
               </button>
             </div>
           </div>
-          {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-12 z-10 animate-spin text-white" />}
+          {isBuffering && <SafeIcon icon={FiLoader} className="absolute left-2 top-14 z-10 animate-spin text-white" />}
           <MuxPlayer
             ref={videoRef}
             key={video.videoUrl}
@@ -351,7 +503,7 @@ const InlineAyahVideo = ({
             playsInline
             preload="auto"
             className="w-full h-full pip-player"
-            onLoadedData={() => setIsBuffering(false)}
+            onLoadedData={handleLoadedData}
             onLoadedMetadata={(e) => {
               const el = e.target;
               if (el?.videoWidth && el?.videoHeight) {
@@ -372,7 +524,7 @@ const InlineAyahVideo = ({
               <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
             )}
           </div>
-          {!isMaximized && (
+          {!isMaximized && !isLandscape && (
             <button
               type="button"
               onPointerDown={handleResizeStart}

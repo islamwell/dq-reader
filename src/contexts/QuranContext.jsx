@@ -232,6 +232,23 @@ export const QuranProvider = ({ children }) => {
   const docPipPlayerRef = useRef(null);
   const [isDocPipActive, setIsDocPipActive] = useState(false);
 
+  // Track video playback positions so users can resume where they left off
+  const videoTimestampsRef = useRef(new Map());
+
+  const saveVideoTimestamp = useCallback((videoId, currentTime) => {
+    if (videoId && typeof currentTime === 'number' && currentTime > 0) {
+      videoTimestampsRef.current.set(videoId, currentTime);
+    }
+  }, []);
+
+  const getVideoTimestamp = useCallback((videoId) => {
+    return videoTimestampsRef.current.get(videoId) || 0;
+  }, []);
+
+  const clearVideoTimestamp = useCallback((videoId) => {
+    videoTimestampsRef.current.delete(videoId);
+  }, []);
+
   const closeDocPiP = useCallback(() => {
     if (docPipPlayerRef.current) {
       docPipPlayerRef.current.destroy();
@@ -1036,7 +1053,7 @@ export const QuranProvider = ({ children }) => {
   );
 
   const showFloatingVideo = useCallback(
-    ({ video, surahNumber, ayahNumber, position, size } = {}) => {
+    ({ video, surahNumber, ayahNumber, position, size, autoMaximize } = {}) => {
       setFloatingVideo((current) => {
         const nextSize = size || current?.size || { width: DEFAULT_FLOATING_VIDEO_WIDTH };
         const nextPosition = clampFloatingPosition(
@@ -1049,7 +1066,8 @@ export const QuranProvider = ({ children }) => {
           surahNumber: surahNumber || current?.surahNumber,
           ayahNumber: ayahNumber || current?.ayahNumber,
           position: nextPosition,
-          size: nextSize
+          size: nextSize,
+          autoMaximize: !!autoMaximize
         };
       });
     },
@@ -2645,6 +2663,9 @@ export const QuranProvider = ({ children }) => {
       isDocPipActive,
       setIsDocPipActive,
       closeDocPiP,
+      saveVideoTimestamp,
+      getVideoTimestamp,
+      clearVideoTimestamp,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio
@@ -2702,6 +2723,9 @@ export const QuranProvider = ({ children }) => {
       getNextVideoById,
       isDocPipActive,
       closeDocPiP,
+      saveVideoTimestamp,
+      getVideoTimestamp,
+      clearVideoTimestamp,
       audioCacheProgress,
       cacheArabicAudio,
       cacheUrduAudio
