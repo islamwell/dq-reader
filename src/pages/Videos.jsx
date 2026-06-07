@@ -18,8 +18,19 @@ const {
   FiBook,
   FiExternalLink,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiSkipBack,
+  FiSkipForward
 } = FiIcons;
+
+const getThumbnailUrl = (videoUrl) => {
+  if (!videoUrl) return null;
+  const muxMatch = videoUrl.match(/stream\.mux\.com\/(.+?)\.m3u8/);
+  if (muxMatch) {
+    return `https://image.mux.com/${muxMatch[1]}/thumbnail.jpg?width=160&height=112&fit_mode=crop`;
+  }
+  return null;
+};
 
 const THEME_CARD_STYLES = {
   green: 'bg-emerald-50/50 border border-emerald-200 hover:border-emerald-300',
@@ -132,6 +143,25 @@ const Videos = () => {
       const beginIndex = startIndex === -1 ? -1 : startIndex;
 
       for (let i = beginIndex + 1; i < filteredVideos.length; i += 1) {
+        const candidate = filteredVideos[i];
+        if (candidate?.videoUrl) {
+          return candidate;
+        }
+      }
+
+      return null;
+    },
+    [filteredVideos]
+  );
+
+  const getPrevPlayableVideo = useCallback(
+    (currentId) => {
+      if (!filteredVideos.length) return null;
+
+      const startIndex = filteredVideos.findIndex((video) => video.id === currentId);
+      const beginIndex = startIndex === -1 ? filteredVideos.length : startIndex;
+
+      for (let i = beginIndex - 1; i >= 0; i -= 1) {
         const candidate = filteredVideos[i];
         if (candidate?.videoUrl) {
           return candidate;
@@ -325,7 +355,33 @@ const Videos = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {activeVideo && (
+                      <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-1 border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const prevVideo = getPrevPlayableVideo(activeVideo.id);
+                            if (prevVideo) handleSelectVideo(prevVideo.id);
+                          }}
+                          className="p-1.5 rounded hover:bg-white hover:shadow-sm text-slate-600 transition-all"
+                          title="Previous Video"
+                        >
+                          <SafeIcon icon={FiSkipBack} className="text-lg" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextVideo = getNextPlayableVideo(activeVideo.id);
+                            if (nextVideo) handleSelectVideo(nextVideo.id);
+                          }}
+                          className="p-1.5 rounded hover:bg-white hover:shadow-sm text-slate-600 transition-all"
+                          title="Next Video"
+                        >
+                          <SafeIcon icon={FiSkipForward} className="text-lg" />
+                        </button>
+                      </div>
+                    )}
                     {activeVideo && (
                       <button
                         type="button"
@@ -359,14 +415,16 @@ const Videos = () => {
 
           {/* Sidebar Video List - Takes 1 col on lg screens */}
           <div className="lg:col-span-1 relative">
-            <button
-              type="button"
-              onClick={() => setIsSidebarOpen((prev) => !prev)}
-              className="absolute -left-3 top-2 z-20 hidden lg:flex items-center justify-center h-10 w-10 rounded-full border border-slate-200 bg-white shadow hover:bg-slate-50"
-              aria-label={isSidebarOpen ? 'Hide video list' : 'Show video list'}
-            >
-              <SafeIcon icon={isSidebarOpen ? FiChevronLeft : FiChevronRight} />
-            </button>
+            {!isSidebarOpen && (
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="absolute -left-4 top-2 z-20 hidden lg:flex items-center justify-center h-10 w-10 rounded-full border border-slate-200 bg-white shadow-md hover:bg-slate-50"
+                aria-label="Show video list"
+              >
+                <SafeIcon icon={FiChevronLeft} className="text-slate-600 text-lg" />
+              </button>
+            )}
 
             <AnimatePresence initial={false}>
               {isSidebarOpen && (
@@ -416,7 +474,18 @@ const Videos = () => {
                       <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
                         <SafeIcon icon={FiList} /> Up Next
                       </h3>
-                      <span className="text-xs text-slate-400">{filteredVideos.length} videos</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">{filteredVideos.length} videos</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsSidebarOpen(false)}
+                          className="hidden lg:flex items-center justify-center h-7 w-7 rounded border border-slate-200 hover:bg-slate-100 text-slate-500 transition-colors bg-white shadow-sm"
+                          aria-label="Hide video list"
+                          title="Hide playlist"
+                        >
+                          <SafeIcon icon={FiChevronRight} />
+                        </button>
+                      </div>
                     </div>
 
                     <AnimatePresence initial={false}>
@@ -445,8 +514,15 @@ const Videos = () => {
                             }`}
                           >
                             <div className="flex gap-3">
-                              <div className={`flex-shrink-0 w-20 h-14 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 group-hover:bg-islamic-50 group-hover:text-islamic-500 transition-colors`}>
-                                 <SafeIcon icon={FiPlay} className="text-xl" />
+                              <div className="relative flex-shrink-0 w-24 h-16 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 overflow-hidden group-hover:border-islamic-300 transition-colors">
+                                {getThumbnailUrl(video.videoUrl) ? (
+                                  <img src={getThumbnailUrl(video.videoUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                                ) : (
+                                  <SafeIcon icon={FiVideo} className="text-xl opacity-50" />
+                                )}
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <SafeIcon icon={FiPlay} className="text-white text-xl drop-shadow-md" />
+                                </div>
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm font-semibold line-clamp-2 mb-1 ${
