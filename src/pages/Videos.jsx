@@ -23,13 +23,64 @@ const {
   FiSkipForward
 } = FiIcons;
 
-const getThumbnailUrl = (videoUrl) => {
-  if (!videoUrl) return null;
-  const muxMatch = videoUrl.match(/stream\.mux\.com\/(.+?)\.m3u8/);
-  if (muxMatch) {
-    return `https://image.mux.com/${muxMatch[1]}/thumbnail.jpg?width=160&height=112&fit_mode=crop`;
-  }
-  return null;
+const VideoThumbnail = ({ video, surah }) => {
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Generate a deterministic gradient based on surah ID
+  const hue = ((video.surahId || 1) * 137.5) % 360;
+  const gradient = `linear-gradient(135deg, hsl(${hue}, 60%, 25%), hsl(${(hue + 40) % 360}, 70%, 15%))`;
+
+  // Mux thumbnail logic as first priority
+  const muxMatch = video.videoUrl?.match(/stream\.mux\.com\/(.+?)\.m3u8/);
+  const muxThumbnail = muxMatch ? `https://image.mux.com/${muxMatch[1]}/thumbnail.jpg?width=160&height=112&fit_mode=crop` : null;
+
+  return (
+    <div className="relative flex-shrink-0 w-24 h-16 rounded-lg border border-slate-200 overflow-hidden group-hover:border-islamic-300 transition-colors" style={{ background: gradient }}>
+      {/* Try to load Mux thumbnail or extract video frame */}
+      {!hasError && video.videoUrl && (
+        muxThumbnail ? (
+          <img 
+            src={muxThumbnail} 
+            alt="" 
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setIsLoaded(true)}
+            onError={() => setHasError(true)}
+          />
+        ) : (
+          <video 
+            src={`${video.videoUrl}#t=1.0`} 
+            preload="metadata"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            muted 
+            playsInline
+            onLoadedData={() => setIsLoaded(true)}
+            onError={() => setHasError(true)}
+          />
+        )
+      )}
+      
+      {/* Fallback pattern showing Surah info if image fails or while loading */}
+      {(!isLoaded || hasError) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-1 overflow-hidden">
+          <SafeIcon icon={FiVideo} className="text-white/10 text-4xl absolute -right-2 -bottom-2" />
+          <div className="relative z-10 text-center w-full">
+            <span className="block text-[10px] font-bold text-white/90 truncate px-1" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+              {surah ? surah.name_simple : `Surah ${video.surahId}`}
+            </span>
+            <span className="block text-[8px] text-white/70" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+              Ayah {video.startAyah}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Play Icon Overlay */}
+      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <SafeIcon icon={FiPlay} className="text-white text-xl drop-shadow-md" />
+      </div>
+    </div>
+  );
 };
 
 const THEME_CARD_STYLES = {
@@ -514,16 +565,7 @@ const Videos = () => {
                             }`}
                           >
                             <div className="flex gap-3">
-                              <div className="relative flex-shrink-0 w-24 h-16 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 overflow-hidden group-hover:border-islamic-300 transition-colors">
-                                {getThumbnailUrl(video.videoUrl) ? (
-                                  <img src={getThumbnailUrl(video.videoUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                                ) : (
-                                  <SafeIcon icon={FiVideo} className="text-xl opacity-50" />
-                                )}
-                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <SafeIcon icon={FiPlay} className="text-white text-xl drop-shadow-md" />
-                                </div>
-                              </div>
+                              <VideoThumbnail video={video} surah={surahs.find((s) => s.id === video.surahId)} />
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm font-semibold line-clamp-2 mb-1 ${
                                   activeVideoId === video.id ? 'text-islamic-900' : 'text-slate-700'
