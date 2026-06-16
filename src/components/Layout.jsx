@@ -8,7 +8,7 @@ import SettingsPanel from './SettingsPanel';
 import SearchBar from './SearchBar';
 import FloatingVideoViewport from './FloatingVideoViewport';
 
-const { FiBook, FiSettings, FiCornerDownRight } = FiIcons;
+const { FiSettings, FiCornerDownRight } = FiIcons;
 
 const THEME_STYLES = {
   green: {
@@ -117,7 +117,11 @@ const Layout = () => {
           <div className="flex items-center gap-6 h-16">
             <Link to="/" className="flex items-center space-x-3">
               <div className={brandBadgeClasses}>
-                <SafeIcon icon={FiBook} className="text-white text-xl" />
+                <img 
+                  src="https://nurulquran.com/wp-content/uploads/2018/02/nq-logo-200-143.png" 
+                  alt="NurulQuran" 
+                  className="w-8 h-8 object-contain" 
+                />
               </div>
               <span className={brandTextClass}>NurulQuran</span>
             </Link>

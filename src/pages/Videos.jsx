@@ -318,23 +318,10 @@ const Videos = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-islamic-800 flex items-center gap-2">
-            <SafeIcon icon={FiVideo} /> Video Library
-          </h1>
-          <p className="text-islamic-600 text-sm mt-1">
-            Curated long-form videos linked to Quranic ayah ranges.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-islamic-gold hover:text-islamic-gold transition-colors self-start md:self-auto"
-        >
-          <SafeIcon icon={FiArrowLeft} />
-          <span>Back to Home</span>
-        </button>
+      <div>
+        <h1 className="text-3xl font-bold text-islamic-800 flex items-center gap-2">
+          <SafeIcon icon={FiVideo} /> Video Library
+        </h1>
       </div>
 
       {videos.length === 0 ? (
