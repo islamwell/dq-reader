@@ -90,7 +90,6 @@ const Layout = () => {
   const themeStyles = THEME_STYLES[theme] ?? DEFAULT_THEME_STYLE;
   const shellClasses = `min-h-screen transition-colors duration-300 ${themeStyles.shell}`;
   const navClasses = `shadow-lg border-b ${themeStyles.navBg} ${themeStyles.navBorder} ${themeStyles.navText}`;
-  const brandBadgeClasses = `w-10 h-10 rounded-lg flex items-center justify-center ${themeStyles.brandBadge}`;
   const brandTextClass = `text-2xl font-bold ${themeStyles.brandText}`;
   const baseNavButtonClasses =
     'flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
@@ -116,13 +115,11 @@ const Layout = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-6 h-16">
             <Link to="/" className="flex items-center space-x-3">
-              <div className={brandBadgeClasses}>
-                <img 
-                  src="https://nurulquran.com/wp-content/uploads/2018/02/nq-logo-200-143.png" 
-                  alt="NurulQuran" 
-                  className="w-8 h-8 object-contain" 
-                />
-              </div>
+              <img 
+                src="/rose-svgrepo-com.svg" 
+                alt="NurulQuran" 
+                className="w-10 h-10 object-contain" 
+              />
               <span className={brandTextClass}>NurulQuran</span>
             </Link>
 
