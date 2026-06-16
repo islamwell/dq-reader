@@ -33,7 +33,7 @@ const VideoThumbnail = ({ video, surah }) => {
 
   // Mux thumbnail logic as first priority
   const muxMatch = video.videoUrl?.match(/stream\.mux\.com\/(.+?)\.m3u8/);
-  const muxThumbnail = muxMatch ? `https://image.mux.com/${muxMatch[1]}/thumbnail.jpg?width=160&height=112&fit_mode=crop` : null;
+  const muxThumbnail = muxMatch ? `https://image.mux.com/${muxMatch[1]}/thumbnail.jpg?width=160&height=112&fit_mode=crop&time=10` : null;
 
   return (
     <div className="relative flex-shrink-0 w-24 h-16 rounded-lg border border-slate-200 overflow-hidden group-hover:border-islamic-300 transition-colors" style={{ background: gradient }}>
@@ -49,7 +49,7 @@ const VideoThumbnail = ({ video, surah }) => {
           />
         ) : (
           <video 
-            src={`${video.videoUrl}#t=1.0`} 
+            src={`${video.videoUrl}#t=10.0`} 
             preload="metadata"
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
             muted 
