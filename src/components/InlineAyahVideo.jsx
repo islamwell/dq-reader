@@ -56,6 +56,7 @@ const InlineAyahVideo = ({
   const resizeState = useRef({ startX: 0, startWidth: DEFAULT_WIDTH });
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
   const [frameSize, setFrameSize] = useState({
@@ -81,6 +82,7 @@ const InlineAyahVideo = ({
   // --- Resume: restore timestamp when video loads ---
   useEffect(() => {
     setIsBuffering(true);
+    setIsPlaying(false);
     setHasError(false);
     setLoopEnabled(false);
     isPlayingRef.current = false;
@@ -513,15 +515,25 @@ const InlineAyahVideo = ({
               }
             }}
             onWaiting={() => setIsBuffering(true)}
-            onPlaying={() => { isPlayingRef.current = true; setIsBuffering(false); }}
-            onPause={() => { isPlayingRef.current = false; }}
+            onPlaying={() => { isPlayingRef.current = true; setIsPlaying(true); setIsBuffering(false); }}
+            onPause={() => { isPlayingRef.current = false; setIsPlaying(false); }}
             onEnded={handleAdvance}
             onError={handleAdvance}
             poster=""
           />
-          <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-end bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs">
+          {!isPlaying && !isBuffering && (
+            <button
+              type="button"
+              onClick={() => videoRef.current?.play().catch(() => {})}
+              className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-20 shadow-lg border border-white/20 backdrop-blur-sm"
+              aria-label="Play video"
+            >
+              <SafeIcon icon={FiPlay} className="text-white text-3xl ml-1" />
+            </button>
+          )}
+          <div className="absolute inset-x-0 bottom-0 p-2 flex items-center justify-end bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white text-xs pointer-events-none">
             {label && (
-              <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10">{label}</span>
+              <span className="rounded-full bg-black/55 px-2 py-1 font-semibold tracking-wide border border-white/10 pointer-events-auto">{label}</span>
             )}
           </div>
           {!isMaximized && !isLandscape && (
