@@ -250,10 +250,7 @@ const Videos = () => {
     } else if (!activeVideoId && firstPlayableVideo) {
       setActiveVideoId(firstPlayableVideo.id);
     }
-    // Intentionally only react to searchParams and videos loading,
-    // not activeVideoId or firstPlayableVideo, to avoid loops.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, videos]);
+  }, [searchParams, videos, activeVideoId, firstPlayableVideo]);
 
   // When the filter changes and the current video is no longer in the list,
   // switch to the first available video.
@@ -265,8 +262,7 @@ const Videos = () => {
       setActiveVideoId(firstPlayableVideo.id);
       setSearchParams({ videoId: firstPlayableVideo.id }, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredVideos, firstPlayableVideo]);
+  }, [filteredVideos, firstPlayableVideo, activeVideoId, setSearchParams]);
 
   // If the active video has no URL, advance to the next playable one
   useEffect(() => {
@@ -276,8 +272,7 @@ const Videos = () => {
         handleSelectVideo(nextVideo.id);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeVideo?.id, activeVideo?.videoUrl]);
+  }, [activeVideo, firstPlayableVideo, getNextPlayableVideo, handleSelectVideo]);
 
   const handleVideoError = () => {
     toast.error('Unable to load the video stream. Please verify the URL.');

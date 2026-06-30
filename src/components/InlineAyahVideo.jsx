@@ -4,7 +4,7 @@ import MuxPlayer from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 
-const { FiLoader, FiRefreshCcw, FiMove, FiMaximize2, FiMinimize2, FiRotateCw, FiX } = FiIcons;
+const { FiLoader, FiRefreshCcw, FiMove, FiMaximize2, FiMinimize2, FiRotateCw, FiX, FiPlay } = FiIcons;
 
 const DEFAULT_WIDTH = Math.round(260 * 1.7);
 const MIN_WIDTH = 220;
