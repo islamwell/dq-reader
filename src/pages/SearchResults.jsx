@@ -4,8 +4,23 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
+import { SearchResultSkeleton } from '../components/Skeleton';
+import { highlightMatches } from '../utils/fuzzySearch';
 
 const { FiArrowLeft, FiSettings, FiArrowRight } = FiIcons;
+
+const HighlightText = ({ text, query }) => {
+  const segments = highlightMatches(text, query);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.highlighted
+          ? <mark key={i} className="bg-amber-200 text-amber-900 rounded px-0.5">{seg.text}</mark>
+          : <span key={i}>{seg.text}</span>
+      )}
+    </>
+  );
+};
 
 const SearchResults = ({ onOpenSettings }) => {
   const [searchParams] = useSearchParams();
@@ -73,11 +88,14 @@ const SearchResults = ({ onOpenSettings }) => {
         </nav>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center min-h-96">
-            <div className="text-center">
-              <div className="loading-spinner mx-auto mb-4"></div>
-              <p className="text-islamic-600">Searching…</p>
-            </div>
+          <div className="mb-6">
+            <div className="h-9 w-64 bg-slate-200 rounded-lg mb-2 animate-pulse"></div>
+            <div className="h-6 w-48 bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
+          <div className="space-y-4">
+            {[...Array(8)].map((_, index) => (
+              <SearchResultSkeleton key={index} />
+            ))}
           </div>
         </div>
       </div>
@@ -162,9 +180,10 @@ const SearchResults = ({ onOpenSettings }) => {
                       )}
                       {result.translationSnippet && (
                         <p className="text-sm text-slate-600 leading-relaxed mt-3">
-                          {result.translationSnippet}
+                          <HighlightText text={result.translationSnippet} query={query} />
                         </p>
                       )}
+
                     </div>
                     <SafeIcon icon={FiArrowRight} className="text-slate-400 mt-1 flex-shrink-0" />
                   </div>
@@ -175,7 +194,7 @@ const SearchResults = ({ onOpenSettings }) => {
                         Surah • {result.surahNumber}
                       </p>
                       <p className="text-base font-semibold text-slate-900 mb-2">
-                        {result.name}
+                        <HighlightText text={result.name} query={query} />
                         {result.englishName ? ` • ${result.englishName}` : ''}
                       </p>
                       <p className="text-lg text-slate-700 quran-text-pak">

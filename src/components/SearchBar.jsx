@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
+import { highlightMatches } from '../utils/fuzzySearch';
 
 const {
   FiSearch,
@@ -192,7 +193,7 @@ const SearchBar = ({ variant = 'global' }) => {
 
     const timeoutId = window.setTimeout(async () => {
       try {
-        const matches = await searchQuran(query);
+        const matches = await searchQuran(query, currentSurahNumber);
         if (!isCancelled) {
           setResults(Array.isArray(matches) ? matches : []);
         }
@@ -525,6 +526,15 @@ const SearchBar = ({ variant = 'global' }) => {
                                       {result.snippet}
                                     </p>
                                   )}
+                                  {result.translationSnippet && (
+                                    <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                                      {highlightMatches(result.translationSnippet, query).map((seg, i) =>
+                                        seg.highlighted
+                                          ? <mark key={i} className="bg-amber-200 text-amber-900 rounded px-0.5">{seg.text}</mark>
+                                          : <span key={i}>{seg.text}</span>
+                                      )}
+                                    </p>
+                                  )}
                                 </div>
                                 <SafeIcon icon={FiArrowRight} className="text-slate-400 mt-1" />
                               </div>
@@ -535,7 +545,11 @@ const SearchBar = ({ variant = 'global' }) => {
                                     Surah • {result.surahNumber}
                                   </p>
                                   <p className="text-sm font-semibold text-slate-900">
-                                    {result.name}
+                                    {highlightMatches(result.name, query).map((seg, i) =>
+                                      seg.highlighted
+                                        ? <mark key={i} className="bg-amber-200 text-amber-900 rounded px-0.5">{seg.text}</mark>
+                                        : <span key={i}>{seg.text}</span>
+                                    )}
                                     {result.englishName ? ` • ${result.englishName}` : ''}
                                   </p>
                                   <p className="text-base text-slate-700 mt-1 quran-text-pak">

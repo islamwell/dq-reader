@@ -29,6 +29,7 @@ import {
 } from '../data/localTranslations';
 import { DEFAULT_RECITER } from '../data/reciters';
 import { OfflineCache } from '../utils/offlineCache';
+import { buildFuseIndex, fuzzySearchSurahs, expandAliases } from '../utils/fuzzySearch';
 
 const SUPPORTED_THEMES = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
 const DEFAULT_THEME = 'light';
@@ -225,6 +226,7 @@ export const QuranProvider = ({ children }) => {
   const pendingDQ2UrlRef = useRef(null);
   const searchIndexRef = useRef(null);
   const searchIndexPromiseRef = useRef(null);
+  const fuseIndexRef = useRef(null);
   const translationPrefetchRef = useRef(false);
   const [floatingVideo, setFloatingVideo] = useState(null);
   const DEFAULT_FLOATING_VIDEO_WIDTH = Math.round(260 * 1.7);
@@ -507,7 +509,7 @@ export const QuranProvider = ({ children }) => {
   }, []);
 
   const searchQuran = useCallback(
-    async (rawQuery) => {
+    async (rawQuery, currentSurahNumber = null) => {
       const trimmedQuery = typeof rawQuery === 'string' ? rawQuery.trim() : '';
       if (!trimmedQuery) {
         return [];
@@ -522,6 +524,9 @@ export const QuranProvider = ({ children }) => {
         .map((token) => token.replace(/[^a-z\u0600-\u06FF]/g, ''))
         .filter(Boolean);
       const hasArabicQuery = ARABIC_LETTER_REGEX.test(trimmedQuery);
+
+      // Check if query is purely numeric (e.g. user typed "5")
+      const isPurelyNumeric = /^\d+$/.test(trimmedQuery);
 
       const index = await ensureSearchIndex();
       const surahLookup = surahs || [];
@@ -650,6 +655,17 @@ export const QuranProvider = ({ children }) => {
         seenSurahIds.add(surah.id);
       };
 
+      // ── NUMBER-ONLY QUERY: show ayat in current surah first ──
+      if (isPurelyNumeric && currentSurahNumber) {
+        const ayahNum = Number(trimmedQuery);
+        if (Number.isInteger(ayahNum) && ayahNum >= 1) {
+          const currentEntry = index.verseMap.get(`${currentSurahNumber}:${ayahNum}`);
+          if (currentEntry) {
+            addAyahResult(currentEntry);
+          }
+        }
+      }
+
       const parseDirectReference = () => {
         const colonMatch = trimmedQuery.match(/^(\d{1,3})\s*[:-]\s*(\d{1,3})$/);
         if (colonMatch) {
@@ -678,6 +694,9 @@ export const QuranProvider = ({ children }) => {
         }
       }
 
+      // ── Expand aliases for textual tokens ──
+      const expandedQueries = expandAliases(textualTokens.join(' '));
+
       const candidateSurahs = [];
       if (surahLookup.length) {
         const hasOnlyNumber = !textualTokens.length && numericTokens.length === 1 && !hasArabicQuery;
@@ -699,9 +718,20 @@ export const QuranProvider = ({ children }) => {
           if (hasOnlyNumber) {
             matches = Number(numericTokens[0]) === surah.id;
           } else if (textualTokens.length) {
+            // Try original tokens first
             matches = textualTokens.every((token) =>
               fields.some((field) => field.includes(token))
             );
+
+            // If no exact match, try expanded aliases
+            if (!matches && expandedQueries.length > 0) {
+              matches = expandedQueries.some((expanded) => {
+                const expandedTokens = expanded.split(/\s+/).filter(Boolean);
+                return expandedTokens.every((token) =>
+                  fields.some((field) => field.includes(token))
+                );
+              });
+            }
           } else if (normalizedQuery) {
             matches = fields.some((field) => field.includes(normalizedQuery));
           }
@@ -710,6 +740,29 @@ export const QuranProvider = ({ children }) => {
             candidateSurahs.push(surah);
           }
         });
+      }
+
+      // ── Fuzzy fallback: if no exact surah matches, use Fuse.js ──
+      if (!candidateSurahs.length && textualTokens.length && !hasArabicQuery) {
+        if (!fuseIndexRef.current && surahLookup.length) {
+          fuseIndexRef.current = buildFuseIndex(surahLookup);
+        }
+
+        if (fuseIndexRef.current) {
+          // Try fuzzy search with each expanded query
+          const queriesToTry = [textualTokens.join(' '), ...expandedQueries];
+          const fuzzySet = new Set();
+
+          for (const q of queriesToTry) {
+            const fuzzyHits = fuzzySearchSurahs(fuseIndexRef.current, q);
+            for (const hit of fuzzyHits.slice(0, 5)) {
+              if (!fuzzySet.has(hit.id)) {
+                fuzzySet.add(hit.id);
+                candidateSurahs.push(hit);
+              }
+            }
+          }
+        }
       }
 
       candidateSurahs.forEach((surah) => {
@@ -745,6 +798,15 @@ export const QuranProvider = ({ children }) => {
       }
 
       if (includeTranslationsInSearch && textualTokens.length) {
+        // Search translations with both original and expanded tokens
+        const allTokenSets = [textualTokens];
+        for (const expanded of expandedQueries) {
+          const expandedTokens = expanded.split(/\s+/).filter(Boolean);
+          if (expandedTokens.join(' ') !== textualTokens.join(' ')) {
+            allTokenSets.push(expandedTokens);
+          }
+        }
+
         for (const entry of index.verses) {
           const translationText = await getTranslationForEntry(entry);
           if (!translationText) {
@@ -752,8 +814,10 @@ export const QuranProvider = ({ children }) => {
           }
 
           const normalizedTranslation = translationText.toLowerCase();
-          const matchesAllTokens = textualTokens.every((token) => normalizedTranslation.includes(token));
-          if (matchesAllTokens) {
+          const matchesAny = allTokenSets.some((tokenSet) =>
+            tokenSet.every((token) => normalizedTranslation.includes(token))
+          );
+          if (matchesAny) {
             addAyahResult({ ...entry, translationSnippet: buildTranslationSnippet(translationText) });
           }
         }

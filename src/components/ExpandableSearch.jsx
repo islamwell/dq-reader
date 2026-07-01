@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
+import { highlightMatches } from '../utils/fuzzySearch';
 import './ExpandableSearch.css';
 
 const { FiSearch, FiArrowRight } = FiIcons;
@@ -108,7 +109,15 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
   
   // Get current theme and search function from context
   const { theme, searchQuran } = useQuranData();
-  
+
+  // Extract current surah number from URL for number-only search
+  const currentSurahNumber = useMemo(() => {
+    const match = location.pathname.match(/^\/surah\/(\d+)/);
+    if (!match) return null;
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [location.pathname]);
+
   // Memoize theme styles to prevent recalculation on every render
   const themeStyles = useMemo(() => {
     return THEME_STYLES[theme] ?? DEFAULT_THEME_STYLE;
@@ -209,7 +218,7 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
 
     const timeoutId = setTimeout(async () => {
       try {
-        const matches = await searchQuran(searchQuery);
+        const matches = await searchQuran(searchQuery, currentSurahNumber);
         if (!isCancelled) {
           setSearchResults(Array.isArray(matches) ? matches : []);
         }
@@ -513,7 +522,11 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
                               Surah • {result.surahNumber}
                             </p>
                             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                              {result.name}
+                              {highlightMatches(result.name, searchQuery).map((seg, i) =>
+                                seg.highlighted
+                                  ? <mark key={i} className="bg-amber-200 text-amber-900 rounded px-0.5">{seg.text}</mark>
+                                  : <span key={i}>{seg.text}</span>
+                              )}
                               {result.englishName ? ` • ${result.englishName}` : ''}
                             </p>
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 quran-text-pak truncate">
