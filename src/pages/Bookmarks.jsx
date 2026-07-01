@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData, useQuranAudio } from '../contexts/QuranContext';
+import { AyahCardSkeleton } from '../components/Skeleton';
 
 const {
   FiArrowLeft,
@@ -25,6 +26,7 @@ const Bookmarks = () => {
   const [editingId, setEditingId] = useState(null);
   const [noteValue, setNoteValue] = useState('');
   const [versesCache, setVersionsCache] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
   const surahLookup = useMemo(() => {
     return surahs.reduce((accumulator, surah) => {
@@ -44,6 +46,7 @@ const Bookmarks = () => {
   // Load verses for bookmarks
   useEffect(() => {
     const loadVerses = async () => {
+      setIsLoading(true);
       const newCache = { ...versesCache };
       for (const bookmark of bookmarks) {
         const cacheKey = `${bookmark.surahNumber}`;
@@ -57,10 +60,13 @@ const Bookmarks = () => {
         }
       }
       setVersionsCache(newCache);
+      setIsLoading(false);
     };
 
     if (bookmarks.length > 0) {
       loadVerses();
+    } else {
+      setIsLoading(false);
     }
   }, [bookmarks, fetchSurahVerses]);
 
@@ -156,6 +162,12 @@ const Bookmarks = () => {
             <span>Explore Surahs</span>
           </button>
         </motion.div>
+      ) : isLoading ? (
+        <div className="space-y-4">
+          {[...Array(5)].map((_, index) => (
+            <AyahCardSkeleton key={index} />
+          ))}
+        </div>
       ) : (
         <div className="space-y-4">
           {sortedBookmarks.map((bookmark) => {

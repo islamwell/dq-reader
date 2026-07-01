@@ -7,6 +7,7 @@ import AyahCard from '../components/AyahCard';
 import AudioPlayer from '../components/AudioPlayer';
 import RevelationPlaceIcon from '../components/RevelationPlaceIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
+import { AyahCardSkeleton } from '../components/Skeleton';
 
 const { FiArrowLeft } = FiIcons;
 
@@ -142,10 +143,33 @@ const Surah = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="loading-spinner mx-auto mb-4"></div>
-          <p className={secondaryTextStyle}>Loading verses...</p>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-24 bg-slate-200 rounded animate-pulse" />
+        </div>
+
+        {/* Surah info skeleton */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={`rounded-2xl p-8 shadow-xl ${cardStyle}`}
+        >
+          <div className="text-center space-y-4">
+            <div className="h-8 w-48 bg-slate-200 rounded animate-pulse mx-auto" />
+            <div className="h-6 w-64 bg-slate-200 rounded animate-pulse mx-auto" />
+            <div className="h-10 w-32 bg-slate-200 rounded-lg animate-pulse mx-auto mt-4" />
+          </div>
+        </motion.div>
+
+        {/* Bismillah skeleton */}
+        <div className="h-12 w-full bg-slate-200 rounded animate-pulse" />
+
+        {/* Ayah cards skeleton */}
+        <div className="space-y-4">
+          {[...Array(10)].map((_, index) => (
+            <AyahCardSkeleton key={index} />
+          ))}
         </div>
       </div>
     );

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import MuxPlayer from '@mux/mux-player-react';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
+import { VideoCardSkeleton } from '../components/Skeleton';
 
 const {
   FiArrowLeft,
@@ -321,15 +322,19 @@ const Videos = () => {
 
       {videos.length === 0 ? (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-xl p-12 shadow-sm text-center border-2 border-dashed border-slate-200 ${cardStyle}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-6"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
-            <SafeIcon icon={FiVideo} className="text-3xl" />
+          {/* Video player skeleton */}
+          <div className="w-full aspect-video bg-slate-200 rounded-2xl animate-pulse" />
+          
+          {/* Video grid skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, index) => (
+              <VideoCardSkeleton key={index} />
+            ))}
           </div>
-          <h3 className="text-lg font-medium text-islamic-800 mb-2">No Videos Available</h3>
-          <p className="text-islamic-600">Add video ranges from the Admin Panel to see them here.</p>
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

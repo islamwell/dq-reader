@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import SurahCard from '../components/SurahCard';
 import { useQuranData } from '../contexts/QuranContext';
+import { SurahListItemSkeleton } from '../components/Skeleton';
 
 const THEME_TEXT_STYLES = {
   green: 'text-emerald-950',
@@ -68,10 +69,25 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="loading-spinner mx-auto mb-4"></div>
-          <p className={secondaryTextStyle}>Loading Quran chapters...</p>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={`rounded-2xl p-8 shadow-xl ${cardStyle}`}
+        >
+          <div className="space-y-4">
+            <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
+            <div className="h-6 w-full bg-slate-200 rounded animate-pulse" />
+            <div className="h-6 w-5/6 bg-slate-200 rounded animate-pulse" />
+          </div>
+        </motion.div>
+
+        {/* Surah list skeleton */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(12)].map((_, index) => (
+            <SurahListItemSkeleton key={index} />
+          ))}
         </div>
       </div>
     );
