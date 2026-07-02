@@ -219,13 +219,11 @@ const Surah = () => {
                 <span className="text-white font-bold text-xl">{surah.id}</span>
               </div>
               <div>
-                <h1 className={`text-3xl font-bold ${textStyle}`}>{surah.name_simple}</h1>
-                <p className={`text-lg ${textStyle}`}>{surah.translated_name.name}</p>
-                <div className={`flex items-center space-x-4 text-sm mt-2 ${secondaryTextStyle}`}>
-                  <div className="flex items-center">
-                    <RevelationPlaceIcon place={surah.revelation_place} className="w-5 h-5" />
-                  </div>
+                <div className="flex items-center space-x-3">
+                  <h1 className={`text-3xl font-bold ${textStyle}`}>{surah.name_simple}</h1>
+                  <RevelationPlaceIcon place={surah.revelation_place} className={`w-6 h-6 ${secondaryTextStyle}`} />
                 </div>
+                <p className={`text-lg mt-1 ${textStyle}`}>{surah.translated_name.name}</p>
               </div>
             </div>
 

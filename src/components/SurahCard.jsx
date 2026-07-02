@@ -51,19 +51,20 @@ const SurahCard = ({ surah, index }) => {
                 <span className="text-white font-bold">{surah.id}</span>
               </div>
               <div>
-                <h3 className={`text-xl font-bold ${textStyle}`}>{surah.name_simple}</h3>
+                <div className="flex items-center space-x-2">
+                  <h3 className={`text-xl font-bold ${textStyle}`}>{surah.name_simple}</h3>
+                  <RevelationPlaceIcon place={surah.revelation_place} className={`w-5 h-5 ${secondaryTextStyle}`} />
+                </div>
                 <p className={`text-sm ${secondaryTextStyle}`}>{surah.translated_name.name}</p>
               </div>
             </div>
             
             <div className="text-right">
-              <div className={`arabic-text text-2xl mb-2 ${textStyle}`}>
+              <div className={`arabic-text text-2xl ${textStyle}`}>
                 {surah.name_arabic}
               </div>
-              <div className={`flex items-center justify-end space-x-3 text-sm ${secondaryTextStyle}`}>
-                <RevelationPlaceIcon place={surah.revelation_place} className="w-4 h-4" />
-                <span>•</span>
-                <span>{surah.verses_count}</span>
+              <div className={`text-sm mt-1 ${secondaryTextStyle}`}>
+                {surah.verses_count} ayat
               </div>
             </div>
           </div>
