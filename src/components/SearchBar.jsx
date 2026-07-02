@@ -523,7 +523,11 @@ const SearchBar = ({ variant = 'global' }) => {
                                   </p>
                                   {result.snippet && (
                                     <p className="mt-1 text-base text-slate-700 quran-text-pak leading-relaxed">
-                                      {result.snippet}
+                                      {highlightMatches(result.snippet, query).map((seg, i) =>
+                                        seg.highlighted
+                                          ? <mark key={i} className="bg-amber-200 text-amber-900 rounded px-0.5">{seg.text}</mark>
+                                          : <span key={i}>{seg.text}</span>
+                                      )}
                                     </p>
                                   )}
                                   {result.translationSnippet && (

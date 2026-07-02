@@ -510,7 +510,11 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
                             </p>
                             {result.snippet && (
                               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 quran-text-pak leading-relaxed line-clamp-2">
-                                {result.snippet}
+                                {highlightMatches(result.snippet, searchQuery).map((seg, i) =>
+                                  seg.highlighted
+                                    ? <mark key={i} className="bg-amber-200 text-amber-900 rounded px-0.5">{seg.text}</mark>
+                                    : <span key={i}>{seg.text}</span>
+                                )}
                               </p>
                             )}
                           </div>

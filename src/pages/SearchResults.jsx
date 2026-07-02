@@ -174,8 +174,8 @@ const SearchResults = ({ onOpenSettings }) => {
                         {result.surahEnglishName ? ` • ${result.surahEnglishName}` : ''}
                       </p>
                       {result.snippet && (
-                        <p className="text-lg text-slate-700 quran-text-pak leading-relaxed">
-                          {result.snippet}
+                        <p className="text-xl text-slate-700 quran-text-pak leading-relaxed mb-3">
+                          <HighlightText text={result.snippet} query={query} />
                         </p>
                       )}
                       {result.translationSnippet && (

@@ -545,28 +545,7 @@ export const QuranProvider = ({ children }) => {
       const seenSurahIds = new Set();
 
       const buildSnippet = (entry) => {
-        const { wordsOriginal, wordsPlain, textArabic } = entry;
-        if (!wordsOriginal.length) {
-          return textArabic.split(/\s+/).slice(0, 3).join(' ');
-        }
-
-        let startIndex = 0;
-
-        if (hasArabicQuery) {
-          const normalizedQuery = stripArabicDiacritics(trimmedQuery).replace(/\s+/g, ' ').trim();
-          if (normalizedQuery) {
-            const matchIndex = wordsPlain.findIndex((word) => word.includes(normalizedQuery));
-            if (matchIndex !== -1) {
-              startIndex = Math.max(0, matchIndex - 1);
-            }
-          }
-        }
-
-        const snippetWords = wordsOriginal.slice(startIndex, startIndex + 3);
-        if (!snippetWords.length) {
-          return wordsOriginal.slice(0, 3).join(' ');
-        }
-        return snippetWords.join(' ');
+        return entry.textArabic || entry.wordsOriginal.join(' ');
       };
 
       const buildTranslationSnippet = (text) => {
