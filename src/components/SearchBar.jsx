@@ -494,12 +494,12 @@ const SearchBar = ({ variant = 'global' }) => {
             )}
 
             {showResults && (
-              <div className={`${resultsWrapperClasses} bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-96`}>
+              <div className={`${resultsWrapperClasses} bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col max-h-96 overflow-hidden`}>
                 {isLoading ? (
                   <div className="px-6 py-8 text-center text-sm text-slate-500">Searching…</div>
                 ) : (
                   <>
-                    <ul className="divide-y divide-slate-100">
+                    <ul className="divide-y divide-slate-100 overflow-y-auto flex-1">
                       {results.slice(0, 3).map((result) => (
                         <li key={result.id}>
                           <button
@@ -570,7 +570,7 @@ const SearchBar = ({ variant = 'global' }) => {
                     </ul>
 
                     {results.length > 0 && (
-                      <div className="border-t border-slate-100 p-4">
+                      <div className="border-t border-slate-100 p-4 flex-shrink-0 bg-white z-10">
                         <button
                           type="button"
                           onClick={() => {

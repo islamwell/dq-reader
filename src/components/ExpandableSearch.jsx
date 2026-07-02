@@ -479,14 +479,14 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
         
         {/* Search Results Dropdown */}
         {isExpanded && hasResults && (
-          <div className="search-results-dropdown absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl overflow-hidden max-h-96 overflow-y-auto z-50">
+          <div className="search-results-dropdown absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl flex flex-col max-h-96 overflow-hidden z-50">
             {isSearching ? (
-              <div className="px-4 py-6 text-center text-sm text-slate-500">
+              <div className="px-4 py-6 text-center text-sm text-slate-500 flex-shrink-0">
                 Searching...
               </div>
             ) : (
               <>
-              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto flex-1">
                 {searchResults.slice(0, 3).map((result) => (
                   <li key={result.id}>
                     <button
@@ -550,7 +550,7 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
                 )}
               </ul>
               {searchResults.length > 0 && (
-                <div className="border-t border-slate-100 dark:border-slate-700 p-3">
+                <div className="border-t border-slate-100 dark:border-slate-700 p-3 flex-shrink-0 bg-white dark:bg-slate-800 z-10">
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
