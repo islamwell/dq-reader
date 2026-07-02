@@ -335,7 +335,7 @@ const SearchBar = ({ variant = 'global' }) => {
   const showRecentSearches = isExpanded && !hasQuery && isFocused && recentSearches.length > 0;
 
   const placeholderText = useMemo(
-    () => 'Nis Last, Rahman 22, 15:20, Cave 44, كدأب',
+    () => 'Rahman 22, 15:20, Cave 44, "our Lord", كدأب',
     []
   );
 
@@ -569,7 +569,7 @@ const SearchBar = ({ variant = 'global' }) => {
                       )}
                     </ul>
 
-                    {results.length > 3 && (
+                    {results.length > 0 && (
                       <div className="border-t border-slate-100 p-4">
                         <button
                           type="button"
@@ -587,7 +587,7 @@ const SearchBar = ({ variant = 'global' }) => {
                           className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
                         >
                           <SafeIcon icon={FiList} className="text-lg" />
-                          <span>View All {results.length} Results</span>
+                          <span>{results.length > 3 ? `View All ${results.length} Results` : 'View All Results'}</span>
                         </button>
                       </div>
                     )}

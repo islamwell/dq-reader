@@ -29,7 +29,7 @@ import {
 } from '../data/localTranslations';
 import { DEFAULT_RECITER } from '../data/reciters';
 import { OfflineCache } from '../utils/offlineCache';
-import { buildFuseIndex, fuzzySearchSurahs, expandAliases } from '../utils/fuzzySearch';
+import { buildFuseIndex, fuzzySearchSurahs, expandAliases, QURAN_BOOK_TERMS, normalizeTransliteration, parseSearchMode } from '../utils/fuzzySearch';
 
 const SUPPORTED_THEMES = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
 const DEFAULT_THEME = 'light';
@@ -528,6 +528,13 @@ export const QuranProvider = ({ children }) => {
       // Check if query is purely numeric (e.g. user typed "5")
       const isPurelyNumeric = /^\d+$/.test(trimmedQuery);
 
+      // ── Detect exact phrase search (quoted strings) ──
+      const { exactPhrases, remainingQuery: unquotedRemainder } = parseSearchMode(rawQuery);
+      const hasExactPhrases = exactPhrases.length > 0;
+
+      // ── Detect "quran" book term searches ──
+      const isQuranBookSearch = !hasArabicQuery && QURAN_BOOK_TERMS.has(lowerQuery.replace(/[^a-z'\s]/g, '').trim());
+
       const index = await ensureSearchIndex();
       const surahLookup = surahs || [];
       const translationCache = new Map();
@@ -698,7 +705,8 @@ export const QuranProvider = ({ children }) => {
       const expandedQueries = expandAliases(textualTokens.join(' '));
 
       const candidateSurahs = [];
-      if (surahLookup.length) {
+      // Skip surah matching entirely for "quran/koran" book term searches
+      if (surahLookup.length && !isQuranBookSearch) {
         const hasOnlyNumber = !textualTokens.length && numericTokens.length === 1 && !hasArabicQuery;
         const normalizedQuery = lowerQuery.replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ').trim();
 
@@ -743,7 +751,8 @@ export const QuranProvider = ({ children }) => {
       }
 
       // ── Fuzzy fallback: if no exact surah matches, use Fuse.js ──
-      if (!candidateSurahs.length && textualTokens.length && !hasArabicQuery) {
+      // (also skip for quran book term searches)
+      if (!candidateSurahs.length && textualTokens.length && !hasArabicQuery && !isQuranBookSearch) {
         if (!fuseIndexRef.current && surahLookup.length) {
           fuseIndexRef.current = buildFuseIndex(surahLookup);
         }
@@ -797,15 +806,23 @@ export const QuranProvider = ({ children }) => {
         }
       }
 
-      if (includeTranslationsInSearch && textualTokens.length) {
-        // Search translations with both original and expanded tokens
-        const allTokenSets = [textualTokens];
+      if (includeTranslationsInSearch && (textualTokens.length || hasExactPhrases || isQuranBookSearch)) {
+        // Build all token sets for fuzzy token matching (alias-expanded)
+        const allTokenSets = textualTokens.length ? [textualTokens] : [];
         for (const expanded of expandedQueries) {
           const expandedTokens = expanded.split(/\s+/).filter(Boolean);
           if (expandedTokens.join(' ') !== textualTokens.join(' ')) {
             allTokenSets.push(expandedTokens);
           }
         }
+
+        // Pre-normalize tokens for transliteration matching
+        const normalizedTokenSets = allTokenSets.map((tokenSet) =>
+          tokenSet.map((t) => normalizeTransliteration(t))
+        );
+
+        // Lowercase exact phrases for matching
+        const lowerExactPhrases = exactPhrases.map((p) => p.toLowerCase());
 
         for (const entry of index.verses) {
           const translationText = await getTranslationForEntry(entry);
@@ -814,9 +831,30 @@ export const QuranProvider = ({ children }) => {
           }
 
           const normalizedTranslation = translationText.toLowerCase();
-          const matchesAny = allTokenSets.some((tokenSet) =>
-            tokenSet.every((token) => normalizedTranslation.includes(token))
-          );
+          let matchesAny = false;
+
+          // 1. Exact phrase matching (highest priority)
+          if (hasExactPhrases) {
+            matchesAny = lowerExactPhrases.every((phrase) =>
+              normalizedTranslation.includes(phrase)
+            );
+          }
+
+          // 2. Standard token matching with alias expansion
+          if (!matchesAny && allTokenSets.length) {
+            matchesAny = allTokenSets.some((tokenSet) =>
+              tokenSet.every((token) => normalizedTranslation.includes(token))
+            );
+          }
+
+          // 3. Transliteration-normalized matching (catches ramadan/ramadhan, qur'an/quran)
+          if (!matchesAny && normalizedTokenSets.length) {
+            const normalizedText = normalizeTransliteration(translationText);
+            matchesAny = normalizedTokenSets.some((tokenSet) =>
+              tokenSet.every((token) => normalizedText.includes(token))
+            );
+          }
+
           if (matchesAny) {
             addAyahResult({ ...entry, translationSnippet: buildTranslationSnippet(translationText) });
           }

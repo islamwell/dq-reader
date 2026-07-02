@@ -5,8 +5,21 @@
  *  - Common spelling aliases (quran/koran/kuran, surah/sura, etc.)
  *  - Fuse.js index builder for surah names
  *  - Highlight helper to mark matched terms in result text
+ *  - Transliteration normalizer for smarter fuzzy matching
+ *  - Exact phrase search parser for quoted queries
  */
 import Fuse from 'fuse.js';
+
+// ──────────────────────────────────────────────
+//  0.  QURAN BOOK TERMS
+// ──────────────────────────────────────────────
+// Terms that refer to the Quran as a book rather than a surah name.
+// When the user searches these, skip surah matching and only search
+// verse content / translations.
+export const QURAN_BOOK_TERMS = new Set([
+  'quran', 'koran', 'kuran', 'qoran', 'quoran', 'quraan', 'coran',
+  "qur'an", 'quran\'s', 'the quran', 'holy quran',
+]);
 
 // ──────────────────────────────────────────────
 //  1.  ALIAS MAP
@@ -218,6 +231,50 @@ const ALIAS_MAP = {
   ayatul: ['ayah'],
   ayat_ul: ['ayah'],
   kursi: ['baqarah'],
+
+  // Common Islamic term transliteration variants for translation search
+  ramadan: ['ramadan', 'ramadhan'],
+  ramadhan: ['ramadan', 'ramadhan'],
+  ramazan: ['ramadan', 'ramadhan'],
+  salah: ['salah', 'salat', 'prayer'],
+  salat: ['salah', 'salat', 'prayer'],
+  salaah: ['salah', 'salat'],
+  zakah: ['zakah', 'zakat'],
+  zakat: ['zakah', 'zakat'],
+  zakaat: ['zakah', 'zakat'],
+  sadaqah: ['sadaqah', 'sadaqa'],
+  sadaqa: ['sadaqah', 'sadaqa'],
+  ummah: ['ummah', 'umma'],
+  umma: ['ummah', 'umma'],
+  jibreel: ['jibreel', 'jibril', 'gabriel'],
+  jibril: ['jibreel', 'jibril', 'gabriel'],
+  gabriel: ['jibreel', 'jibril', 'gabriel'],
+  mikail: ['mikail', 'michael'],
+  michael: ['mikail', 'michael'],
+  isa: ['isa', 'jesus'],
+  jesus: ['isa', 'jesus'],
+  musa: ['musa', 'moses'],
+  moses: ['musa', 'moses'],
+  dawud: ['dawud', 'david'],
+  david: ['dawud', 'david'],
+  sulaiman: ['sulaiman', 'solomon'],
+  solomon: ['sulaiman', 'solomon'],
+  iblis: ['iblis', 'satan', 'shaitan'],
+  satan: ['iblis', 'satan', 'shaitan'],
+  shaitan: ['iblis', 'satan', 'shaitan'],
+  shaytan: ['iblis', 'satan', 'shaitan'],
+  jannah: ['jannah', 'paradise', 'garden'],
+  paradise: ['jannah', 'paradise', 'garden'],
+  jahannam: ['jahannam', 'hell', 'hellfire'],
+  hell: ['jahannam', 'hell', 'hellfire'],
+  tawbah: ['tawbah', 'repentance'],
+  repentance: ['tawbah', 'repentance'],
+  dua: ['dua', 'supplication'],
+  supplication: ['dua', 'supplication'],
+  hidayah: ['hidayah', 'guidance'],
+  hidaya: ['hidayah', 'guidance'],
+  khalifah: ['khalifah', 'caliph', 'vicegerent'],
+  caliph: ['khalifah', 'caliph'],
 };
 
 /**
@@ -268,6 +325,79 @@ export const expandAliases = (rawQuery) => {
   }
 
   return results;
+};
+
+// ──────────────────────────────────────────────
+//  1b. TRANSLITERATION NORMALIZER
+// ──────────────────────────────────────────────
+// Collapses common transliteration variants so that "ramadan" matches
+// "ramadhan", "Qur'an" matches "quran", etc.
+
+const TRANSLIT_REPLACEMENTS = [
+  [/[''`ʿʾ]/g, ''],        // strip apostrophes and hamza marks
+  [/dh/g, 'd'],             // ramadhan → ramadan
+  [/th/g, 't'],             // e.g. hadith → hadit
+  [/kh/g, 'k'],             // e.g. khalifah → kalifah
+  [/gh/g, 'g'],             // e.g. ghaib → gaib
+  [/sh/g, 's'],             // e.g. shukr → sukr
+  [/ph/g, 'f'],             // e.g. pharaoh → faraoh
+  [/aa/g, 'a'],             // e.g. salaat → salat
+  [/ee/g, 'i'],             // e.g. ameen → amin
+  [/oo/g, 'u'],             // e.g. rasool → rasul
+  [/ou/g, 'u'],             // e.g. djoumou'a → djumua
+];
+
+/**
+ * Normalize transliteration to collapse common spelling variants.
+ * This is intentionally lossy – it's used for matching, not display.
+ *
+ * @param {string} text - The text to normalize
+ * @returns {string} Normalized text
+ */
+export const normalizeTransliteration = (text) => {
+  if (!text) return '';
+  let normalized = text.toLowerCase().trim();
+  for (const [pattern, replacement] of TRANSLIT_REPLACEMENTS) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+  return normalized;
+};
+
+// ──────────────────────────────────────────────
+//  1c. EXACT PHRASE PARSER
+// ──────────────────────────────────────────────
+
+/**
+ * Parse a search query to detect exact phrase searches (quoted strings).
+ * Returns { exactPhrases: string[], remainingQuery: string }.
+ *
+ * Examples:
+ *   '"our Lord"'           → { exactPhrases: ['our Lord'], remainingQuery: '' }
+ *   '"our Lord" mercy'     → { exactPhrases: ['our Lord'], remainingQuery: 'mercy' }
+ *   'normal search'        → { exactPhrases: [], remainingQuery: 'normal search' }
+ */
+export const parseSearchMode = (rawQuery) => {
+  if (!rawQuery) return { exactPhrases: [], remainingQuery: '' };
+
+  const exactPhrases = [];
+  // Match content between double quotes (straight or curly)
+  const quotePattern = /["\u201C\u201D]([^"\u201C\u201D]+)["\u201C\u201D]/g;
+  let match;
+
+  while ((match = quotePattern.exec(rawQuery)) !== null) {
+    const phrase = match[1].trim();
+    if (phrase) {
+      exactPhrases.push(phrase);
+    }
+  }
+
+  // Remove quoted parts to get remaining query
+  const remainingQuery = rawQuery
+    .replace(quotePattern, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return { exactPhrases, remainingQuery };
 };
 
 // ──────────────────────────────────────────────

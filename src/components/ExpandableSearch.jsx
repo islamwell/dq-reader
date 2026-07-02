@@ -485,8 +485,9 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
                 Searching...
               </div>
             ) : (
+              <>
               <ul className="divide-y divide-slate-100 dark:divide-slate-700">
-                {searchResults.map((result) => (
+                {searchResults.slice(0, 3).map((result) => (
                   <li key={result.id}>
                     <button
                       type="button"
@@ -548,6 +549,23 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
                   </li>
                 )}
               </ul>
+              {searchResults.length > 0 && (
+                <div className="border-t border-slate-100 dark:border-slate-700 p-3">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                      collapseSearch();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+                  >
+                    <SafeIcon icon={FiSearch} className="text-base" />
+                    <span>{searchResults.length > 3 ? `View All ${searchResults.length} Results` : 'View All Results'}</span>
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </div>
         )}
