@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
-import SettingsPanel from './SettingsPanel';
 import SearchBar from './SearchBar';
 import FloatingVideoViewport from './FloatingVideoViewport';
 
@@ -84,11 +83,10 @@ const DEFAULT_THEME_STYLE = THEME_STYLES.green;
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { lastPlayedPosition, theme } = useQuranData();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { lastPlayedPosition, theme, isSettingsOpen, openSettings, closeSettings } = useQuranData();
 
   const themeStyles = THEME_STYLES[theme] ?? DEFAULT_THEME_STYLE;
-  const shellClasses = `min-h-screen transition-colors duration-300 ${themeStyles.shell}`;
+  const shellClasses = `min-h-screen flex flex-col transition-colors duration-300 ${themeStyles.shell}`;
   const navClasses = `shadow-lg border-b ${themeStyles.navBg} ${themeStyles.navBorder} ${themeStyles.navText}`;
   const brandTextClass = `text-2xl font-bold ${themeStyles.brandText}`;
   const baseNavButtonClasses =
@@ -106,8 +104,8 @@ const Layout = () => {
   };
 
   useEffect(() => {
-    setIsSettingsOpen(false);
-  }, [location.pathname, location.search]);
+    closeSettings();
+  }, [location.pathname, location.search, closeSettings]);
 
   return (
     <div className={shellClasses}>
@@ -139,7 +137,7 @@ const Layout = () => {
 
               <button
                 type="button"
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={openSettings}
                 className={settingsButtonClass}
                 aria-expanded={isSettingsOpen}
                 aria-controls="settings-panel"
@@ -154,7 +152,7 @@ const Layout = () => {
       {/* Floating Island Search Bar */}
       <SearchBar variant="global" />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,7 +162,25 @@ const Layout = () => {
         </motion.div>
       </main>
 
-      <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <footer className={`mt-auto border-t py-6 transition-colors duration-300 ${themeStyles.navBg} ${themeStyles.navBorder}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm">
+          <div className="flex items-center space-x-2">
+            <span className="font-medium">NurulQuran</span>
+            <span className="opacity-60">•</span>
+            <span className="opacity-75">Contemplative Quran Study Platform</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link to="/" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Home</Link>
+            <Link to="/bookmarks" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Bookmarks</Link>
+            <Link to="/videos" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Videos</Link>
+            <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
+          </div>
+          <div className="text-xs opacity-75 font-mono">
+            v1.1.4 (updated 2026-09-10 18:48)
+          </div>
+        </div>
+      </footer>
+
       <FloatingVideoViewport />
     </div>
   );

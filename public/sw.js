@@ -1,5 +1,5 @@
 // Service Worker for Offline Quran App
-const STATIC_CACHE_VERSION = 'v3';
+const STATIC_CACHE_VERSION = 'v4';
 const AUDIO_CACHE_VERSION = 'v1';
 const STATIC_CACHE_NAME = `quran-app-static-${STATIC_CACHE_VERSION}`;
 const AUDIO_CACHE_NAME = `quran-audio-${AUDIO_CACHE_VERSION}`;
@@ -10,7 +10,6 @@ const STATIC_CACHE_URLS = [
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-256.png',
-  '/icons/icon-384.png',
   '/icons/icon-512.png',
   '/data/quran-verses.json',
   ...TRANSLATION_ASSETS

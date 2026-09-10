@@ -40,7 +40,7 @@ const THEME_CARD_STYLES = {
   blue: 'bg-white border-blue-200',
   light: 'bg-white border-slate-200',
   dark: 'bg-slate-800 border-slate-700',
-  sepia: 'bg-white border-amber-300'
+  sepia: 'bg-amber-50/70 border-amber-300'
 };
 
 const Credits = () => {
@@ -150,7 +150,7 @@ const Credits = () => {
           </div>
 
           <div className={`border-2 rounded-xl p-6 shadow-lg ${cardStyle} text-center`}>
-            <p className={`text-sm ${secondaryTextStyle}`}>Version 2.5.14</p>
+            <p className={`text-sm ${secondaryTextStyle}`}>Version 1.1.4 (updated 2026-09-10 18:48)</p>
           </div>
         </motion.div>
       </div>

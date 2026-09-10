@@ -116,6 +116,9 @@ const Home = () => {
           transition={{ duration: 0.5 }}
           className={`mt-6 p-6 rounded-xl shadow-sm ${cardStyle}`}
         >
+          <p className={`font-arabic text-xl sm:text-2xl text-right leading-loose mb-3 ${textStyle}`} dir="rtl">
+            {currentAyah.arabic}
+          </p>
           <p className={`text-base leading-relaxed ${textStyle}`}>
             {currentAyah.translation}
           </p>

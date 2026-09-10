@@ -233,6 +233,10 @@ export const QuranProvider = ({ children }) => {
   const docPipWindowRef = useRef(null);
   const docPipPlayerRef = useRef(null);
   const [isDocPipActive, setIsDocPipActive] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const openSettings = useCallback(() => setIsSettingsOpen(true), []);
+  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
+  const toggleSettings = useCallback(() => setIsSettingsOpen((prev) => !prev), []);
 
   // Track video playback positions so users can resume where they left off
   const videoTimestampsRef = useRef(new Map());
@@ -2749,7 +2753,11 @@ export const QuranProvider = ({ children }) => {
       clearVideoTimestamp,
       audioCacheProgress,
       cacheArabicAudio,
-      cacheUrduAudio
+      cacheUrduAudio,
+      isSettingsOpen,
+      openSettings,
+      closeSettings,
+      toggleSettings
     }),
     [
       surahs,
@@ -2809,7 +2817,11 @@ export const QuranProvider = ({ children }) => {
       clearVideoTimestamp,
       audioCacheProgress,
       cacheArabicAudio,
-      cacheUrduAudio
+      cacheUrduAudio,
+      isSettingsOpen,
+      openSettings,
+      closeSettings,
+      toggleSettings
     ]
   );
 
