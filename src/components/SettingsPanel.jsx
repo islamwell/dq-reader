@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 import { RECITERS } from '../data/reciters';
+import { OfflineCache } from '../utils/offlineCache';
 
 const {
   FiGlobe,
@@ -18,11 +19,21 @@ const {
   FiVolume2,
   FiHeadphones,
   FiSearch,
-  FiDownloadCloud
+  FiDownloadCloud,
+  FiInfo,
+  FiTrash2,
+  FiHardDrive
 } = FiIcons;
 
 const themeOptions = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
 const languageOptions = ['English', 'Urdu', 'French', 'Norsk'];
+
+const LANGUAGE_FLAG_GRADIENTS = {
+  English: 'bg-gradient-to-b from-[#012169] via-[#C8102E] to-[#012169]',
+  Urdu: 'bg-gradient-to-b from-[#01411C] via-[#01411C] to-slate-100',
+  French: 'bg-gradient-to-b from-[#002654] via-white to-[#CE1126]',
+  Norsk: 'bg-gradient-to-b from-[#BA0C2F] via-[#00205B] to-[#BA0C2F]'
+};
 
 const SettingsPanel = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -183,6 +194,124 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     }
   };
 
+  const [showCacheModal, setShowCacheModal] = useState(false);
+  const [cacheStats, setCacheStats] = useState({
+    totalBytes: 0,
+    formattedSize: '0 B',
+    quotaFormatted: '',
+    arabicCount: 0,
+    urduCount: 0,
+    totalTracks: 0,
+    isLoading: false
+  });
+
+  const loadCacheStats = useCallback(async () => {
+    setCacheStats((prev) => ({ ...prev, isLoading: true }));
+    try {
+      let totalBytes = 0;
+      let quotaBytes = 0;
+      let totalTracks = 0;
+      let arabicCount = 0;
+      let urduCount = 0;
+
+      // 1. Check storage estimate
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          totalBytes = estimate.usage || 0;
+          quotaBytes = estimate.quota || 0;
+        } catch (e) {
+          console.warn('Storage estimate error:', e);
+        }
+      }
+
+      // 2. Count cached audio files
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        const audioCaches = ['dq-audio-v1', 'quran-audio-v1'];
+        for (const cacheName of audioCaches) {
+          try {
+            const hasCache = await caches.has(cacheName);
+            if (hasCache) {
+              const cache = await caches.open(cacheName);
+              const requests = await cache.keys();
+              totalTracks += requests.length;
+              requests.forEach((req) => {
+                const url = (req.url || '').toLowerCase();
+                if (url.includes('urdu') || url.includes('junagarhi') || url.includes('dq2')) {
+                  urduCount += 1;
+                } else {
+                  arabicCount += 1;
+                }
+              });
+            }
+          } catch (e) {
+            console.warn(`Error inspecting cache ${cacheName}:`, e);
+          }
+        }
+      }
+
+      const formatBytes = (bytes) => {
+        if (!bytes || bytes <= 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+      };
+
+      setCacheStats({
+        totalBytes,
+        formattedSize: formatBytes(totalBytes),
+        quotaFormatted: quotaBytes > 0 ? formatBytes(quotaBytes) : '',
+        arabicCount,
+        urduCount,
+        totalTracks,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('Failed to load cache stats:', error);
+      setCacheStats((prev) => ({
+        ...prev,
+        formattedSize: '0 B',
+        isLoading: false
+      }));
+    }
+  }, []);
+
+  const handleClearAudioCache = async () => {
+    try {
+      setCacheStats((prev) => ({ ...prev, isLoading: true }));
+
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        const audioCaches = ['dq-audio-v1', 'quran-audio-v1'];
+        for (const cacheName of audioCaches) {
+          try {
+            await caches.delete(cacheName);
+          } catch (e) {
+            console.warn(`Error deleting cache ${cacheName}:`, e);
+          }
+        }
+      }
+
+      if (OfflineCache?.isNative?.()) {
+        try {
+          await OfflineCache.clearAll();
+        } catch (e) {
+          console.warn('Error clearing native cache:', e);
+        }
+      }
+
+      setArabicCacheNote('');
+      setUrduCacheNote('');
+      await loadCacheStats();
+
+      toast.success('Audio cache cleared successfully');
+    } catch (error) {
+      console.error('Failed to clear audio cache:', error);
+      toast.error('Failed to clear audio cache');
+      setCacheStats((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -309,18 +438,26 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <div className="grid grid-cols-4 gap-2">
                   {languageOptions.map((option) => {
                     const isActive = language === option;
+                    const flagGradient = LANGUAGE_FLAG_GRADIENTS[option] || 'bg-slate-700';
+
                     return (
                       <button
                         key={option}
                         type="button"
                         onClick={() => setLanguagePreference(option)}
-                        className={`px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                        className={`relative h-11 px-2 rounded-lg ${flagGradient} flex items-center justify-center transition-all ${
                           isActive
-                            ? 'border-islamic-gold bg-islamic-50 text-islamic-gold'
-                            : 'border-slate-200 text-slate-600 hover:border-islamic-gold/60'
+                            ? 'ring-2 ring-offset-2 ring-emerald-500 shadow-md scale-105 border-white/60'
+                            : 'border border-black/10 opacity-90 hover:opacity-100 hover:scale-[1.02] shadow-xs'
                         }`}
+                        title={`${option} language`}
                       >
-                        {option}
+                        <span className="text-white font-bold text-xs tracking-wide drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.9)]">
+                          {option}
+                        </span>
+                        {isActive && (
+                          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white" />
+                        )}
                       </button>
                     );
                   })}
@@ -369,19 +506,19 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                   <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Audio Options</h3>
                 </div>
                 <div className="space-y-3">
-                  <div>
-                    <label htmlFor="reciter-select" className="block text-sm font-semibold text-slate-700 mb-2">
+                  <div className="rounded-xl p-3.5 bg-emerald-50/80 border border-emerald-200 shadow-xs space-y-2">
+                    <label htmlFor="reciter-select" className="block text-sm font-semibold text-emerald-950">
                       Select Reciter
                     </label>
                     <select
                       id="reciter-select"
                       value={selectedReciter}
                       onChange={(e) => setReciterPreference(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-slate-700 bg-white hover:border-islamic-gold focus:border-islamic-gold focus:ring-2 focus:ring-islamic-gold/20 focus:outline-none transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-emerald-300 text-emerald-950 bg-white font-medium hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all shadow-xs"
                     >
                       {RECITERS.map((reciter) => (
                         <option key={reciter.folder} value={reciter.folder}>
-                          {reciter.name} ({reciter.quality})
+                          {reciter.name}
                         </option>
                       ))}
                     </select>
@@ -487,6 +624,25 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     </span>
                   </button>
 
+                  <div className="flex items-center justify-between pt-1 pb-1">
+                    <div className="flex items-center gap-2">
+                      <SafeIcon icon={FiDownloadCloud} className="text-islamic-gold" />
+                      <span className="text-sm font-semibold text-slate-700">Offline Audio Storage</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCacheModal(true);
+                        loadCacheStats();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-xs"
+                      title="View offline storage usage & clear cache"
+                    >
+                      <SafeIcon icon={FiInfo} className="text-sm text-emerald-600" />
+                      <span>Cache Details</span>
+                    </button>
+                  </div>
+
                   <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex items-start gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
@@ -552,33 +708,113 @@ const SettingsPanel = ({ isOpen, onClose }) => {
               </section>
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-200 space-y-3">
+            <div className="px-5 py-4 border-t border-slate-200 grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={handleGoHome}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-islamic-gold hover:text-islamic-gold transition-colors"
+                onClick={handleGoToCredits}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-colors"
+                title="Credits & information"
               >
-                <SafeIcon icon={FiHome} />
-                <span>Go Home</span>
+                <SafeIcon icon={FiExternalLink} className="text-sm shrink-0" />
+                <span>Credits</span>
               </button>
               <button
                 type="button"
                 onClick={handleGoToVideos}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:border-islamic-gold hover:text-islamic-gold transition-colors"
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 shadow-xs transition-colors"
+                title="Ayah videos"
               >
-                <SafeIcon icon={FiVideo} />
+                <SafeIcon icon={FiVideo} className="text-sm shrink-0" />
                 <span>Video</span>
               </button>
               <button
                 type="button"
-                onClick={handleGoToCredits}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-islamic-gold text-white hover:bg-yellow-600 transition-colors"
+                onClick={handleGoHome}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-semibold bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 shadow-xs transition-colors"
+                title="Return to homepage"
               >
-                <SafeIcon icon={FiExternalLink} />
-                <span>Credits</span>
+                <SafeIcon icon={FiHome} className="text-sm shrink-0" />
+                <span>Home</span>
               </button>
             </div>
           </motion.aside>
+
+          {/* Cache Details & Management Modal */}
+          {showCacheModal && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden p-6 space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800">
+                      <SafeIcon icon={FiHardDrive} className="text-lg" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800">Audio Cache Details</h3>
+                      <p className="text-xs text-slate-500">Offline storage & memory</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCacheModal(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors text-sm font-bold"
+                    aria-label="Close modal"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Storage Used</p>
+                    <p className="text-3xl font-bold text-slate-900">
+                      {cacheStats.isLoading ? 'Calculating...' : cacheStats.formattedSize}
+                    </p>
+                    {cacheStats.quotaFormatted && (
+                      <p className="text-xs text-slate-500 mt-1">Available Device Quota: {cacheStats.quotaFormatted}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                      <p className="text-xs text-emerald-800 font-medium">Arabic Audio</p>
+                      <p className="text-lg font-bold text-emerald-950 mt-0.5">
+                        {cacheStats.isLoading ? '...' : `${cacheStats.arabicCount} tracks`}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                      <p className="text-xs text-emerald-800 font-medium">Urdu Audio</p>
+                      <p className="text-lg font-bold text-emerald-950 mt-0.5">
+                        {cacheStats.isLoading ? '...' : `${cacheStats.urduCount} tracks`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500 text-center leading-relaxed">
+                    Audio tracks are cached on your device for offline playback. You can clear the cache at any time to free up storage space.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleClearAudioCache}
+                    disabled={cacheStats.isLoading}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors disabled:opacity-50"
+                  >
+                    <SafeIcon icon={FiTrash2} />
+                    <span>Clear Cache</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCacheModal(false)}
+                    className="px-4 py-2.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </AnimatePresence>
