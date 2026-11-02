@@ -250,6 +250,19 @@ export const QuranProvider = ({ children }) => {
       return true;
     }
   });
+
+  // Arabic Grammar color-coding and morphology states
+  const [grammarMode, setGrammarModeState] = useState(() => {
+    if (typeof window === 'undefined') return 'colored';
+    try {
+      const stored = localStorage.getItem('quran_grammar_mode');
+      return stored && ['colored', 'underline', 'off'].includes(stored) ? stored : 'colored';
+    } catch {
+      return 'colored';
+    }
+  });
+  const [selectedGrammarWord, setSelectedGrammarWord] = useState(null);
+  const [grammarData, setGrammarData] = useState({});
   const audioRef = useRef(null);
   const translationsCacheRef = useRef({});
   const translationWarningRef = useRef(new Set());
@@ -1115,6 +1128,46 @@ export const QuranProvider = ({ children }) => {
     },
     [enablePrimaryAudio, persistAudioPreferences]
   );
+
+  const setGrammarMode = useCallback((mode) => {
+    const validMode = ['colored', 'underline', 'off'].includes(mode) ? mode : 'colored';
+    try {
+      localStorage.setItem('quran_grammar_mode', validMode);
+    } catch (e) {
+      console.error('Failed to persist grammar mode:', e);
+    }
+    setGrammarModeState(validMode);
+  }, []);
+
+  const toggleGrammarMode = useCallback(() => {
+    setGrammarModeState((prev) => {
+      const next = prev === 'colored' ? 'off' : 'colored';
+      try {
+        localStorage.setItem('quran_grammar_mode', next);
+      } catch (e) {
+        console.error('Failed to persist grammar mode:', e);
+      }
+      return next;
+    });
+  }, []);
+
+  const fetchSurahGrammar = useCallback(async (surahNumber) => {
+    const sNum = parseInt(surahNumber, 10);
+    if (!sNum) return null;
+    if (grammarData[sNum]) return grammarData[sNum];
+
+    try {
+      const response = await fetch(`/data/grammar/surah_${sNum}.json`);
+      if (!response.ok) {
+        return null;
+      }
+      const data = await response.json();
+      setGrammarData((prev) => ({ ...prev, [sNum]: data }));
+      return data;
+    } catch {
+      return null;
+    }
+  }, [grammarData]);
 
   const setDQ2AudioEnabled = useCallback((value) => {
     const normalizedValue = Boolean(value);
@@ -2866,7 +2919,14 @@ export const QuranProvider = ({ children }) => {
       isSettingsOpen,
       openSettings,
       closeSettings,
-      toggleSettings
+      toggleSettings,
+      grammarMode,
+      setGrammarMode,
+      toggleGrammarMode,
+      selectedGrammarWord,
+      setSelectedGrammarWord,
+      grammarData,
+      fetchSurahGrammar
     }),
     [
       surahs,
@@ -2933,7 +2993,14 @@ export const QuranProvider = ({ children }) => {
       isSettingsOpen,
       openSettings,
       closeSettings,
-      toggleSettings
+      toggleSettings,
+      grammarMode,
+      setGrammarMode,
+      toggleGrammarMode,
+      selectedGrammarWord,
+      setSelectedGrammarWord,
+      grammarData,
+      fetchSurahGrammar
     ]
   );
 

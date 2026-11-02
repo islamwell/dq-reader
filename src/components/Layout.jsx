@@ -6,6 +6,8 @@ import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
 import SearchBar from './SearchBar';
 import FloatingVideoViewport from './FloatingVideoViewport';
+import GrammarBottomSheet from './grammar/GrammarBottomSheet';
+import useGrammarKeyboardShortcuts from '../hooks/useGrammarKeyboardShortcuts';
 
 const { FiSettings, FiCornerDownRight } = FiIcons;
 
@@ -83,7 +85,21 @@ const DEFAULT_THEME_STYLE = THEME_STYLES.green;
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { lastPlayedPosition, theme, isSettingsOpen, openSettings, closeSettings } = useQuranData();
+  const {
+    lastPlayedPosition,
+    theme,
+    isSettingsOpen,
+    openSettings,
+    closeSettings,
+    grammarMode,
+    setGrammarMode,
+    toggleGrammarMode,
+    selectedGrammarWord,
+    setSelectedGrammarWord
+  } = useQuranData();
+
+  // Register global G shortcut
+  useGrammarKeyboardShortcuts({ grammarMode, setGrammarMode, toggleGrammarMode });
 
   const themeStyles = THEME_STYLES[theme] ?? DEFAULT_THEME_STYLE;
   const shellClasses = `min-h-screen flex flex-col transition-colors duration-300 ${themeStyles.shell}`;
@@ -101,6 +117,22 @@ const Layout = () => {
     }
 
     navigate(`/surah/${lastPlayedPosition.surahNumber}?ayah=${lastPlayedPosition.ayahNumber}`);
+  };
+
+  const handleNavigateWord = (delta) => {
+    if (!selectedGrammarWord || !selectedGrammarWord.wordsInAyah) return;
+    const words = selectedGrammarWord.wordsInAyah;
+    const currentIndex = words.findIndex((w) => w.position === selectedGrammarWord.position);
+    if (currentIndex === -1) return;
+    const nextIndex = currentIndex + delta;
+    if (nextIndex >= 0 && nextIndex < words.length) {
+      setSelectedGrammarWord({
+        ...words[nextIndex],
+        surahNumber: selectedGrammarWord.surahNumber,
+        ayahNumber: selectedGrammarWord.ayahNumber,
+        wordsInAyah: words
+      });
+    }
   };
 
   useEffect(() => {
@@ -176,12 +208,32 @@ const Layout = () => {
             <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
           </div>
           <div className="text-xs opacity-75 font-mono">
-            v1.1.8 (updated 2026-11-02 05:51)
+            v1.1.9 (updated 2026-11-02 07:44)
           </div>
         </div>
       </footer>
 
       <FloatingVideoViewport />
+
+      <GrammarBottomSheet
+        word={selectedGrammarWord}
+        theme={theme}
+        onClose={() => setSelectedGrammarWord(null)}
+        onNavigateWord={handleNavigateWord}
+        hasPreviousWord={
+          Boolean(
+            selectedGrammarWord?.wordsInAyah &&
+              selectedGrammarWord.wordsInAyah.findIndex((w) => w.position === selectedGrammarWord.position) > 0
+          )
+        }
+        hasNextWord={
+          Boolean(
+            selectedGrammarWord?.wordsInAyah &&
+              selectedGrammarWord.wordsInAyah.findIndex((w) => w.position === selectedGrammarWord.position) <
+                selectedGrammarWord.wordsInAyah.length - 1
+          )
+        }
+      />
     </div>
   );
 };

@@ -23,7 +23,8 @@ const {
   FiInfo,
   FiTrash2,
   FiHardDrive,
-  FiClock
+  FiClock,
+  FiSliders
 } = FiIcons;
 
 // Round Flag Icon SVGs
@@ -133,7 +134,9 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     fetchSurahVerses,
     audioCacheProgress,
     cacheArabicAudio,
-    cacheUrduAudio
+    cacheUrduAudio,
+    grammarMode,
+    setGrammarMode
   } = useQuranData();
 
   const [versesCache, setVersionsCache] = useState({});
@@ -585,6 +588,79 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                       </button>
                     );
                   })}
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <SafeIcon icon={FiSliders} className="text-islamic-gold" />
+                  <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                    Arabic Grammar Colors (نحو)
+                  </h3>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setGrammarMode('colored')}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      grammarMode === 'colored'
+                        ? 'bg-amber-600 text-white ring-2 ring-offset-1 ring-amber-500 shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    Colored (Default)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGrammarMode('underline')}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      grammarMode === 'underline'
+                        ? 'bg-blue-600 text-white ring-2 ring-offset-1 ring-blue-500 shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    Underlines
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGrammarMode('off')}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      grammarMode === 'off'
+                        ? 'bg-slate-700 text-white ring-2 ring-offset-1 ring-slate-600 shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    Off
+                  </button>
+                </div>
+
+                {/* Color Legend Card */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="flex items-center space-x-1.5 text-blue-700">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                      <span className="font-bold">اسم (Ism)</span>
+                    </span>
+                    <span className="text-slate-500">Nouns, pronouns, adjectives</span>
+                  </div>
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="flex items-center space-x-1.5 text-amber-700">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                      <span className="font-bold">فعل (Fi&apos;l)</span>
+                    </span>
+                    <span className="text-slate-500">Verbs & commands</span>
+                  </div>
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="flex items-center space-x-1.5 text-emerald-700">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                      <span className="font-bold">حرف (Harf)</span>
+                    </span>
+                    <span className="text-slate-500">Prepositions & particles</span>
+                  </div>
+                  <div className="pt-1.5 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                    <span>Press <kbd className="font-mono bg-white px-1 border rounded">G</kbd> to toggle quickly</span>
+                    <span>Tap word for slide-up details</span>
+                  </div>
                 </div>
               </section>
 

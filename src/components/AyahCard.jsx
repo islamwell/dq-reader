@@ -5,6 +5,7 @@ import { FaLightbulb } from 'react-icons/fa';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 import { isDocumentPiPSupported, buildPiPPlayer } from '../utils/documentPiP';
+import AyahGrammarText from './grammar/AyahGrammarText';
 
 const { FiPlay, FiPause, FiVideo } = FiIcons;
 
@@ -71,7 +72,9 @@ const AyahCard = ({ verse, surahNumber }) => {
     isDocPipActive,
     setIsDocPipActive,
     closeDocPiP,
-    addVisitedAyah
+    addVisitedAyah,
+    grammarMode,
+    grammarData
   } = useQuranData();
   const [showTafseer, setShowTafseer] = useState(false);
   const videoButtonRef = useRef(null);
@@ -301,9 +304,18 @@ const AyahCard = ({ verse, surahNumber }) => {
       </div>
 
       <div className="space-y-4">
-        <div className={`quran-text-pak text-right leading-loose ${textStyle}`}>
-          {verse.text_uthmani}
-        </div>
+        {grammarData?.[surahNumber]?.ayahs?.[String(verse.verse_number)]?.words && grammarMode !== 'off' ? (
+          <AyahGrammarText
+            words={grammarData[surahNumber].ayahs[String(verse.verse_number)].words}
+            surahNumber={surahNumber}
+            ayahNumber={verse.verse_number}
+            className={textStyle}
+          />
+        ) : (
+          <div className={`quran-text-pak text-right leading-loose ${textStyle}`}>
+            {verse.text_uthmani}
+          </div>
+        )}
 
         {translationMeta && (
           <div className={`${isUrduTranslation ? 'urdu-text' : 'english-text'} p-4 rounded-lg ${accentBgStyle}`}>

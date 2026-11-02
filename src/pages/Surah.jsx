@@ -6,6 +6,7 @@ import SafeIcon from '../common/SafeIcon';
 import AyahCard from '../components/AyahCard';
 import AudioPlayer from '../components/AudioPlayer';
 import RevelationPlaceIcon from '../components/RevelationPlaceIcon';
+import GrammarToggle from '../components/grammar/GrammarToggle';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 import { AyahCardSkeleton } from '../components/Skeleton';
 
@@ -50,7 +51,7 @@ const THEME_LINK_STYLES = {
 const Surah = () => {
   const { surahNumber } = useParams();
   const location = useLocation();
-  const { surahs, fetchSurahVerses, setCurrentSurah, theme, addVisitedAyah } = useQuranData();
+  const { surahs, fetchSurahVerses, fetchSurahGrammar, setCurrentSurah, theme, addVisitedAyah } = useQuranData();
   const { playingAyah } = useQuranAudio();
   const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +143,10 @@ const Surah = () => {
       setVerses(versesData);
       setLoading(false);
 
+      if (surahNumber) {
+        fetchSurahGrammar?.(surahNumber);
+      }
+
       if (!initialAyahFromQuery && surahNumber) {
         addVisitedAyah?.(Number(surahNumber), 1);
       }
@@ -150,7 +155,7 @@ const Surah = () => {
     if (surahs.length > 0) {
       loadSurah();
     }
-  }, [fetchSurahVerses, setCurrentSurah, surahNumber, surahs, initialAyahFromQuery, addVisitedAyah]);
+  }, [fetchSurahVerses, fetchSurahGrammar, setCurrentSurah, surahNumber, surahs, initialAyahFromQuery, addVisitedAyah]);
 
   // Track ayats as the user reads and scrolls through them
   useEffect(() => {
@@ -254,13 +259,17 @@ const Surah = () => {
           animate={{ opacity: 1, y: 0 }}
           className={`rounded-xl p-6 shadow-lg ${cardStyle}`}
         >
-          <Link
-            to="/"
-            className={`inline-flex items-center space-x-2 mb-6 transition-colors ${linkStyle}`}
-          >
-            <SafeIcon icon={FiArrowLeft} />
-            <span>Back to Surahs</span>
-          </Link>
+          <div className="flex items-center justify-between mb-6">
+            <Link
+              to="/"
+              className={`inline-flex items-center space-x-2 transition-colors ${linkStyle}`}
+            >
+              <SafeIcon icon={FiArrowLeft} />
+              <span>Back to Surahs</span>
+            </Link>
+
+            <GrammarToggle />
+          </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
