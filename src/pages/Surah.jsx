@@ -50,7 +50,7 @@ const THEME_LINK_STYLES = {
 const Surah = () => {
   const { surahNumber } = useParams();
   const location = useLocation();
-  const { surahs, fetchSurahVerses, setCurrentSurah, theme } = useQuranData();
+  const { surahs, fetchSurahVerses, setCurrentSurah, theme, addVisitedAyah } = useQuranData();
   const { playingAyah } = useQuranAudio();
   const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,10 @@ const Surah = () => {
     const ayahElement = document.querySelector(`[data-ayah="${ayahNumber}"]`);
     if (ayahElement) {
       ayahElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      ayahElement.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
+      setTimeout(() => {
+        ayahElement.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
+      }, 2200);
     }
   }, []);
 
@@ -83,7 +87,13 @@ const Surah = () => {
     if (initialAyahFromQuery) {
       hasAppliedInitialScrollRef.current = false;
     }
-  }, [initialAyahFromQuery]);
+  }, [initialAyahFromQuery, location.key]);
+
+  useEffect(() => {
+    if (initialAyahFromQuery && surahNumber) {
+      addVisitedAyah?.(Number(surahNumber), initialAyahFromQuery);
+    }
+  }, [initialAyahFromQuery, surahNumber, addVisitedAyah]);
 
   useEffect(() => {
     if (!playingAyah) {
@@ -96,13 +106,15 @@ const Surah = () => {
       return;
     }
 
+    addVisitedAyah?.(playingSurahId, playingAyahNumber);
+
     if (lastScrolledAyahRef.current === playingAyahNumber) {
       return;
     }
 
     lastScrolledAyahRef.current = playingAyahNumber;
     scrollToAyah(playingAyahNumber);
-  }, [playingAyah, scrollToAyah, surahNumber]);
+  }, [playingAyah, scrollToAyah, surahNumber, addVisitedAyah]);
 
   useEffect(() => {
     if (!initialAyahFromQuery || loading || verses.length === 0 || hasAppliedInitialScrollRef.current) {
@@ -122,19 +134,56 @@ const Surah = () => {
   useEffect(() => {
     const loadSurah = async () => {
       setLoading(true);
-  const surahInfo = surahs.find((item) => item.id === parseInt(surahNumber, 10)) || null;
+      const surahInfo = surahs.find((item) => item.id === parseInt(surahNumber, 10)) || null;
       setSurah(surahInfo);
       setCurrentSurah(surahInfo);
 
       const versesData = surahInfo ? await fetchSurahVerses(surahNumber) : [];
       setVerses(versesData);
       setLoading(false);
+
+      if (!initialAyahFromQuery && surahNumber) {
+        addVisitedAyah?.(Number(surahNumber), 1);
+      }
     };
 
     if (surahs.length > 0) {
       loadSurah();
     }
-  }, [fetchSurahVerses, setCurrentSurah, surahNumber, surahs]);
+  }, [fetchSurahVerses, setCurrentSurah, surahNumber, surahs, initialAyahFromQuery, addVisitedAyah]);
+
+  // Track ayats as the user reads and scrolls through them
+  useEffect(() => {
+    if (loading || verses.length === 0 || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    let debounceTimer = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            const ayahNum = Number(entry.target.getAttribute('data-ayah'));
+            if (ayahNum) {
+              clearTimeout(debounceTimer);
+              debounceTimer = setTimeout(() => {
+                addVisitedAyah?.(Number(surahNumber), ayahNum);
+              }, 1200);
+            }
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    const ayahElements = document.querySelectorAll('[data-ayah]');
+    ayahElements.forEach((el) => observer.observe(el));
+
+    return () => {
+      clearTimeout(debounceTimer);
+      observer.disconnect();
+    };
+  }, [loading, surahNumber, verses.length, addVisitedAyah]);
 
   const cardStyle = THEME_CARD_STYLES[theme] || THEME_CARD_STYLES.green;
   const textStyle = THEME_TEXT_STYLES[theme] || THEME_TEXT_STYLES.green;

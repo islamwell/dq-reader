@@ -70,7 +70,8 @@ const AyahCard = ({ verse, surahNumber }) => {
     docPipPlayerRef,
     isDocPipActive,
     setIsDocPipActive,
-    closeDocPiP
+    closeDocPiP,
+    addVisitedAyah
   } = useQuranData();
   const [showTafseer, setShowTafseer] = useState(false);
   const videoButtonRef = useRef(null);
@@ -96,6 +97,7 @@ const AyahCard = ({ verse, surahNumber }) => {
     floatingVideo?.ayahNumber === verse.verse_number;
 
   const handlePlayAudio = () => {
+    addVisitedAyah?.(surahNumber, verse.verse_number);
     if (isPlaying && !isPaused) {
       pauseAudio();
       return;
@@ -110,11 +112,13 @@ const AyahCard = ({ verse, surahNumber }) => {
   };
 
   const handleToggleBookmark = () => {
+    addVisitedAyah?.(surahNumber, verse.verse_number);
     toggleBookmark(surahNumber, verse.verse_number);
   };
 
   const handleToggleVideo = async () => {
     if (!videoForAyah) return;
+    addVisitedAyah?.(surahNumber, verse.verse_number);
 
     if (isVideoActive) {
       closeDocPiP();
@@ -233,6 +237,7 @@ const AyahCard = ({ verse, surahNumber }) => {
       transition={{ duration: 0.2 }}
       className={`ayah-card rounded-xl p-6 shadow-md ${isPlaying ? playingStyle : cardStyle}`}
       data-ayah={verse.verse_number}
+      onClick={() => addVisitedAyah?.(surahNumber, verse.verse_number)}
     >
       <div className="flex items-start justify-between mb-4 relative">
         <div className="relative flex items-center gap-3">

@@ -682,4 +682,64 @@ describe('QuranContext - CRUD Operations', () => {
       expect(localStorage.getItem).toHaveBeenCalledWith('quran_audio_mappings');
     });
   });
+
+  describe('Ayat History Operations', () => {
+    it('should add visited ayats, deduplicate, and limit to 20 entries', async () => {
+      const { result } = renderHook(() => useQuran(), {
+        wrapper: QuranProvider
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      act(() => {
+        result.current.addVisitedAyah(1, 1);
+        result.current.addVisitedAyah(1, 2);
+        result.current.addVisitedAyah(1, 1); // duplicate, moves to front
+      });
+
+      expect(result.current.history[0]).toMatchObject({
+        surahNumber: 1,
+        ayahNumber: 1
+      });
+      expect(result.current.history.length).toBe(2);
+
+      // Add 25 entries to test 20 cap
+      act(() => {
+        for (let i = 1; i <= 25; i++) {
+          result.current.addVisitedAyah(2, i);
+        }
+      });
+
+      expect(result.current.history.length).toBe(20);
+      expect(result.current.history[0]).toMatchObject({
+        surahNumber: 2,
+        ayahNumber: 25
+      });
+    });
+
+    it('should clear history correctly', async () => {
+      const { result } = renderHook(() => useQuran(), {
+        wrapper: QuranProvider
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      act(() => {
+        result.current.addVisitedAyah(3, 10);
+      });
+
+      expect(result.current.history.length).toBeGreaterThan(0);
+
+      act(() => {
+        result.current.clearHistory();
+      });
+
+      expect(result.current.history).toEqual([]);
+      expect(localStorage.removeItem).toHaveBeenCalledWith('quran_ayah_history');
+    });
+  });
 });

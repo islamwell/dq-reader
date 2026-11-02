@@ -66,6 +66,8 @@ const stripArabicDiacritics = (text = '') => text.replace(ARABIC_DIACRITICS_REGE
 
 const AUDIO_PREFERENCES_STORAGE_KEY = 'quran_audio_preferences';
 const SEARCH_TRANSLATIONS_PREF_KEY = 'quran_search_include_translations';
+const AYAH_HISTORY_STORAGE_KEY = 'quran_ayah_history';
+const MAX_HISTORY_ENTRIES = 20;
 
 const buildTranslationStorageKey = (edition, surahNumber) => `quran_translation_${edition}_${surahNumber}`;
 
@@ -199,6 +201,36 @@ export const QuranProvider = ({ children }) => {
   const [enableSupplementalAudio, setEnableSupplementalAudio] = useState(true);
   const [enableDQ2Audio, setEnableDQ2Audio] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
+  const [history, setHistory] = useState(() => {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+    try {
+      const stored = localStorage.getItem(AYAH_HISTORY_STORAGE_KEY);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter(
+            (item) =>
+              item &&
+              Number.isInteger(Number(item.surahNumber)) &&
+              Number.isInteger(Number(item.ayahNumber))
+          )
+          .map((item) => ({
+            id: item.id || `${item.surahNumber}:${item.ayahNumber}`,
+            surahNumber: Number(item.surahNumber),
+            ayahNumber: Number(item.ayahNumber),
+            visitedAt: item.visitedAt || Date.now()
+          }))
+          .slice(0, MAX_HISTORY_ENTRIES);
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to restore ayah history:', error);
+      return [];
+    }
+  });
   const [audioCacheProgress, setAudioCacheProgress] = useState({
     arabic: { status: 'idle', completed: 0, total: 0 },
     urdu: { status: 'idle', completed: 0, total: 0 }
@@ -281,6 +313,51 @@ export const QuranProvider = ({ children }) => {
     }
   }, []);
 
+  const addVisitedAyah = useCallback((surahNumber, ayahNumber) => {
+    const sNum = Number(surahNumber);
+    const aNum = Number(ayahNumber);
+
+    if (
+      !Number.isInteger(sNum) ||
+      !Number.isInteger(aNum) ||
+      sNum < 1 ||
+      sNum > 114 ||
+      aNum < 1
+    ) {
+      return;
+    }
+
+    setHistory((prev) => {
+      const filtered = prev.filter(
+        (item) => !(item.surahNumber === sNum && item.ayahNumber === aNum)
+      );
+      const newEntry = {
+        id: `${sNum}:${aNum}`,
+        surahNumber: sNum,
+        ayahNumber: aNum,
+        visitedAt: Date.now()
+      };
+      const updated = [newEntry, ...filtered].slice(0, MAX_HISTORY_ENTRIES);
+
+      try {
+        localStorage.setItem(AYAH_HISTORY_STORAGE_KEY, JSON.stringify(updated));
+      } catch (error) {
+        console.error('Failed to persist ayah history:', error);
+      }
+
+      return updated;
+    });
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    try {
+      localStorage.removeItem(AYAH_HISTORY_STORAGE_KEY);
+    } catch (error) {
+      console.error('Failed to clear ayah history:', error);
+    }
+  }, []);
+
   const persistReadingPosition = useCallback((surahNumber, ayahNumber) => {
     const position = {
       surahNumber,
@@ -295,7 +372,8 @@ export const QuranProvider = ({ children }) => {
     }
 
     setLastPlayedPosition(position);
-  }, []);
+    addVisitedAyah(surahNumber, ayahNumber);
+  }, [addVisitedAyah]);
 
   const getCustomAudioUrl = useCallback((surahNumber, ayahNumber) => {
     const normalizedSurah = Number(surahNumber);
@@ -2707,6 +2785,9 @@ export const QuranProvider = ({ children }) => {
       enableSupplementalAudio,
       enableDQ2Audio,
       bookmarks,
+      history,
+      addVisitedAyah,
+      clearHistory,
       floatingVideo,
       setCurrentSurah,
       saveAudioMapping,
@@ -2775,6 +2856,9 @@ export const QuranProvider = ({ children }) => {
       enableSupplementalAudio,
       enableDQ2Audio,
       bookmarks,
+      history,
+      addVisitedAyah,
+      clearHistory,
       floatingVideo,
       saveAudioMapping,
       deleteAudioMapping,

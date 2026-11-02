@@ -22,17 +22,90 @@ const {
   FiDownloadCloud,
   FiInfo,
   FiTrash2,
-  FiHardDrive
+  FiHardDrive,
+  FiClock
 } = FiIcons;
 
-const themeOptions = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
-const languageOptions = ['English', 'Urdu', 'French', 'Norsk'];
+// Round Flag Icon SVGs
+const UsaFlag = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" aria-hidden="true">
+    <rect width="64" height="64" fill="#B22234" />
+    <rect y="4.92" width="64" height="4.92" fill="#FFFFFF" />
+    <rect y="14.77" width="64" height="4.92" fill="#FFFFFF" />
+    <rect y="24.62" width="64" height="4.92" fill="#FFFFFF" />
+    <rect y="34.46" width="64" height="4.92" fill="#FFFFFF" />
+    <rect y="44.31" width="64" height="4.92" fill="#FFFFFF" />
+    <rect y="54.15" width="64" height="4.92" fill="#FFFFFF" />
+    <rect width="28" height="34.46" fill="#3C3B6E" />
+    <circle cx="6" cy="6" r="1.8" fill="#FFFFFF" />
+    <circle cx="14" cy="6" r="1.8" fill="#FFFFFF" />
+    <circle cx="22" cy="6" r="1.8" fill="#FFFFFF" />
+    <circle cx="10" cy="12" r="1.8" fill="#FFFFFF" />
+    <circle cx="18" cy="12" r="1.8" fill="#FFFFFF" />
+    <circle cx="6" cy="18" r="1.8" fill="#FFFFFF" />
+    <circle cx="14" cy="18" r="1.8" fill="#FFFFFF" />
+    <circle cx="22" cy="18" r="1.8" fill="#FFFFFF" />
+    <circle cx="10" cy="24" r="1.8" fill="#FFFFFF" />
+    <circle cx="18" cy="24" r="1.8" fill="#FFFFFF" />
+    <circle cx="6" cy="30" r="1.8" fill="#FFFFFF" />
+    <circle cx="14" cy="30" r="1.8" fill="#FFFFFF" />
+    <circle cx="22" cy="30" r="1.8" fill="#FFFFFF" />
+  </svg>
+);
 
-const LANGUAGE_FLAG_GRADIENTS = {
-  English: 'bg-gradient-to-b from-[#012169] via-[#C8102E] to-[#012169]',
-  Urdu: 'bg-gradient-to-b from-[#01411C] via-[#01411C] to-slate-100',
-  French: 'bg-gradient-to-b from-[#002654] via-white to-[#CE1126]',
-  Norsk: 'bg-gradient-to-b from-[#BA0C2F] via-[#00205B] to-[#BA0C2F]'
+const FranceFlag = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" aria-hidden="true">
+    <rect width="21.33" height="64" fill="#002654" />
+    <rect x="21.33" width="21.34" height="64" fill="#FFFFFF" />
+    <rect x="42.67" width="21.33" height="64" fill="#ED2939" />
+  </svg>
+);
+
+const PakistanFlag = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" aria-hidden="true">
+    <rect width="64" height="64" fill="#01411C" />
+    <rect width="16" height="64" fill="#FFFFFF" />
+    <path
+      d="M 37.58 19.23 A 13 13 0 1 0 52.77 34.42 A 11 11 0 0 1 37.58 19.23 Z"
+      fill="#FFFFFF"
+    />
+    <polygon
+      points="43.11,21.61 46.17,22.93 48.68,20.72 48.37,24.05 51.24,25.75 47.98,26.48 47.25,29.74 45.55,26.87 42.22,27.18 44.43,24.67"
+      fill="#FFFFFF"
+    />
+  </svg>
+);
+
+const NorwayFlag = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" aria-hidden="true">
+    <rect width="64" height="64" fill="#BA0C2F" />
+    <rect x="19" width="13" height="64" fill="#FFFFFF" />
+    <rect y="25" width="64" height="14" fill="#FFFFFF" />
+    <rect x="22.5" width="6" height="64" fill="#00205B" />
+    <rect y="29" width="64" height="6" fill="#00205B" />
+  </svg>
+);
+
+const themeOptions = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
+
+const languageOptions = [
+  { code: 'English', country: 'USA', flag: UsaFlag, label: 'English (USA)' },
+  { code: 'French', country: 'France', flag: FranceFlag, label: 'Français (France)' },
+  { code: 'Urdu', country: 'Pakistan', flag: PakistanFlag, label: 'اردو (Pakistan)' },
+  { code: 'Norsk', country: 'Norway', flag: NorwayFlag, label: 'Norsk (Norway)' }
+];
+
+const formatTimeAgo = (timestamp) => {
+  if (!timestamp) return '';
+  const diffMs = Date.now() - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  return `${diffDays}d ago`;
 };
 
 const SettingsPanel = ({ isOpen, onClose }) => {
@@ -41,6 +114,9 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     theme,
     language,
     bookmarks,
+    history = [],
+    addVisitedAyah,
+    clearHistory,
     surahs,
     selectedReciter,
     setThemePreference,
@@ -113,30 +189,36 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     }, {});
   }, [surahs]);
 
-  // Load verses for bookmarks
+  // Load verses for bookmarks and history
   useEffect(() => {
     const loadVerses = async () => {
       const newCache = { ...versesCache };
-      for (const bookmark of topBookmarks) {
-        const cacheKey = `${bookmark.surahNumber}`;
+      const itemsToLoad = [...topBookmarks, ...history.slice(0, 15)];
+      let updated = false;
+
+      for (const item of itemsToLoad) {
+        const cacheKey = `${item.surahNumber}`;
         if (!newCache[cacheKey]) {
           try {
-            const verses = await fetchSurahVerses(bookmark.surahNumber);
+            const verses = await fetchSurahVerses(item.surahNumber);
             newCache[cacheKey] = verses;
+            updated = true;
           } catch (error) {
-            console.error(`Error loading verses for surah ${bookmark.surahNumber}:`, error);
+            console.error(`Error loading verses for surah ${item.surahNumber}:`, error);
           }
         }
       }
-      setVersionsCache(newCache);
+      if (updated) {
+        setVersionsCache(newCache);
+      }
     };
 
-    if (topBookmarks.length > 0) {
+    if (topBookmarks.length > 0 || history.length > 0) {
       loadVerses();
     }
-  }, [topBookmarks, fetchSurahVerses]);
+  }, [topBookmarks, history, fetchSurahVerses]);
 
-  // Get verse text for a bookmark
+  // Get verse text for a bookmark or history item
   const getVerseText = (surahNumber, ayahNumber) => {
     const verses = versesCache[`${surahNumber}`];
     if (!verses) return null;
@@ -144,6 +226,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   };
 
   const handleNavigate = (surahNumber, ayahNumber) => {
+    addVisitedAyah?.(surahNumber, ayahNumber);
     onClose();
     navigate(`/surah/${surahNumber}?ayah=${ayahNumber}`);
   };
@@ -385,6 +468,81 @@ const SettingsPanel = ({ isOpen, onClose }) => {
               </section>
 
               <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <SafeIcon icon={FiClock} className="text-islamic-gold" />
+                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                      History
+                    </h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      {history.length}/20
+                    </span>
+                  </div>
+                  {history.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearHistory}
+                      className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 font-medium transition-colors px-2 py-1 rounded hover:bg-rose-50"
+                      title="Clear reading history"
+                    >
+                      <SafeIcon icon={FiTrash2} className="w-3.5 h-3.5" />
+                      <span>Clear</span>
+                    </button>
+                  )}
+                </div>
+
+                {history.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No visited ayats yet. Read, search, or play any ayah to build your history.
+                  </p>
+                ) : (
+                  <div className="max-h-72 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                    {history.map((item) => {
+                      const surah = surahLookup[item.surahNumber];
+                      const verseText = getVerseText(item.surahNumber, item.ayahNumber);
+                      const arabicText = verseText ? verseText.text_uthmani : '';
+                      const timeAgo = formatTimeAgo(item.visitedAt);
+
+                      return (
+                        <button
+                          key={`history-${item.surahNumber}:${item.ayahNumber}`}
+                          type="button"
+                          onClick={() => handleNavigate(item.surahNumber, item.ayahNumber)}
+                          className="w-full flex flex-col gap-1.5 px-3.5 py-2.5 bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-300 rounded-lg transition-all text-left group"
+                          title={`Go to Surah ${surah ? surah.name_simple : item.surahNumber}, Ayah ${item.ayahNumber}`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center shrink-0">
+                                {item.surahNumber}
+                              </span>
+                              <p className="text-xs font-semibold text-slate-800 group-hover:text-emerald-900">
+                                {surah ? surah.name_simple : `Surah ${item.surahNumber}`}:{item.ayahNumber}
+                              </p>
+                              {timeAgo && (
+                                <span className="text-[10px] text-slate-400 font-normal">
+                                  • {timeAgo}
+                                </span>
+                              )}
+                            </div>
+                            <SafeIcon
+                              icon={FiArrowRight}
+                              className="text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0 w-3.5 h-3.5"
+                            />
+                          </div>
+                          {arabicText && (
+                            <div className="quran-text-pak text-right text-xs text-slate-600 group-hover:text-emerald-950 truncate w-full">
+                              {arabicText}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <section>
                 <div className="grid grid-cols-3 gap-3 mb-4 items-center">
                   <div className="flex items-center gap-2 col-span-2">
                     <SafeIcon icon={FaPalette} className="text-islamic-gold" />
@@ -435,30 +593,35 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                   <SafeIcon icon={FiGlobe} className="text-islamic-gold" />
                   <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Language</h3>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="flex items-center justify-around gap-2 px-1">
                   {languageOptions.map((option) => {
-                    const isActive = language === option;
-                    const flagGradient = LANGUAGE_FLAG_GRADIENTS[option] || 'bg-slate-700';
+                    const isActive = language === option.code;
+                    const FlagComponent = option.flag;
 
                     return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setLanguagePreference(option)}
-                        className={`relative h-11 px-2 rounded-lg ${flagGradient} flex items-center justify-center transition-all ${
-                          isActive
-                            ? 'ring-2 ring-offset-2 ring-emerald-500 shadow-md scale-105 border-white/60'
-                            : 'border border-black/10 opacity-90 hover:opacity-100 hover:scale-[1.02] shadow-xs'
-                        }`}
-                        title={`${option} language`}
-                      >
-                        <span className="text-white font-bold text-xs tracking-wide drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.9)]">
-                          {option}
+                      <div key={option.code} className="flex flex-col items-center">
+                        <button
+                          type="button"
+                          onClick={() => setLanguagePreference(option.code)}
+                          className={`w-12 h-12 rounded-full overflow-hidden transition-all duration-200 flex items-center justify-center p-0 ${
+                            isActive
+                              ? 'ring-3 ring-emerald-500 ring-offset-2 scale-110 shadow-md border-2 border-white'
+                              : 'border-2 border-slate-200 hover:border-slate-400 hover:scale-105 opacity-80 hover:opacity-100 shadow-xs'
+                          }`}
+                          title={`${option.country} (${option.code})`}
+                          aria-label={`${option.country} (${option.code})`}
+                          aria-pressed={isActive}
+                        >
+                          <FlagComponent />
+                        </button>
+                        <span
+                          className={`text-xs mt-1.5 font-medium transition-colors ${
+                            isActive ? 'text-emerald-700 font-bold' : 'text-slate-600'
+                          }`}
+                        >
+                          {option.country}
                         </span>
-                        {isActive && (
-                          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white" />
-                        )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
