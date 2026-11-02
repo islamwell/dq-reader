@@ -91,7 +91,24 @@ const SearchBar = ({ variant = 'global' }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(isNavVariant);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [visibleAyah, setVisibleAyah] = useState(1);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [hudVisible, setHudVisible] = useState(false);
+  const [scrubAyah, setScrubAyah] = useState(1);
+  const [scrubOffsetY, setScrubOffsetY] = useState(0);
+  const [scrubSnippet, setScrubSnippet] = useState('');
   const inputRef = useRef(null);
+  const scrubStateRef = useRef({
+    active: false,
+    dragging: false,
+    pointerId: null,
+    startY: 0,
+    lastAyah: 1,
+    rafId: null,
+    fadeTimer: null
+  });
+  const suppressClickRef = useRef(false);
 
   const hasQuery = query.trim().length > 0;
   const isExpanded = isNavVariant || isOpen || hasQuery || isFocused;
@@ -169,12 +186,97 @@ const SearchBar = ({ variant = 'global' }) => {
 
   useEffect(() => {
     setIsFocused(false);
+    setVisibleAyah(currentAyahFromQuery || 1);
+    setScrubAyah(currentAyahFromQuery || 1);
+    setIsScrolledDown(false);
+    setIsScrubbing(false);
+    setHudVisible(false);
+    setScrubOffsetY(0);
     if (!isNavVariant) {
       setIsOpen(false);
       setQuery('');
       setResults([]);
     }
-  }, [location.pathname, location.search, isNavVariant]);
+  }, [location.pathname, location.search, isNavVariant, currentAyahFromQuery]);
+
+  // Track currently visible ayah while scrolling inside a surah
+  useEffect(() => {
+    if (!currentSurahNumber || isNavVariant) {
+      return undefined;
+    }
+
+    let ticking = false;
+
+    const updateVisibleAyahFromScroll = () => {
+      ticking = false;
+      if (scrubStateRef.current.dragging) {
+        return;
+      }
+
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      setIsScrolledDown(scrollTop > 140);
+
+      const ayahNodes = document.querySelectorAll('[data-ayah]');
+      if (!ayahNodes.length) {
+        return;
+      }
+
+      const readingLineY = window.innerHeight * 0.32;
+      let closestAyah = 1;
+      let smallestDistance = Infinity;
+
+      for (let i = 0; i < ayahNodes.length; i += 1) {
+        const node = ayahNodes[i];
+        const rect = node.getBoundingClientRect();
+        // Check if reading line falls inside this ayah card, or find closest card top
+        if (rect.top <= readingLineY && rect.bottom >= readingLineY) {
+          const parsed = Number(node.getAttribute('data-ayah'));
+          if (Number.isInteger(parsed) && parsed > 0) {
+            closestAyah = parsed;
+            break;
+          }
+        }
+
+        const distance = Math.abs(rect.top - readingLineY);
+        if (distance < smallestDistance) {
+          smallestDistance = distance;
+          const parsed = Number(node.getAttribute('data-ayah'));
+          if (Number.isInteger(parsed) && parsed > 0) {
+            closestAyah = parsed;
+          }
+        }
+      }
+
+      setVisibleAyah(closestAyah);
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(updateVisibleAyahFromScroll);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    updateVisibleAyahFromScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [currentSurahNumber, isNavVariant]);
+
+  // Cleanup any pending scrub timers/frames on unmount
+  useEffect(() => {
+    const scrubState = scrubStateRef.current;
+    return () => {
+      if (scrubState.rafId) {
+        window.cancelAnimationFrame(scrubState.rafId);
+      }
+      if (scrubState.fadeTimer) {
+        window.clearTimeout(scrubState.fadeTimer);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -331,6 +433,168 @@ const SearchBar = ({ variant = 'global' }) => {
     closeSearchPanel();
   }, [closeSearchPanel, navigate]);
 
+  const totalAyahsInCurrentSurah = currentSurah?.verses_count || 0;
+  const isScrubEnabled = Boolean(!isNavVariant && currentSurah && totalAyahsInCurrentSurah > 1);
+
+  const extractAyahPreviewSnippet = useCallback((ayahNumber) => {
+    const ayahNode = document.querySelector(`[data-ayah="${ayahNumber}"]`);
+    if (!ayahNode) {
+      return '';
+    }
+    const paragraphs = ayahNode.querySelectorAll('p');
+    for (let i = paragraphs.length - 1; i >= 0; i -= 1) {
+      const text = paragraphs[i]?.textContent?.trim();
+      if (text && text.length > 3) {
+        return text.length > 90 ? `${text.slice(0, 90)}…` : text;
+      }
+    }
+    return '';
+  }, []);
+
+  const handleCirclePointerDown = useCallback(
+    (event) => {
+      if (!isScrubEnabled) {
+        return;
+      }
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+
+      const scrubState = scrubStateRef.current;
+      if (scrubState.fadeTimer) {
+        window.clearTimeout(scrubState.fadeTimer);
+        scrubState.fadeTimer = null;
+      }
+
+      scrubState.active = true;
+      scrubState.dragging = false;
+      scrubState.pointerId = event.pointerId;
+      scrubState.startY = event.clientY;
+      scrubState.lastAyah = visibleAyah || 1;
+
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Ignore pointer capture errors in synthetic test environments
+      }
+    },
+    [isScrubEnabled, visibleAyah]
+  );
+
+  const handleCirclePointerMove = useCallback(
+    (event) => {
+      const scrubState = scrubStateRef.current;
+      if (!scrubState.active || !isScrubEnabled) {
+        return;
+      }
+
+      const deltaY = event.clientY - scrubState.startY;
+      if (!scrubState.dragging && Math.abs(deltaY) < 8) {
+        return;
+      }
+
+      if (!scrubState.dragging) {
+        scrubState.dragging = true;
+        setIsScrubbing(true);
+        setHudVisible(true);
+      }
+
+      const trackTop = 24;
+      const trackBottom = Math.max(trackTop + 140, window.innerHeight - 108);
+      const clampedY = Math.min(trackBottom, Math.max(trackTop, event.clientY));
+      const progress = (clampedY - trackTop) / (trackBottom - trackTop);
+      const targetAyah = Math.max(
+        1,
+        Math.min(totalAyahsInCurrentSurah, Math.round(1 + progress * (totalAyahsInCurrentSurah - 1)))
+      );
+
+      setScrubOffsetY(clampedY - trackTop);
+      setScrubAyah(targetAyah);
+
+      if (targetAyah !== scrubState.lastAyah) {
+        scrubState.lastAyah = targetAyah;
+        setVisibleAyah(targetAyah);
+        setScrubSnippet(extractAyahPreviewSnippet(targetAyah));
+
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          try {
+            navigator.vibrate(4);
+          } catch {
+            // Ignore vibration permission errors
+          }
+        }
+
+        if (scrubState.rafId) {
+          window.cancelAnimationFrame(scrubState.rafId);
+        }
+        scrubState.rafId = window.requestAnimationFrame(() => {
+          const ayahEl = document.querySelector(`[data-ayah="${targetAyah}"]`);
+          if (ayahEl) {
+            ayahEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+          }
+        });
+      }
+    },
+    [extractAyahPreviewSnippet, isScrubEnabled, totalAyahsInCurrentSurah]
+  );
+
+  const finishScrubGesture = useCallback(
+    (event) => {
+      const scrubState = scrubStateRef.current;
+      if (!scrubState.active) {
+        return;
+      }
+
+      try {
+        if (scrubState.pointerId !== null) {
+          event.currentTarget.releasePointerCapture?.(scrubState.pointerId);
+        }
+      } catch {
+        // Ignore release errors
+      }
+
+      const wasDragging = scrubState.dragging;
+      const finalAyah = scrubState.lastAyah;
+
+      scrubState.active = false;
+      scrubState.dragging = false;
+      scrubState.pointerId = null;
+
+      if (wasDragging) {
+        suppressClickRef.current = true;
+        setIsScrubbing(false);
+        setScrubOffsetY(0);
+
+        const ayahEl = document.querySelector(`[data-ayah="${finalAyah}"]`);
+        if (ayahEl) {
+          ayahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ayahEl.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
+          window.setTimeout(() => {
+            ayahEl.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
+          }, 2000);
+        }
+
+        scrubState.fadeTimer = window.setTimeout(() => {
+          setHudVisible(false);
+        }, 420);
+      }
+    },
+    []
+  );
+
+  const handleCircleClick = useCallback(
+    (event) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      handleOpen();
+    },
+    [handleOpen]
+  );
+
   const showResults = isExpanded && hasQuery && (isFocused || isLoading || results.length > 0);
   const showRecentSearches = isExpanded && !hasQuery && isFocused && recentSearches.length > 0;
 
@@ -369,21 +633,49 @@ const SearchBar = ({ variant = 'global' }) => {
     ? 'absolute left-1/2 top-full z-50 mt-3 w-[min(36rem,90vw)] -translate-x-1/2'
     : 'mt-3 w-full';
 
+  const scrubProgressPercent =
+    totalAyahsInCurrentSurah > 1
+      ? Math.round(((scrubAyah - 1) / (totalAyahsInCurrentSurah - 1)) * 100)
+      : 100;
+
   return (
-    <div className={containerClasses}>
-      <div className={outerWrapperClasses}>
-        {!isNavVariant && !isExpanded ? (
-          <div className="pointer-events-auto">
-            <button
-              type="button"
-              onClick={handleOpen}
-              className="inline-flex items-center justify-center rounded-full border border-blue-100 bg-white text-blue-500 shadow-[0_18px_38px_-18px_rgba(59,130,246,0.6)] p-3 transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 hover:shadow-[0_26px_55px_-18px_rgba(37,99,235,0.65)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-              aria-label="Open search"
-            >
-              <SafeIcon icon={FiSearch} className="text-xl" />
-            </button>
-          </div>
-        ) : (
+    <>
+      <div className={containerClasses}>
+        <div className={outerWrapperClasses}>
+          {!isNavVariant && !isExpanded ? (
+            <div className="pointer-events-auto">
+              <button
+                type="button"
+                onClick={handleCircleClick}
+                onPointerDown={handleCirclePointerDown}
+                onPointerMove={handleCirclePointerMove}
+                onPointerUp={finishScrubGesture}
+                onPointerCancel={finishScrubGesture}
+                style={{
+                  touchAction: isScrubEnabled ? 'none' : 'auto',
+                  translate: `0px ${scrubOffsetY}px`,
+                  scale: isScrubbing ? '1.12' : '1'
+                }}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full border bg-white text-blue-500 shadow-[0_18px_38px_-18px_rgba(59,130,246,0.6)] p-3 select-none hover:bg-blue-50 hover:text-blue-600 hover:shadow-[0_26px_55px_-18px_rgba(37,99,235,0.65)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+                  isScrubbing
+                    ? 'border-amber-400 ring-4 ring-amber-400/30 cursor-grabbing transition-transform duration-0'
+                    : 'border-blue-100 transition-all duration-200'
+                } ${isScrubEnabled && (isScrolledDown || isScrubbing) ? 'px-3.5 py-2.5' : 'p-3'}`}
+                aria-label={isScrubEnabled ? 'Open search or drag to scrub ayahs' : 'Open search'}
+                title={isScrubEnabled ? 'Tap to search • Drag up/down to scrub ayahs' : 'Open search'}
+              >
+                <SafeIcon icon={FiSearch} className="text-xl flex-shrink-0" />
+                {isScrubEnabled && (isScrolledDown || isScrubbing) && (
+                  <span
+                    data-testid="live-ayah-badge"
+                    className="text-xs font-bold tabular-nums tracking-tight text-slate-700"
+                  >
+                    {isScrubbing ? `${scrubAyah}/${totalAyahsInCurrentSurah}` : `${currentSurah.id}:${visibleAyah}`}
+                  </span>
+                )}
+              </button>
+            </div>
+          ) : (
           <div className={innerWidthClasses}>
             <div className={cardClasses}>
               <div className={inputWrapperClasses}>
@@ -603,6 +895,77 @@ const SearchBar = ({ variant = 'global' }) => {
         )}
       </div>
     </div>
+
+      {/* Vertical Scrub Track & Large Centered Fade-In Ayah HUD Overlay */}
+      {isScrubEnabled && (
+        <>
+          <div
+            aria-hidden="true"
+            className={`fixed top-6 bottom-28 left-1/2 -translate-x-1/2 z-40 w-1.5 rounded-full bg-slate-300/50 backdrop-blur-xs pointer-events-none transition-opacity duration-200 ${
+              isScrubbing ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div
+              className="w-full rounded-full bg-gradient-to-b from-blue-500 to-emerald-500 transition-all duration-75"
+              style={{ height: `${scrubProgressPercent}%` }}
+            />
+          </div>
+
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-6 transition-all duration-300 ${
+              hudVisible ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{
+              scale: hudVisible ? '1' : '0.92',
+              translate: '0px 0px'
+            }}
+          >
+            <div className="bg-slate-900/85 backdrop-blur-md text-white rounded-3xl px-8 py-6 shadow-2xl border border-white/15 min-w-[230px] max-w-xs w-full text-center">
+              <div className="flex items-center justify-center gap-2 text-xs font-medium text-amber-300/90 uppercase tracking-wider">
+                <span>{currentSurah?.name_simple}</span>
+                {currentSurah?.name_arabic && (
+                  <>
+                    <span className="opacity-50">•</span>
+                    <span className="quran-text-pak text-sm normal-case">{currentSurah.name_arabic}</span>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-2 flex items-baseline justify-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  Ayah
+                </span>
+                <span
+                  data-testid="scrub-ayah-number"
+                  className="text-6xl sm:text-7xl font-black tracking-tight text-amber-400 tabular-nums leading-none"
+                >
+                  {scrubAyah}
+                </span>
+                <span className="text-sm font-medium text-slate-400 tabular-nums">
+                  / {totalAyahsInCurrentSurah}
+                </span>
+              </div>
+
+              <div className="mt-4 w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full transition-all duration-75"
+                  style={{ width: `${scrubProgressPercent}%` }}
+                />
+              </div>
+
+              {scrubSnippet && (
+                <p className="mt-3 text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                  {scrubSnippet}
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 
