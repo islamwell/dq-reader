@@ -223,6 +223,10 @@ export const QuranProvider = ({ children }) => {
             ayahNumber: Number(item.ayahNumber),
             visitedAt: item.visitedAt || Date.now()
           }))
+          .filter(
+            (item, idx, arr) =>
+              arr.findIndex((o) => o.surahNumber === item.surahNumber) === idx
+          )
           .slice(0, MAX_HISTORY_ENTRIES);
       }
       return [];
@@ -342,7 +346,7 @@ export const QuranProvider = ({ children }) => {
 
     setHistory((prev) => {
       const filtered = prev.filter(
-        (item) => !(item.surahNumber === sNum && item.ayahNumber === aNum)
+        (item) => item.surahNumber !== sNum
       );
       const newEntry = {
         id: `${sNum}:${aNum}`,

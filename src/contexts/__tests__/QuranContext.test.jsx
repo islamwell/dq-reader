@@ -696,27 +696,22 @@ describe('QuranContext - CRUD Operations', () => {
       act(() => {
         result.current.addVisitedAyah(1, 1);
         result.current.addVisitedAyah(1, 2);
-        result.current.addVisitedAyah(1, 1); // duplicate, moves to front
+        result.current.addVisitedAyah(2, 5);
+        result.current.addVisitedAyah(1, 3);
       });
 
-      expect(result.current.history[0]).toMatchObject({
-        surahNumber: 1,
-        ayahNumber: 1
-      });
+      // Only the latest ayah per surah is kept
       expect(result.current.history.length).toBe(2);
+      expect(result.current.history[0]).toMatchObject({ surahNumber: 1, ayahNumber: 3 });
+      expect(result.current.history[1]).toMatchObject({ surahNumber: 2, ayahNumber: 5 });
 
-      // Add 25 entries to test 20 cap
       act(() => {
         for (let i = 1; i <= 25; i++) {
-          result.current.addVisitedAyah(2, i);
+          result.current.addVisitedAyah(i + 2, 1);
         }
       });
 
       expect(result.current.history.length).toBe(20);
-      expect(result.current.history[0]).toMatchObject({
-        surahNumber: 2,
-        ayahNumber: 25
-      });
     });
 
     it('should clear history correctly', async () => {
