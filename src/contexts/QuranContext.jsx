@@ -772,15 +772,33 @@ export const QuranProvider = ({ children }) => {
         const normalizedQuery = lowerQuery.replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ').trim();
 
         surahLookup.forEach((surah) => {
-          const fields = [
+          const rawFields = [
             String(surah.id),
             surah.name_simple,
             surah.translated_name?.name,
             surah.name_arabic,
             stripArabicDiacritics(surah.name_arabic || '')
-          ]
-            .filter(Boolean)
-            .map((value) => value.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' '));
+          ].filter(Boolean);
+
+          const spacedFields = rawFields.map((v) =>
+            v.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ').replace(/\s+/g, ' ').trim()
+          );
+          const unspacedFields = rawFields.map((v) =>
+            v.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, '')
+          );
+          const strippedPrefixFields = spacedFields.map((v) =>
+            v.replace(/^(al|an|at|as|ash|ar|az|ad|adh)\s+/, '')
+          );
+          const strippedPrefixUnspaced = strippedPrefixFields.map((v) => v.replace(/\s+/g, ''));
+
+          const fields = [
+            ...new Set([
+              ...spacedFields,
+              ...unspacedFields,
+              ...strippedPrefixFields,
+              ...strippedPrefixUnspaced
+            ])
+          ];
 
           let matches = false;
 
@@ -795,9 +813,19 @@ export const QuranProvider = ({ children }) => {
             // If no exact match, try expanded aliases
             if (!matches && expandedQueries.length > 0) {
               matches = expandedQueries.some((expanded) => {
-                const expandedTokens = expanded.split(/\s+/).filter(Boolean);
-                return expandedTokens.every((token) =>
-                  fields.some((field) => field.includes(token))
+                const expTokens = expanded
+                  .toLowerCase()
+                  .replace(/[^a-z0-9\s]/g, ' ')
+                  .split(/\s+/)
+                  .filter(Boolean);
+                const expUnspaced = expanded
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]/g, '');
+
+                return (
+                  (expTokens.length > 0 &&
+                    expTokens.every((token) => fields.some((field) => field.includes(token)))) ||
+                  (expUnspaced && fields.some((field) => field.includes(expUnspaced)))
                 );
               });
             }
@@ -824,7 +852,7 @@ export const QuranProvider = ({ children }) => {
           const fuzzySet = new Set();
 
           for (const q of queriesToTry) {
-            const fuzzyHits = fuzzySearchSurahs(fuseIndexRef.current, q);
+            const fuzzyHits = fuzzySearchSurahs(fuseIndexRef.current, q, 0.65);
             for (const hit of fuzzyHits.slice(0, 5)) {
               if (!fuzzySet.has(hit.id)) {
                 fuzzySet.add(hit.id);

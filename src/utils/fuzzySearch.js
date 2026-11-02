@@ -28,7 +28,7 @@ export const QURAN_BOOK_TERMS = new Set([
 // form used in surahsInfo.  Keys are lowercase.  Values are arrays of
 // canonical tokens the alias should expand to.
 
-const ALIAS_MAP = {
+export const ALIAS_MAP = {
   // Quran itself
   quran: ['quran'],
   koran: ['quran'],
@@ -54,6 +54,7 @@ const ALIAS_MAP = {
   fatihah: ['fatihah'],
   baqara: ['baqarah', 'baqara'],
   baqarah: ['baqarah'],
+  baqra: ['baqarah'],
   bakara: ['baqarah', 'baqara'],
   imran: ['imran'],
   nisa: ['nisa'],
@@ -81,8 +82,10 @@ const ALIAS_MAP = {
   isra: ['isra'],
   israa: ['isra'],
   kahf: ['kahf'],
+  kahaf: ['kahf'],
   cave: ['kahf'],
   maryam: ['maryam'],
+  mariam: ['maryam'],
   mary: ['maryam'],
   taha: ['taha'],
   anbya: ['anbya'],
@@ -126,6 +129,7 @@ const ALIAS_MAP = {
   qaf: ['qaf'],
   dhariyat: ['dhariyat'],
   tur: ['tur'],
+  toor: ['tur'],
   najm: ['najm'],
   qamar: ['qamar'],
   moon: ['qamar'],
@@ -142,6 +146,8 @@ const ALIAS_MAP = {
   mumtahina: ['mumtahanah'],
   saf: ['saf'],
   jumuah: ['jumuah', "jumu'ah"],
+  juma: ['jumuah', "jumu'ah"],
+  jumah: ['jumuah', "jumu'ah"],
   jumma: ['jumuah', "jumu'ah"],
   munafiqun: ['munafiqun'],
   munafiqoon: ['munafiqun'],
@@ -149,17 +155,23 @@ const ALIAS_MAP = {
   talaq: ['talaq'],
   divorce: ['talaq'],
   tahrim: ['tahrim'],
+  tahreem: ['tahrim'],
   mulk: ['mulk'],
   qalam: ['qalam'],
   pen: ['qalam'],
   haqqah: ['haqqah'],
   maarij: ['maarij', "ma'arij"],
   nuh: ['nuh'],
+  nooh: ['nuh'],
   noah: ['nuh'],
   jinn: ['jinn'],
   djinn: ['jinn'],
   muzzammil: ['muzzammil'],
+  muzammil: ['muzzammil'],
+  muzamil: ['muzzammil'],
   muddaththir: ['muddaththir'],
+  muddathir: ['muddaththir'],
+  mudathir: ['muddaththir'],
   mudassir: ['muddaththir'],
   qiyamah: ['qiyamah'],
   qiyama: ['qiyamah'],
@@ -170,10 +182,12 @@ const ALIAS_MAP = {
   naziat: ['naziat', "nazi'at"],
   abasa: ['abasa'],
   takwir: ['takwir'],
+  takweer: ['takwir'],
   infitar: ['infitar'],
   mutaffifin: ['mutaffifin'],
   inshiqaq: ['inshiqaq'],
   buruj: ['buruj'],
+  burooj: ['buruj'],
   tariq: ['tariq'],
   ala: ['ala', "a'la"],
   aala: ['ala', "a'la"],
@@ -190,6 +204,7 @@ const ALIAS_MAP = {
   sharh: ['sharh'],
   inshirah: ['sharh'],
   tin: ['tin'],
+  teen: ['tin'],
   fig: ['tin'],
   alaq: ['alaq', "'alaq"],
   clot: ['alaq'],
@@ -206,6 +221,7 @@ const ALIAS_MAP = {
   asr: ['asr', "'asr"],
   humazah: ['humazah'],
   fil: ['fil'],
+  feel: ['fil'],
   elephant: ['fil'],
   quraysh: ['quraysh'],
   quraish: ['quraysh'],
@@ -219,10 +235,12 @@ const ALIAS_MAP = {
   masad: ['masad'],
   lahab: ['masad'],
   ikhlas: ['ikhlas'],
+  iklas: ['ikhlas'],
   ikhlaq: ['ikhlas'],
   falaq: ['falaq'],
   daybreak: ['falaq'],
   nas: ['nas'],
+  naas: ['nas'],
   mankind: ['nas'],
 
   // Common Islamic terms users might search for
@@ -403,69 +421,75 @@ export const parseSearchMode = (rawQuery) => {
 //  2.  FUSE INDEX FOR SURAH NAMES
 // ──────────────────────────────────────────────
 
+export function levenshteinDistance(a, b) {
+  if (!a || !b) return (a || '').length + (b || '').length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+export function stringSimilarity(a, b) {
+  if (!a || !b) return 0;
+  const s1 = a.toLowerCase().trim();
+  const s2 = b.toLowerCase().trim();
+  if (s1 === s2) return 1;
+  if (s2.startsWith(s1) && s1.length >= 3) {
+    return 0.85 + (s1.length / s2.length) * 0.15;
+  }
+  const dist = levenshteinDistance(s1, s2);
+  return 1 - dist / Math.max(s1.length, s2.length);
+}
+
 const FUSE_OPTIONS = {
   keys: [
-    { name: 'name_simple', weight: 0.4 },
-    { name: 'translated_name.name', weight: 0.3 },
-    { name: 'name_arabic', weight: 0.15 },
-    { name: 'aliases', weight: 0.15 }
+    { name: 'clean_name', weight: 0.5 },
+    { name: 'name_simple', weight: 0.3 },
+    { name: 'translated_name.name', weight: 0.2 }
   ],
-  threshold: 0.4,       // 0 = exact, 1 = anything matches
+  threshold: 0.35,
   distance: 100,
   includeScore: true,
   includeMatches: true,
-  minMatchCharLength: 2,
-  ignoreLocation: true,
+  minMatchCharLength: 3,
 };
 
 /**
  * Build a Fuse index from the surahs array.
- * Each surah gets an extra `aliases` field for common alternative names.
+ * Each surah gets a normalized clean_name and candidateNames list for robust matching.
  */
 export const buildFuseIndex = (surahs) => {
   if (!surahs || !surahs.length) return null;
 
-  // Build reverse lookup: canonical → surah id
-  const aliasToSurah = {};
-  for (const [alias, canonicals] of Object.entries(ALIAS_MAP)) {
-    for (const canonical of canonicals) {
-      if (!aliasToSurah[canonical]) aliasToSurah[canonical] = new Set();
-      aliasToSurah[canonical].add(alias);
-    }
-  }
-
   const enrichedSurahs = surahs.map((surah) => {
-    // Collect all alias strings that map to this surah's name
-    const nameTokens = (surah.name_simple || '')
-      .toLowerCase()
-      .replace(/[^a-z'-]/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean);
-    const translatedTokens = (surah.translated_name?.name || '')
-      .toLowerCase()
-      .replace(/[^a-z'-]/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean);
+    const cleanName = (surah.name_simple || '')
+      .replace(/^(al|an|at|as|ash|ar|az|ad|adh)-?/i, '')
+      .replace(/[^a-zA-Z]/g, '')
+      .toLowerCase();
 
-    const allTokens = [...nameTokens, ...translatedTokens];
-    const aliasSet = new Set();
-
-    for (const token of allTokens) {
-      // Find all aliases whose canonical forms match this token
-      for (const [canonical, aliasNames] of Object.entries(aliasToSurah)) {
-        const cleanCanonical = canonical.replace(/[^a-z]/g, '');
-        const cleanToken = token.replace(/[^a-z]/g, '');
-        if (cleanCanonical === cleanToken || cleanToken.includes(cleanCanonical)) {
-          for (const aliasName of aliasNames) {
-            aliasSet.add(aliasName);
-          }
-        }
-      }
-    }
+    const candidateNames = [
+      cleanName,
+      (surah.name_simple || '').toLowerCase(),
+      (surah.translated_name?.name || '').toLowerCase()
+    ].filter(Boolean);
 
     return {
       ...surah,
-      aliases: Array.from(aliasSet).join(' ')
+      clean_name: cleanName,
+      candidateNames
     };
   });
 
@@ -474,17 +498,31 @@ export const buildFuseIndex = (surahs) => {
 
 /**
  * Search surahs using fuzzy matching.
- * Returns an array of surah objects sorted by relevance.
+ * Returns an array of surah objects verified by true string similarity (prevents false-positiveBitap substring matches).
  */
-export const fuzzySearchSurahs = (fuseIndex, query) => {
+export const fuzzySearchSurahs = (fuseIndex, query, minSimilarity = 0.65) => {
   if (!fuseIndex || !query) return [];
 
-  const results = fuseIndex.search(query);
-  return results.map((result) => ({
-    ...result.item,
-    fuseScore: result.score,
-    fuseMatches: result.matches
-  }));
+  const q = query.toLowerCase().trim();
+  if (q.length < 3) return [];
+
+  const results = fuseIndex.search(q);
+  return results
+    .filter((result) => {
+      const candidates = result.item.candidateNames || [result.item.clean_name, result.item.name_simple];
+      const maxSim = Math.max(...candidates.map((name) => stringSimilarity(q, name)));
+      return maxSim >= minSimilarity;
+    })
+    .map((result) => {
+      const candidates = result.item.candidateNames || [result.item.clean_name, result.item.name_simple];
+      const maxSim = Math.max(...candidates.map((name) => stringSimilarity(q, name)));
+      return {
+        ...result.item,
+        fuseScore: result.score,
+        similarity: maxSim,
+        fuseMatches: result.matches
+      };
+    });
 };
 
 // ──────────────────────────────────────────────
