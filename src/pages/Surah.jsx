@@ -7,6 +7,7 @@ import AyahCard from '../components/AyahCard';
 import AudioPlayer from '../components/AudioPlayer';
 import RevelationPlaceIcon from '../components/RevelationPlaceIcon';
 import GrammarToggle from '../components/grammar/GrammarToggle';
+import SurahQuiz from '../components/quiz/SurahQuiz';
 import { useQuranAudio, useQuranData } from '../contexts/QuranContext';
 import { AyahCardSkeleton } from '../components/Skeleton';
 
@@ -268,7 +269,22 @@ const Surah = () => {
               <span>Back to Surahs</span>
             </Link>
 
-            <GrammarToggle />
+            <div className="flex items-center space-x-2">
+              {Number(surahNumber) === 32 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const quizEl = document.getElementById('surah-quiz-section');
+                    if (quizEl) quizEl.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-islamic-gold/50 bg-islamic-gold/10 text-islamic-gold hover:bg-islamic-gold/20 text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-xs"
+                  title="Jump to Contemplative Quiz at the end of Surah 32"
+                >
+                  <span>💡 Tadabbur Quiz</span>
+                </button>
+              )}
+              <GrammarToggle />
+            </div>
           </div>
 
           <div className="flex items-center justify-between">
@@ -315,6 +331,13 @@ const Surah = () => {
             </div>
           ))}
         </div>
+
+        {/* Contemplative Tadabbur Quiz for Surah 32 */}
+        {Number(surahNumber) === 32 && (
+          <div id="surah-quiz-section">
+            <SurahQuiz surahNumber={32} />
+          </div>
+        )}
       </div>
     </div>
   );
