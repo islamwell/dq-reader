@@ -323,7 +323,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
               totalTracks += requests.length;
               requests.forEach((req) => {
                 const url = (req.url || '').toLowerCase();
-                if (url.includes('urdu') || url.includes('junagarhi') || url.includes('dq2')) {
+                if (url.includes('urdu') || url.includes('junagarhi') || url.includes('dq2') || url.includes('audio.nrq.no')) {
                   urduCount += 1;
                 } else {
                   arabicCount += 1;

@@ -408,7 +408,7 @@ export const QuranProvider = ({ children }) => {
 
     const paddedSurah = String(normalizedSurah).padStart(3, '0');
     const paddedAyah = String(normalizedAyah).padStart(3, '0');
-    return `https://nrq.no/wp-content/uploads/ayah/${paddedSurah}-${paddedAyah}.mp3`;
+    return `https://audio.nrq.no/ayah/${paddedSurah}-${paddedAyah}.mp3`;
   }, []);
 
   const getDQ2AudioUrl = useCallback((surahNumber, ayahNumber) => {
@@ -427,7 +427,7 @@ export const QuranProvider = ({ children }) => {
 
     const paddedSurah = String(normalizedSurah).padStart(3, '0');
     const paddedAyah = String(normalizedAyah).padStart(3, '0');
-    return `https://nrq.no/wp-content/uploads/dq2ayat/${paddedSurah}-${paddedAyah}.mp3`;
+    return `https://audio.nrq.no/ayah/${paddedSurah}-${paddedAyah}.mp3`;
   }, []);
 
   // Kept for backward compatibility
