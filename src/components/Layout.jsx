@@ -208,7 +208,7 @@ const Layout = () => {
             <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
           </div>
           <div className="text-xs opacity-75 font-mono">
-            v1.1.13 (updated 2026-11-06 16:15)
+            v1.1.14 (updated 2026-11-06 17:43)
           </div>
         </div>
       </footer>

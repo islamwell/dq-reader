@@ -24,7 +24,8 @@ const {
   FiTrash2,
   FiHardDrive,
   FiClock,
-  FiSliders
+  FiSliders,
+  FiHelpCircle
 } = FiIcons;
 
 // Round Flag Icon SVGs
@@ -281,6 +282,20 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   };
 
   const [showCacheModal, setShowCacheModal] = useState(false);
+  const [showAudioInfoModal, setShowAudioInfoModal] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowAudioInfoModal(false);
+        setShowCacheModal(false);
+      }
+    };
+    if (showAudioInfoModal || showCacheModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAudioInfoModal, showCacheModal]);
   const [cacheStats, setCacheStats] = useState({
     totalBytes: 0,
     formattedSize: '0 B',
@@ -740,14 +755,26 @@ const SettingsPanel = ({ isOpen, onClose }) => {
               </section>
 
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <SafeIcon icon={FiVolume2} className="text-islamic-gold" />
-                  <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Audio Options</h3>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <SafeIcon icon={FiVolume2} className="text-islamic-gold" />
+                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Audio Options</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAudioInfoModal(true)}
+                    onMouseEnter={() => setShowAudioInfoModal(true)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors"
+                    title="Audio playback modes explained"
+                  >
+                    <SafeIcon icon={FiHelpCircle} className="text-xs" />
+                    <span>Audio Info</span>
+                  </button>
                 </div>
                 <div className="space-y-3">
                   <div className="rounded-xl p-3.5 bg-emerald-50/80 border border-emerald-200 shadow-xs space-y-2">
                     <label htmlFor="reciter-select" className="block text-sm font-semibold text-emerald-950">
-                      Select Reciter
+                       Select Reciter
                     </label>
                     <select
                       id="reciter-select"
@@ -775,7 +802,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     }`}
                   >
                     <div className="flex items-center gap-3 text-left">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10 shrink-0">
                         <SafeIcon icon={FiHeadphones} className="text-lg text-islamic-gold" />
                       </div>
                       <div>
@@ -784,7 +811,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                       </div>
                     </div>
                     <span
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                         enablePrimaryAudio ? 'bg-islamic-gold' : 'bg-slate-300'
                       }`}
                     >
@@ -796,28 +823,49 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     </span>
                   </button>
 
-                  <button
-                    type="button"
+                  <div
                     role="switch"
                     aria-checked={enableSupplementalAudio}
+                    tabIndex={0}
                     onClick={() => setSupplementalAudioEnabled(!enableSupplementalAudio)}
-                    className={`w-full flex items-center justify-between gap-4 rounded-lg border px-4 py-3 transition-colors ${
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        setSupplementalAudioEnabled(!enableSupplementalAudio);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between gap-4 rounded-lg border px-4 py-3 transition-colors cursor-pointer select-none ${
                       enableSupplementalAudio
                         ? 'border-islamic-gold bg-islamic-50'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 text-left">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10 shrink-0">
                         <SafeIcon icon={FiVolume2} className="text-lg text-islamic-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-700">Custom Translation Audio</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-slate-700">Custom Translation Audio</p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAudioInfoModal(true);
+                            }}
+                            onMouseEnter={() => setShowAudioInfoModal(true)}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-amber-700 hover:bg-amber-100 transition-colors"
+                            title="What is Custom Translation Audio? Click or hover to learn more"
+                            aria-label="What is Custom Translation Audio? Click or hover to learn more"
+                          >
+                            <SafeIcon icon={FiHelpCircle} className="text-sm text-amber-600" />
+                          </button>
+                        </div>
                         <p className="text-xs text-slate-500">Toggle the supplemental translation playback.</p>
                       </div>
                     </div>
                     <span
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                         enableSupplementalAudio ? 'bg-islamic-gold' : 'bg-slate-300'
                       }`}
                     >
@@ -827,31 +875,52 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                         }`}
                       />
                     </span>
-                  </button>
+                  </div>
 
                   {/* DQ2 Audio Toggle */}
-                  <button
-                    type="button"
+                  <div
                     role="switch"
                     aria-checked={enableDQ2Audio}
+                    tabIndex={0}
                     onClick={() => setDQ2AudioEnabled(!enableDQ2Audio)}
-                    className={`w-full flex items-center justify-between gap-4 rounded-lg border px-4 py-3 mt-3 transition-colors ${
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        setDQ2AudioEnabled(!enableDQ2Audio);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between gap-4 rounded-lg border px-4 py-3 mt-3 transition-colors cursor-pointer select-none ${
                       enableDQ2Audio
                         ? 'border-islamic-gold bg-islamic-50'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 text-left">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-islamic-gold/10 shrink-0">
                         <SafeIcon icon={FiVolume2} className="text-lg text-islamic-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-700">DQ2 Translation Audio</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-slate-700">DQ2 Translation Audio</p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAudioInfoModal(true);
+                            }}
+                            onMouseEnter={() => setShowAudioInfoModal(true)}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-amber-700 hover:bg-amber-100 transition-colors"
+                            title="What is DQ2 Translation Audio? Click or hover to learn more"
+                            aria-label="What is DQ2 Translation Audio? Click or hover to learn more"
+                          >
+                            <SafeIcon icon={FiHelpCircle} className="text-sm text-amber-600" />
+                          </button>
+                        </div>
                         <p className="text-xs text-slate-500">Use DQ2 custom audio in addition to default.</p>
                       </div>
                     </div>
                     <span
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                         enableDQ2Audio ? 'bg-islamic-gold' : 'bg-slate-300'
                       }`}
                     >
@@ -861,7 +930,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                         }`}
                       />
                     </span>
-                  </button>
+                  </div>
 
                   <div className="flex items-center justify-between pt-1 pb-1">
                     <div className="flex items-center gap-2">
@@ -1049,6 +1118,102 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     className="px-4 py-2.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Audio Info Modal */}
+          {showAudioInfoModal && (
+            <div
+              className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setShowAudioInfoModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden p-6 space-y-4 max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-amber-100 text-amber-800">
+                      <SafeIcon icon={FiHelpCircle} className="text-xl text-amber-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800">Translation Audio Guide</h3>
+                      <p className="text-xs text-slate-500">Custom Urdu & DQ2 playback modes</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAudioInfoModal(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors text-sm font-bold"
+                    aria-label="Close modal"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3.5 overflow-y-auto pr-1 text-sm text-slate-600">
+                  {/* Custom Translation Audio */}
+                  <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded-md bg-amber-200/70 text-amber-900">
+                        <SafeIcon icon={FiVolume2} className="text-sm" />
+                      </div>
+                      <h4 className="font-semibold text-slate-900 text-sm">Custom Translation Audio (Urdu)</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Plays the spoken Urdu translation narration verse-by-verse immediately following the Arabic recitation.
+                    </p>
+                    <ul className="text-xs text-slate-600 list-disc list-inside space-y-1 pl-1 pt-0.5">
+                      <li>Streamed globally via Cloudflare CDN (<span className="font-mono text-slate-700">audio.nrq.no</span>).</li>
+                      <li>Can be saved for offline listening with the <strong>Cache Urdu</strong> button below.</li>
+                      <li>Any custom per-ayah audio mappings configured in Admin also play through this stream.</li>
+                    </ul>
+                  </div>
+
+                  {/* DQ2 Translation Audio */}
+                  <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded-md bg-emerald-200/70 text-emerald-900">
+                        <SafeIcon icon={FiHeadphones} className="text-sm" />
+                      </div>
+                      <h4 className="font-semibold text-slate-900 text-sm">DQ2 Audio (Daur-e-Quran)</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Plays the Daur-e-Quran audio track with verse recitation and Urdu commentary.
+                    </p>
+                    <ul className="text-xs text-slate-600 list-disc list-inside space-y-1 pl-1 pt-0.5">
+                      <li>Ideal for listeners following the structured Daur-e-Quran study series.</li>
+                      <li>Can be played alongside Arabic recitation or as a standalone audio stream.</li>
+                    </ul>
+                  </div>
+
+                  {/* Playback Sequence */}
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Playback Sequence</p>
+                    <div className="flex items-center justify-between text-[11px] font-medium text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                      <span>1. Arabic</span>
+                      <span className="text-slate-400">→</span>
+                      <span>2. Urdu Audio</span>
+                      <span className="text-slate-400">→</span>
+                      <span>3. DQ2 Audio</span>
+                      <span className="text-slate-400">→</span>
+                      <span className="text-emerald-700 font-semibold">Next Ayah</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Each stream can be toggled on or off independently to customize your listening experience (e.g. Arabic only, Urdu only, or both).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowAudioInfoModal(false)}
+                    className="w-full py-2.5 px-4 rounded-lg text-xs font-semibold bg-islamic-gold hover:bg-yellow-600 text-white shadow-xs transition-colors"
+                  >
+                    Got it
                   </button>
                 </div>
               </div>
