@@ -83,4 +83,54 @@ describe('SearchBar floating island behaviour', () => {
     // Search input should NOT have opened after a drag-scrub gesture
     expect(screen.queryByRole('textbox', { name: /search quran/i })).not.toBeInTheDocument();
   });
+
+  it('displays arabic words of the ayah on top line, omits surah name and omits the word Ayah in the HUD', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true, writable: true });
+
+    // Inject mock DOM node representing the ayah in the Quran reader view
+    const mockAyahEl = document.createElement('div');
+    mockAyahEl.setAttribute('data-ayah', '135');
+    mockAyahEl.innerHTML = `
+      <div class="quran-text-pak">وَقَالُوا كُونُوا هُودًا أَوْ نَصَارَىٰ تَهْتَدُوا</div>
+      <p>They say, "Be Jews or Christians, and then you will be rightly guided."</p>
+    `;
+    document.body.appendChild(mockAyahEl);
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/surah/2']}>
+          <SearchBar />
+        </MemoryRouter>
+      );
+
+      const button = screen.getByRole('button', { name: /open search or drag to scrub ayahs/i });
+
+      // Start drag and calculate pointer to hit ayah 135:
+      // (clientY - 24) / (800 - 108 - 24) = 134 / 285 => clientY = 24 + 668 * (134/285) ~= 338
+      fireEvent.pointerDown(button, { clientY: 24, pointerId: 1, button: 0 });
+      fireEvent.pointerMove(button, { clientY: 338, pointerId: 1 });
+
+      const ayahHudNumber = screen.getByTestId('scrub-ayah-number');
+      expect(ayahHudNumber.textContent).toBe('135');
+
+      // 1. The word "Ayah" must NOT be in the HUD
+      expect(screen.queryByText(/^Ayah$/i)).not.toBeInTheDocument();
+
+      // 2. Surah name in English or Arabic must NOT be in the top first line of HUD
+      expect(screen.queryByText('Al-Baqarah')).not.toBeInTheDocument();
+      expect(screen.queryByText('البقرة')).not.toBeInTheDocument();
+
+      // 3. The top line must display the Arabic words of the ayah
+      const arabicWordsEl = screen.getByTestId('scrub-arabic-words');
+      expect(arabicWordsEl).toBeInTheDocument();
+      expect(arabicWordsEl.textContent).toContain('وَقَالُوا كُونُوا هُودًا أَوْ نَصَارَىٰ تَهْتَدُوا');
+
+      // 4. Translation snippet is rendered in the HUD (in addition to the source ayah node)
+      expect(screen.getAllByText(/Be Jews or Christians/i)).toHaveLength(2);
+
+      fireEvent.pointerUp(button, { clientY: 338, pointerId: 1 });
+    } finally {
+      mockAyahEl.remove();
+    }
+  });
 });

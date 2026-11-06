@@ -29,6 +29,75 @@ const ARTICLE_PREFIXES = new Set([
   'at'
 ]);
 
+const THEME_HUD_STYLES = {
+  green: {
+    card: 'bg-emerald-950/98 border-emerald-600/40 text-emerald-50 shadow-2xl shadow-emerald-950/90',
+    arabicColor: '#a7f3d0',
+    arabicText: '!text-emerald-200',
+    arabicShadow: '0 2px 10px rgba(0,0,0,0.85)',
+    number: 'text-amber-400',
+    totalText: 'text-emerald-300/80',
+    trackBg: 'bg-emerald-900/60',
+    trackFill: 'bg-gradient-to-r from-emerald-400 to-amber-400',
+    snippetText: 'text-emerald-100/90'
+  },
+  red: {
+    card: 'bg-rose-950/98 border-rose-600/40 text-rose-50 shadow-2xl shadow-rose-950/90',
+    arabicColor: '#fecdd3',
+    arabicText: '!text-rose-200',
+    arabicShadow: '0 2px 10px rgba(0,0,0,0.85)',
+    number: 'text-amber-400',
+    totalText: 'text-rose-300/80',
+    trackBg: 'bg-rose-900/60',
+    trackFill: 'bg-gradient-to-r from-rose-400 to-amber-400',
+    snippetText: 'text-rose-100/90'
+  },
+  blue: {
+    card: 'bg-slate-950/98 border-blue-600/40 text-blue-50 shadow-2xl shadow-blue-950/90',
+    arabicColor: '#bae6fd',
+    arabicText: '!text-sky-200',
+    arabicShadow: '0 2px 10px rgba(0,0,0,0.85)',
+    number: 'text-amber-400',
+    totalText: 'text-blue-300/80',
+    trackBg: 'bg-blue-950/60',
+    trackFill: 'bg-gradient-to-r from-sky-400 to-amber-400',
+    snippetText: 'text-blue-100/90'
+  },
+  light: {
+    card: 'bg-slate-900/98 border-slate-700/80 text-white shadow-2xl shadow-slate-950/90',
+    arabicColor: '#fde68a',
+    arabicText: '!text-amber-300',
+    arabicShadow: '0 2px 10px rgba(0,0,0,0.85)',
+    number: 'text-amber-400',
+    totalText: 'text-slate-300/80',
+    trackBg: 'bg-white/20',
+    trackFill: 'bg-gradient-to-r from-amber-400 to-emerald-400',
+    snippetText: 'text-slate-200'
+  },
+  dark: {
+    card: 'bg-slate-950/98 border-slate-700/80 text-white shadow-2xl shadow-black/95',
+    arabicColor: '#fde68a',
+    arabicText: '!text-amber-300',
+    arabicShadow: '0 2px 12px rgba(0,0,0,0.95)',
+    number: 'text-amber-400',
+    totalText: 'text-slate-400',
+    trackBg: 'bg-white/20',
+    trackFill: 'bg-gradient-to-r from-amber-400 to-emerald-400',
+    snippetText: 'text-slate-200'
+  },
+  sepia: {
+    card: 'bg-amber-950/98 border-amber-700/50 text-amber-50 shadow-2xl shadow-amber-950/90',
+    arabicColor: '#fde68a',
+    arabicText: '!text-amber-200',
+    arabicShadow: '0 2px 10px rgba(0,0,0,0.85)',
+    number: 'text-amber-400',
+    totalText: 'text-amber-300/80',
+    trackBg: 'bg-amber-900/60',
+    trackFill: 'bg-gradient-to-r from-amber-300 to-yellow-400',
+    snippetText: 'text-amber-100/90'
+  }
+};
+
 const stripLeadingArticle = (name) => {
   if (!name) {
     return '';
@@ -82,8 +151,9 @@ const getRecentSearches = () => {
 const SearchBar = ({ variant = 'global' }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { searchQuran, surahs } = useQuranData();
+  const { searchQuran, surahs, theme } = useQuranData();
   const isNavVariant = variant === 'nav';
+  const hudStyles = THEME_HUD_STYLES[theme] || THEME_HUD_STYLES.green;
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -97,6 +167,7 @@ const SearchBar = ({ variant = 'global' }) => {
   const [hudVisible, setHudVisible] = useState(false);
   const [scrubAyah, setScrubAyah] = useState(1);
   const [scrubOffsetY, setScrubOffsetY] = useState(0);
+  const [scrubArabic, setScrubArabic] = useState('');
   const [scrubSnippet, setScrubSnippet] = useState('');
   const inputRef = useRef(null);
   const scrubStateRef = useRef({
@@ -188,6 +259,8 @@ const SearchBar = ({ variant = 'global' }) => {
     setIsFocused(false);
     setVisibleAyah(currentAyahFromQuery || 1);
     setScrubAyah(currentAyahFromQuery || 1);
+    setScrubArabic('');
+    setScrubSnippet('');
     setIsScrolledDown(false);
     setIsScrubbing(false);
     setHudVisible(false);
@@ -436,19 +509,31 @@ const SearchBar = ({ variant = 'global' }) => {
   const totalAyahsInCurrentSurah = currentSurah?.verses_count || 0;
   const isScrubEnabled = Boolean(!isNavVariant && currentSurah && totalAyahsInCurrentSurah > 1);
 
-  const extractAyahPreviewSnippet = useCallback((ayahNumber) => {
+  const extractAyahData = useCallback((ayahNumber) => {
     const ayahNode = document.querySelector(`[data-ayah="${ayahNumber}"]`);
     if (!ayahNode) {
-      return '';
+      return { arabic: '', translation: '' };
     }
+
+    // Extract Arabic words from .quran-text-pak
+    const arabicEl = ayahNode.querySelector('.quran-text-pak');
+    let arabic = '';
+    if (arabicEl) {
+      arabic = arabicEl.textContent?.replace(/\s+/g, ' ').trim() || '';
+    }
+
+    // Extract translation snippet
     const paragraphs = ayahNode.querySelectorAll('p');
+    let translation = '';
     for (let i = paragraphs.length - 1; i >= 0; i -= 1) {
       const text = paragraphs[i]?.textContent?.trim();
       if (text && text.length > 3) {
-        return text.length > 90 ? `${text.slice(0, 90)}…` : text;
+        translation = text.length > 90 ? `${text.slice(0, 90)}…` : text;
+        break;
       }
     }
-    return '';
+
+    return { arabic, translation };
   }, []);
 
   const handleCirclePointerDown = useCallback(
@@ -472,13 +557,17 @@ const SearchBar = ({ variant = 'global' }) => {
       scrubState.startY = event.clientY;
       scrubState.lastAyah = visibleAyah || 1;
 
+      const initialData = extractAyahData(visibleAyah || 1);
+      setScrubArabic(initialData.arabic);
+      setScrubSnippet(initialData.translation);
+
       try {
         event.currentTarget.setPointerCapture?.(event.pointerId);
       } catch {
         // Ignore pointer capture errors in synthetic test environments
       }
     },
-    [isScrubEnabled, visibleAyah]
+    [extractAyahData, isScrubEnabled, visibleAyah]
   );
 
   const handleCirclePointerMove = useCallback(
@@ -514,7 +603,9 @@ const SearchBar = ({ variant = 'global' }) => {
       if (targetAyah !== scrubState.lastAyah) {
         scrubState.lastAyah = targetAyah;
         setVisibleAyah(targetAyah);
-        setScrubSnippet(extractAyahPreviewSnippet(targetAyah));
+        const ayahData = extractAyahData(targetAyah);
+        setScrubArabic(ayahData.arabic);
+        setScrubSnippet(ayahData.translation);
 
         if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
           try {
@@ -529,13 +620,13 @@ const SearchBar = ({ variant = 'global' }) => {
         }
         scrubState.rafId = window.requestAnimationFrame(() => {
           const ayahEl = document.querySelector(`[data-ayah="${targetAyah}"]`);
-          if (ayahEl) {
+          if (ayahEl && typeof ayahEl.scrollIntoView === 'function') {
             ayahEl.scrollIntoView({ behavior: 'auto', block: 'center' });
           }
         });
       }
     },
-    [extractAyahPreviewSnippet, isScrubEnabled, totalAyahsInCurrentSurah]
+    [extractAyahData, isScrubEnabled, totalAyahsInCurrentSurah]
   );
 
   const finishScrubGesture = useCallback(
@@ -567,7 +658,9 @@ const SearchBar = ({ variant = 'global' }) => {
 
         const ayahEl = document.querySelector(`[data-ayah="${finalAyah}"]`);
         if (ayahEl) {
-          ayahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (typeof ayahEl.scrollIntoView === 'function') {
+            ayahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
           ayahEl.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
           window.setTimeout(() => {
             ayahEl.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
@@ -915,49 +1008,54 @@ const SearchBar = ({ variant = 'global' }) => {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-6 transition-all duration-300 ${
-              hudVisible ? 'opacity-100' : 'opacity-0'
+            className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4 transition-all duration-300 ${
+              hudVisible ? 'opacity-100 bg-black/40 backdrop-blur-[2px]' : 'opacity-0 bg-transparent'
             }`}
             style={{
               scale: hudVisible ? '1' : '0.92',
               translate: '0px 0px'
             }}
           >
-            <div className="bg-slate-900/85 backdrop-blur-md text-white rounded-3xl px-8 py-6 shadow-2xl border border-white/15 min-w-[230px] max-w-xs w-full text-center">
-              <div className="flex items-center justify-center gap-2 text-xs font-medium text-amber-300/90 uppercase tracking-wider">
-                <span>{currentSurah?.name_simple}</span>
-                {currentSurah?.name_arabic && (
-                  <>
-                    <span className="opacity-50">•</span>
-                    <span className="quran-text-pak text-sm normal-case">{currentSurah.name_arabic}</span>
-                  </>
-                )}
-              </div>
+            <div
+              className={`relative rounded-3xl px-6 sm:px-8 py-5 shadow-2xl border backdrop-blur-xl w-full max-w-[340px] sm:max-w-md text-center transition-all duration-200 ${hudStyles.card}`}
+            >
+              {scrubArabic && (
+                <div
+                  dir="rtl"
+                  lang="ar"
+                  data-testid="scrub-arabic-words"
+                  className={`quran-text-pak !text-xl sm:!text-2xl font-bold !leading-snug text-center px-1 line-clamp-2 ${hudStyles.arabicText}`}
+                  style={{
+                    color: hudStyles.arabicColor,
+                    textShadow: hudStyles.arabicShadow
+                  }}
+                >
+                  {scrubArabic}
+                </div>
+              )}
 
-              <div className="mt-2 flex items-baseline justify-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-                  Ayah
-                </span>
+              <div className={`${scrubArabic ? 'mt-2.5' : 'mt-0'} flex items-baseline justify-center gap-2`}>
                 <span
                   data-testid="scrub-ayah-number"
-                  className="text-6xl sm:text-7xl font-black tracking-tight text-amber-400 tabular-nums leading-none"
+                  className={`text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none ${hudStyles.number}`}
+                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
                 >
                   {scrubAyah}
                 </span>
-                <span className="text-sm font-medium text-slate-400 tabular-nums">
+                <span className={`text-sm sm:text-base font-semibold tabular-nums ${hudStyles.totalText}`}>
                   / {totalAyahsInCurrentSurah}
                 </span>
               </div>
 
-              <div className="mt-4 w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+              <div className={`mt-3.5 w-full h-1.5 ${hudStyles.trackBg} rounded-full overflow-hidden`}>
                 <div
-                  className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full transition-all duration-75"
+                  className={`h-full ${hudStyles.trackFill} rounded-full transition-all duration-75`}
                   style={{ width: `${scrubProgressPercent}%` }}
                 />
               </div>
 
               {scrubSnippet && (
-                <p className="mt-3 text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                <p className={`mt-3 text-xs sm:text-sm line-clamp-2 leading-relaxed px-1 ${hudStyles.snippetText}`}>
                   {scrubSnippet}
                 </p>
               )}
