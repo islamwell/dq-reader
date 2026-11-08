@@ -52,7 +52,17 @@ const THEME_LINK_STYLES = {
 const Surah = () => {
   const { surahNumber } = useParams();
   const location = useLocation();
-  const { surahs, fetchSurahVerses, fetchSurahGrammar, setCurrentSurah, theme, addVisitedAyah } = useQuranData();
+  const {
+    surahs,
+    fetchSurahVerses,
+    fetchSurahGrammar,
+    setCurrentSurah,
+    theme,
+    addVisitedAyah,
+    grammarData,
+    grammarMode,
+    showInterlinear
+  } = useQuranData();
   const { playingAyah } = useQuranAudio();
   const [verses, setVerses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -242,6 +252,8 @@ const Surah = () => {
   }
 
   const showBismillah = surah.id !== 1 && surah.id !== 9;
+  const isEnhancedGrammar = Boolean(grammarData?.[surah.id]?.enhanced);
+  const isDarkTheme = theme === 'dark';
 
   return (
     <div className="space-y-8">
@@ -283,7 +295,7 @@ const Surah = () => {
                   <span>💡 Tadabbur Quiz</span>
                 </button>
               )}
-              <GrammarToggle />
+              <GrammarToggle surahNumber={surah.id} />
             </div>
           </div>
 
@@ -302,11 +314,46 @@ const Surah = () => {
             </div>
 
             <div className="text-right">
-              <div className={`quran-text-pak text-4xl ${textStyle}`}>
+              <div className={`quran-text-pak !text-inherit [text-shadow:none] text-4xl ${textStyle}`}>
                 {surah.name_arabic}
               </div>
             </div>
           </div>
+
+          {isEnhancedGrammar && grammarMode !== 'off' && (
+            <div
+              data-testid="enhanced-sarf-legend"
+              className={`mt-5 pt-4 border-t flex flex-wrap items-center justify-between gap-3 text-xs ${
+                isDarkTheme
+                  ? 'border-slate-700 text-slate-300'
+                  : 'border-slate-200/80 text-slate-600'
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" aria-hidden="true" />
+                  <span>اسم Noun</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" aria-hidden="true" />
+                  <span>فعل Verb</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" aria-hidden="true" />
+                  <span>حرف Particle</span>
+                </span>
+                {showInterlinear && (
+                  <span className={`font-medium ${isDarkTheme ? 'text-amber-300' : 'text-amber-800'}`}>
+                    • <span className="font-arabic">الوزن (ف–ع–ل)</span> shown under words
+                  </span>
+                )}
+              </div>
+
+              <p className="opacity-85">
+                Tap any word for <span className="font-semibold">Ṣarf, Iʿrāb &amp; Reflection</span>
+              </p>
+            </div>
+          )}
         </motion.div>
 
       {showBismillah && (

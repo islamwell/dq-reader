@@ -267,6 +267,15 @@ export const QuranProvider = ({ children }) => {
   });
   const [selectedGrammarWord, setSelectedGrammarWord] = useState(null);
   const [grammarData, setGrammarData] = useState({});
+  // Word-by-word interlinear study cards (only used by enhanced sarf datasets, e.g. Surah 103)
+  const [showInterlinear, setShowInterlinearState] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return localStorage.getItem('quran_grammar_interlinear') !== 'false';
+    } catch {
+      return true;
+    }
+  });
   const audioRef = useRef(null);
   const translationsCacheRef = useRef({});
   const translationWarningRef = useRef(new Set());
@@ -1150,6 +1159,18 @@ export const QuranProvider = ({ children }) => {
         localStorage.setItem('quran_grammar_mode', next);
       } catch (e) {
         console.error('Failed to persist grammar mode:', e);
+      }
+      return next;
+    });
+  }, []);
+
+  const setShowInterlinear = useCallback((value) => {
+    setShowInterlinearState((prev) => {
+      const next = typeof value === 'function' ? Boolean(value(prev)) : Boolean(value);
+      try {
+        localStorage.setItem('quran_grammar_interlinear', String(next));
+      } catch (e) {
+        console.error('Failed to persist interlinear preference:', e);
       }
       return next;
     });
@@ -2930,7 +2951,9 @@ export const QuranProvider = ({ children }) => {
       selectedGrammarWord,
       setSelectedGrammarWord,
       grammarData,
-      fetchSurahGrammar
+      fetchSurahGrammar,
+      showInterlinear,
+      setShowInterlinear
     }),
     [
       surahs,
@@ -3004,7 +3027,9 @@ export const QuranProvider = ({ children }) => {
       selectedGrammarWord,
       setSelectedGrammarWord,
       grammarData,
-      fetchSurahGrammar
+      fetchSurahGrammar,
+      showInterlinear,
+      setShowInterlinear
     ]
   );
 

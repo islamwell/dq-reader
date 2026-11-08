@@ -3,12 +3,23 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { useQuranData } from '../../contexts/QuranContext';
 
-const { FiSliders } = FiIcons;
+const { FiSliders, FiLayers } = FiIcons;
 
-const GrammarToggle = ({ className = '' }) => {
-  const { grammarMode, toggleGrammarMode, setGrammarMode, theme } = useQuranData();
+const GrammarToggle = ({ className = '', surahNumber = null }) => {
+  const {
+    grammarMode,
+    toggleGrammarMode,
+    setGrammarMode,
+    theme,
+    grammarData,
+    showInterlinear,
+    setShowInterlinear
+  } = useQuranData();
 
   const isDark = theme === 'dark';
+  const resolvedSurah = surahNumber ? Number(surahNumber) : null;
+  const isEnhanced = Boolean(resolvedSurah && grammarData?.[resolvedSurah]?.enhanced);
+  const cardsActive = Boolean(isEnhanced && showInterlinear && grammarMode !== 'off');
 
   const getButtonStyles = () => {
     switch (grammarMode) {
@@ -22,7 +33,9 @@ const GrammarToggle = ({ className = '' }) => {
           : 'bg-blue-50 text-blue-900 border-blue-300 ring-2 ring-blue-400/40';
       case 'off':
       default:
-        return 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+        return isDark
+          ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200/80';
     }
   };
 
@@ -38,41 +51,80 @@ const GrammarToggle = ({ className = '' }) => {
     }
   };
 
-  return (
-    <div className={`inline-flex items-center rounded-xl p-0.5 border shadow-xs ${className} ${getButtonStyles()}`}>
-      <button
-        type="button"
-        onClick={toggleGrammarMode}
-        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all select-none"
-        title="Toggle Arabic Grammar Colors (Keyboard shortcut: G)"
-        aria-label="Toggle Arabic Grammar Colors"
-      >
-        <span className="flex items-center space-x-1">
-          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block animate-pulse" />
-          <span className="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse" />
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-        </span>
-        <span className="font-bold">نحو</span>
-        <span className="hidden sm:inline opacity-80">• {getBadgeText()}</span>
-        <kbd className="hidden md:inline px-1.5 py-0.5 text-[10px] rounded bg-black/10 dark:bg-white/10 font-mono">
-          G
-        </kbd>
-      </button>
+  const handleToggleCards = () => {
+    if (grammarMode === 'off') {
+      setGrammarMode?.('colored');
+      setShowInterlinear?.(true);
+      return;
+    }
+    setShowInterlinear?.((prev) => !prev);
+  };
 
-      {/* Mode Switch Dropdown / Quick Cycle */}
-      <button
-        type="button"
-        onClick={() => {
-          if (grammarMode === 'colored') setGrammarMode('underline');
-          else if (grammarMode === 'underline') setGrammarMode('off');
-          else setGrammarMode('colored');
-        }}
-        className="px-1.5 py-1.5 hover:opacity-75 transition-opacity"
-        title="Cycle grammar mode: Colored -> Underlines -> Off"
-        aria-label="Cycle grammar display mode"
-      >
-        <SafeIcon icon={FiSliders} className="text-xs" />
-      </button>
+  const kbdClass = isDark ? 'bg-white/15' : 'bg-black/10';
+
+  return (
+    <div className={`inline-flex flex-wrap items-center gap-2 ${className}`}>
+      <div className={`inline-flex items-center rounded-xl p-0.5 border shadow-xs ${getButtonStyles()}`}>
+        <button
+          type="button"
+          onClick={toggleGrammarMode}
+          className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+          title="Toggle Arabic Grammar Colors (Keyboard shortcut: G)"
+          aria-label="Toggle Arabic Grammar Colors"
+        >
+          <span className="flex items-center space-x-1" aria-hidden="true">
+            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          </span>
+          <span className="font-bold">نحو</span>
+          <span className="hidden sm:inline opacity-80">• {getBadgeText()}</span>
+          <kbd className={`hidden md:inline px-1.5 py-0.5 text-[10px] rounded font-mono ${kbdClass}`}>
+            G
+          </kbd>
+        </button>
+
+        {/* Mode Switch Dropdown / Quick Cycle */}
+        <button
+          type="button"
+          onClick={() => {
+            if (grammarMode === 'colored') setGrammarMode('underline');
+            else if (grammarMode === 'underline') setGrammarMode('off');
+            else setGrammarMode('colored');
+          }}
+          className="px-1.5 py-1.5 rounded-lg hover:opacity-75 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+          title="Cycle grammar mode: Colored -> Underlines -> Off"
+          aria-label="Cycle grammar display mode"
+        >
+          <SafeIcon icon={FiSliders} className="text-xs" />
+        </button>
+      </div>
+
+      {isEnhanced && (
+        <button
+          type="button"
+          onClick={handleToggleCards}
+          aria-pressed={cardsActive}
+          data-testid="interlinear-toggle"
+          className={`inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all select-none shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+            cardsActive
+              ? isDark
+                ? 'bg-emerald-950/80 text-emerald-200 border-emerald-600/60 ring-2 ring-emerald-500/30'
+                : 'bg-emerald-50 text-emerald-900 border-emerald-300 ring-2 ring-emerald-400/40'
+              : isDark
+                ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200/80'
+          }`}
+          title="Toggle word-by-word ṣarf cards (Keyboard shortcut: I)"
+        >
+          <SafeIcon icon={FiLayers} className="text-xs" />
+          <span className="font-arabic font-bold text-sm leading-none">الصرف</span>
+          <span className="hidden sm:inline opacity-80">• Cards</span>
+          <kbd className={`hidden md:inline px-1.5 py-0.5 text-[10px] rounded font-mono ${kbdClass}`}>
+            I
+          </kbd>
+        </button>
+      )}
     </div>
   );
 };

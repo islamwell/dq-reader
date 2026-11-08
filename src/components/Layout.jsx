@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
@@ -94,12 +94,28 @@ const Layout = () => {
     grammarMode,
     setGrammarMode,
     toggleGrammarMode,
+    grammarData,
+    showInterlinear,
+    setShowInterlinear,
     selectedGrammarWord,
     setSelectedGrammarWord
   } = useQuranData();
 
-  // Register global G shortcut
-  useGrammarKeyboardShortcuts({ grammarMode, setGrammarMode, toggleGrammarMode });
+  const activeSurahMatch = location.pathname.match(/^\/surah\/(\d+)/);
+  const activeSurahNumber = activeSurahMatch ? Number(activeSurahMatch[1]) : null;
+  const interlinearAvailable = Boolean(
+    activeSurahNumber && grammarData?.[activeSurahNumber]?.enhanced
+  );
+
+  // Register global G shortcut and enhanced-surah I shortcut
+  useGrammarKeyboardShortcuts({
+    grammarMode,
+    setGrammarMode,
+    toggleGrammarMode,
+    showInterlinear,
+    setShowInterlinear,
+    interlinearAvailable
+  });
 
   const themeStyles = THEME_STYLES[theme] ?? DEFAULT_THEME_STYLE;
   const shellClasses = `min-h-screen flex flex-col transition-colors duration-300 ${themeStyles.shell}`;
@@ -119,25 +135,56 @@ const Layout = () => {
     navigate(`/surah/${lastPlayedPosition.surahNumber}?ayah=${lastPlayedPosition.ayahNumber}`);
   };
 
+  const findSelectedWordIndex = (selectedWord) => {
+    if (!selectedWord?.wordsInAyah?.length) return -1;
+    return selectedWord.wordsInAyah.findIndex(
+      (w) =>
+        w.position === selectedWord.position &&
+        (w.ayahNumber == null || w.ayahNumber === selectedWord.ayahNumber)
+    );
+  };
+
   const handleNavigateWord = (delta) => {
     if (!selectedGrammarWord || !selectedGrammarWord.wordsInAyah) return;
     const words = selectedGrammarWord.wordsInAyah;
-    const currentIndex = words.findIndex((w) => w.position === selectedGrammarWord.position);
+    const currentIndex = findSelectedWordIndex(selectedGrammarWord);
     if (currentIndex === -1) return;
     const nextIndex = currentIndex + delta;
     if (nextIndex >= 0 && nextIndex < words.length) {
+      const nextWord = words[nextIndex];
+      const nextAyahNumber = nextWord.ayahNumber ?? selectedGrammarWord.ayahNumber;
+      const nextAyahGrammar =
+        grammarData?.[selectedGrammarWord.surahNumber]?.ayahs?.[String(nextAyahNumber)];
+      const nextAyahStructure = nextAyahGrammar?.structure_ar
+        ? { ar: nextAyahGrammar.structure_ar, en: nextAyahGrammar.structure_en }
+        : selectedGrammarWord.ayahStructure ?? null;
+
       setSelectedGrammarWord({
-        ...words[nextIndex],
+        ...nextWord,
         surahNumber: selectedGrammarWord.surahNumber,
-        ayahNumber: selectedGrammarWord.ayahNumber,
-        wordsInAyah: words
+        ayahNumber: nextAyahNumber,
+        wordsInAyah: words,
+        ayahStructure: nextAyahStructure
       });
     }
+  };
+
+  const handleOpenAyahFromGrammar = (surahNum, ayahNum) => {
+    setSelectedGrammarWord(null);
+    navigate(`/surah/${surahNum}?ayah=${ayahNum}`);
   };
 
   useEffect(() => {
     closeSettings();
   }, [location.pathname, location.search, closeSettings]);
+
+  const prevPathRef = useRef(location.pathname);
+  useEffect(() => {
+    if (prevPathRef.current !== location.pathname) {
+      prevPathRef.current = location.pathname;
+      setSelectedGrammarWord(null);
+    }
+  }, [location.pathname, setSelectedGrammarWord]);
 
   return (
     <div className={shellClasses}>
@@ -208,7 +255,7 @@ const Layout = () => {
             <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
           </div>
           <div className="text-xs opacity-75 font-mono">
-            v1.1.15 (updated 2026-11-06 22:52)
+            v1.1.16 (updated 2026-11-08 08:02)
           </div>
         </div>
       </footer>
@@ -220,18 +267,13 @@ const Layout = () => {
         theme={theme}
         onClose={() => setSelectedGrammarWord(null)}
         onNavigateWord={handleNavigateWord}
-        hasPreviousWord={
-          Boolean(
-            selectedGrammarWord?.wordsInAyah &&
-              selectedGrammarWord.wordsInAyah.findIndex((w) => w.position === selectedGrammarWord.position) > 0
-          )
-        }
+        onOpenAyah={handleOpenAyahFromGrammar}
+        hasPreviousWord={findSelectedWordIndex(selectedGrammarWord) > 0}
         hasNextWord={
-          Boolean(
-            selectedGrammarWord?.wordsInAyah &&
-              selectedGrammarWord.wordsInAyah.findIndex((w) => w.position === selectedGrammarWord.position) <
-                selectedGrammarWord.wordsInAyah.length - 1
-          )
+          (() => {
+            const idx = findSelectedWordIndex(selectedGrammarWord);
+            return idx !== -1 && idx < (selectedGrammarWord?.wordsInAyah?.length ?? 0) - 1;
+          })()
         }
       />
     </div>
