@@ -141,7 +141,7 @@ const Surah = () => {
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [initialAyahFromQuery, loading, scrollToAyah, verses.length]);
+  }, [initialAyahFromQuery, loading, location.key, scrollToAyah, verses.length]);
 
   useEffect(() => {
     const loadSurah = async () => {

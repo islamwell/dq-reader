@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
-import { highlightMatches } from '../utils/fuzzySearch';
+import { getJuzStart } from '../data/quran-data.js';
+import { highlightMatches, parseJuzQuery } from '../utils/fuzzySearch';
 import './ExpandableSearch.css';
 
 const { FiSearch, FiArrowRight } = FiIcons;
@@ -176,10 +177,20 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
    */
   const handleSearchSubmit = useCallback((e) => {
     e.preventDefault();
+    const juzQuery = parseJuzQuery(searchQuery);
+    if (juzQuery?.isExactJuzQuery) {
+      const juzStart = getJuzStart(juzQuery.juzNumber);
+      if (juzStart) {
+        navigate(`/surah/${juzStart.surahNumber}?ayah=${juzStart.ayahNumber}`);
+        collapseSearch();
+        return;
+      }
+    }
+
     if (searchQuery.trim() && searchResults.length > 0) {
       // Navigate to first result
       const firstResult = searchResults[0];
-      if (firstResult.type === 'ayah') {
+      if (firstResult.type === 'ayah' || firstResult.type === 'juz') {
         navigate(`/surah/${firstResult.surahNumber}?ayah=${firstResult.ayahNumber}`);
       } else if (firstResult.type === 'surah') {
         navigate(`/surah/${firstResult.surahNumber}`);
@@ -194,7 +205,7 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
   const handleSelectResult = useCallback((result) => {
     if (!result) return;
     
-    if (result.type === 'ayah') {
+    if (result.type === 'ayah' || result.type === 'juz') {
       navigate(`/surah/${result.surahNumber}?ayah=${result.ayahNumber}`);
     } else if (result.type === 'surah') {
       navigate(`/surah/${result.surahNumber}`);
@@ -498,11 +509,17 @@ const ExpandableSearch = ({ variant = 'nav', className = '' }) => {
                       onClick={() => handleSelectResult(result)}
                       className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-islamic-gold transition-colors"
                     >
-                      {result.type === 'ayah' ? (
+                      {result.type === 'ayah' || result.type === 'juz' ? (
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs uppercase tracking-wide text-islamic-gold font-semibold mb-1">
-                              Ayah • {result.surahNumber}:{result.ayahNumber}
+                            <p
+                              className={`text-xs uppercase tracking-wide font-semibold mb-1 ${
+                                result.type === 'juz' ? 'text-emerald-700' : 'text-islamic-gold'
+                              }`}
+                            >
+                              {result.type === 'juz'
+                                ? `Juz ${result.juzNumber} • Starts at ${result.surahNumber}:${result.ayahNumber}`
+                                : `Ayah • ${result.surahNumber}:${result.ayahNumber}`}
                             </p>
                             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
                               {result.surahName}

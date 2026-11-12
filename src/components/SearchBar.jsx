@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
-import { highlightMatches } from '../utils/fuzzySearch';
+import { getJuzStart } from '../data/quran-data.js';
+import { highlightMatches, parseJuzQuery } from '../utils/fuzzySearch';
 
 const {
   FiSearch,
@@ -366,6 +367,9 @@ const SearchBar = ({ variant = 'global' }) => {
 
     setIsLoading(true);
 
+    const juzQuery = parseJuzQuery(query);
+    const delay = juzQuery ? 0 : 160;
+
     const timeoutId = window.setTimeout(async () => {
       try {
         const matches = await searchQuran(query, currentSurahNumber);
@@ -382,7 +386,7 @@ const SearchBar = ({ variant = 'global' }) => {
           setIsLoading(false);
         }
       }
-    }, 160);
+    }, delay);
 
     return () => {
       isCancelled = true;
@@ -402,7 +406,7 @@ const SearchBar = ({ variant = 'global' }) => {
         setRecentSearches(getRecentSearches());
       }
 
-      if (result.type === 'ayah') {
+      if (result.type === 'ayah' || result.type === 'juz') {
         navigate(`/surah/${result.surahNumber}?ayah=${result.ayahNumber}`);
       } else if (result.type === 'surah') {
         navigate(`/surah/${result.surahNumber}`);
@@ -436,12 +440,30 @@ const SearchBar = ({ variant = 'global' }) => {
         return;
       }
 
-      if (event.key === 'Enter' && results.length) {
-        event.preventDefault();
-        handleSelect(results[0]);
+      if (event.key === 'Enter') {
+        const juzQuery = parseJuzQuery(query);
+        if (juzQuery?.isExactJuzQuery) {
+          const juzStart = getJuzStart(juzQuery.juzNumber);
+          if (juzStart) {
+            event.preventDefault();
+            handleSelect({
+              type: 'juz',
+              id: `juz-${juzStart.juzNumber}`,
+              juzNumber: juzStart.juzNumber,
+              surahNumber: juzStart.surahNumber,
+              ayahNumber: juzStart.ayahNumber
+            });
+            return;
+          }
+        }
+
+        if (results.length) {
+          event.preventDefault();
+          handleSelect(results[0]);
+        }
       }
     },
-    [handleClear, handleSelect, results]
+    [handleClear, handleSelect, query, results]
   );
 
   const handleFocus = useCallback(() => {
@@ -692,7 +714,7 @@ const SearchBar = ({ variant = 'global' }) => {
   const showRecentSearches = isExpanded && !hasQuery && isFocused && recentSearches.length > 0;
 
   const placeholderText = useMemo(
-    () => 'Rahman 22, 15:20, Cave 44, "our Lord", كدأب',
+    () => 'Rahman 22, 15:20, Juz 4, "our Lord", كدأب',
     []
   );
 
@@ -896,11 +918,17 @@ const SearchBar = ({ variant = 'global' }) => {
                             onClick={() => handleSelect(result)}
                             className="w-full text-left px-5 py-4 hover:bg-islamic-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-islamic-gold"
                           >
-                            {result.type === 'ayah' ? (
+                            {result.type === 'ayah' || result.type === 'juz' ? (
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
-                                  <p className="text-xs uppercase tracking-wide text-islamic-gold font-semibold mb-1">
-                                    Ayah • {result.surahNumber}:{result.ayahNumber}
+                                  <p
+                                    className={`text-xs uppercase tracking-wide font-semibold mb-1 ${
+                                      result.type === 'juz' ? 'text-emerald-700' : 'text-islamic-gold'
+                                    }`}
+                                  >
+                                    {result.type === 'juz'
+                                      ? `Juz ${result.juzNumber} • Starts at ${result.surahNumber}:${result.ayahNumber}`
+                                      : `Ayah • ${result.surahNumber}:${result.ayahNumber}`}
                                   </p>
                                   <p className="text-sm font-semibold text-slate-900">
                                     {result.surahName}

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { buildFuseIndex, fuzzySearchSurahs, expandAliases, highlightMatches } from '../fuzzySearch';
-import { getAllSurahsInfo } from '../../data/quran-data';
+import { buildFuseIndex, fuzzySearchSurahs, expandAliases, highlightMatches, parseJuzQuery } from '../fuzzySearch';
+import { getAllSurahsInfo, JUZ_DATA, getJuzStart } from '../../data/quran-data';
 
 describe('fuzzySearch surah matching', () => {
   let surahs;
@@ -63,5 +63,49 @@ describe('fuzzySearch surah matching', () => {
   it('highlights matched tokens properly', () => {
     const segments = highlightMatches('Al-Baqarah', 'baqarah');
     expect(segments.some((s) => s.highlighted)).toBe(true);
+  });
+});
+
+describe('Juz search query parsing & boundaries (1-30)', () => {
+  it('contains all 30 Juz entries in order with valid surah/ayah start coordinates', () => {
+    expect(JUZ_DATA).toHaveLength(30);
+    expect(getJuzStart(1)).toEqual({ juzNumber: 1, surahNumber: 1, ayahNumber: 1 });
+    expect(getJuzStart(4)).toEqual({ juzNumber: 4, surahNumber: 3, ayahNumber: 93 });
+    expect(getJuzStart(30)).toEqual({ juzNumber: 30, surahNumber: 78, ayahNumber: 1 });
+    expect(getJuzStart(0)).toBeNull();
+    expect(getJuzStart(31)).toBeNull();
+
+    for (let i = 1; i <= 30; i += 1) {
+      const entry = getJuzStart(i);
+      expect(entry).not.toBeNull();
+      expect(entry.juzNumber).toBe(i);
+      expect(entry.surahNumber).toBeGreaterThanOrEqual(1);
+      expect(entry.surahNumber).toBeLessThanOrEqual(114);
+      expect(entry.ayahNumber).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('parses valid Juz 1-30 queries in all common formats', () => {
+    expect(parseJuzQuery('juz 4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('Juz 04')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juz4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juz:4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juz-4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juz #4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juz no 4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juz number 4')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('juzz 15')).toEqual({ juzNumber: 15, isExactJuzQuery: true });
+    expect(parseJuzQuery('para 30')).toEqual({ juzNumber: 30, isExactJuzQuery: true });
+    expect(parseJuzQuery('4th juz')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+    expect(parseJuzQuery('جزء ٤')).toEqual({ juzNumber: 4, isExactJuzQuery: true });
+  });
+
+  it('identifies bare "juz" query as browse mode and rejects out-of-range numbers', () => {
+    expect(parseJuzQuery('juz')).toEqual({ juzNumber: null, isJuzBrowse: true });
+    expect(parseJuzQuery('para')).toEqual({ juzNumber: null, isJuzBrowse: true });
+    expect(parseJuzQuery('juz 0')).toEqual({ juzNumber: null, isOutOfRangeJuzQuery: true });
+    expect(parseJuzQuery('juz 31')).toEqual({ juzNumber: null, isOutOfRangeJuzQuery: true });
+    expect(parseJuzQuery('juz 100')).toEqual({ juzNumber: null, isOutOfRangeJuzQuery: true });
+    expect(parseJuzQuery('al baqarah')).toBeNull();
   });
 });

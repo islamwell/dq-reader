@@ -151,7 +151,7 @@ const SearchResults = ({ onOpenSettings }) => {
   }, [query, searchQuran]);
 
   const handleResultClick = (result) => {
-    if (result.type === 'ayah') {
+    if (result.type === 'ayah' || result.type === 'juz') {
       navigate(`/surah/${result.surahNumber}?ayah=${result.ayahNumber}`);
     } else if (result.type === 'surah') {
       navigate(`/surah/${result.surahNumber}`);
@@ -270,7 +270,7 @@ const SearchResults = ({ onOpenSettings }) => {
             className="space-y-4"
           >
             {results.map((result, index) => {
-              const isAyah = result.type === 'ayah';
+              const isAyah = result.type === 'ayah' || result.type === 'juz';
               const ayahKey = isAyah ? `${result.surahNumber}:${result.ayahNumber}` : '';
               const isBookmarked = isAyah && bookmarks.some(b => b.surahNumber === result.surahNumber && b.ayahNumber === result.ayahNumber);
               const isPlaying = isAyah && playingAyah === ayahKey;
@@ -291,7 +291,9 @@ const SearchResults = ({ onOpenSettings }) => {
                     >
                       <div className="flex-1">
                         <p className={`text-xs uppercase tracking-wide mb-2 ${themeStyles.ayahNum}`}>
-                          Ayah • {result.surahNumber}:{result.ayahNumber}
+                          {result.type === 'juz'
+                            ? `Juz ${result.juzNumber} • Starts at ${result.surahNumber}:${result.ayahNumber}`
+                            : `Ayah • ${result.surahNumber}:${result.ayahNumber}`}
                         </p>
                         <p className={`text-base font-semibold mb-2 group-hover:opacity-80 transition-opacity ${themeStyles.text}`}>
                           {result.surahName}

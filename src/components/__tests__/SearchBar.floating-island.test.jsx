@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import SearchBar from '../SearchBar';
+
+const LocationDisplay = () => {
+  const location = useLocation();
+  return <div data-testid="current-location">{`${location.pathname}${location.search}`}</div>;
+};
 
 let searchQuranMock;
 let surahsMock;
@@ -132,5 +137,54 @@ describe('SearchBar floating island behaviour', () => {
     } finally {
       mockAyahEl.remove();
     }
+  });
+
+  it('navigates immediately to the beginning of Juz 4 when typing "juz 4" and pressing Enter', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <SearchBar />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /open search/i }));
+    const input = await screen.findByRole('textbox', { name: /search quran/i });
+
+    await user.type(input, 'juz 4{Enter}');
+    expect(screen.getByTestId('current-location').textContent).toBe('/surah/3?ayah=93');
+  });
+
+  it('renders a Juz result card and navigates to its start ayah when clicked', async () => {
+    searchQuranMock.mockResolvedValue([
+      {
+        type: 'juz',
+        id: 'juz-30',
+        juzNumber: 30,
+        surahNumber: 78,
+        ayahNumber: 1,
+        surahName: 'An-Naba',
+        surahEnglishName: 'The Tidings',
+        snippet: 'عَمَّ يَتَسَآءَلُونَ'
+      }
+    ]);
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <SearchBar />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /open search/i }));
+    const input = await screen.findByRole('textbox', { name: /search quran/i });
+    await user.type(input, 'juz 30');
+
+    const juzResult = await screen.findByText(/Juz 30 • Starts at 78:1/i);
+    expect(juzResult).toBeInTheDocument();
+
+    await user.click(juzResult);
+    expect(screen.getByTestId('current-location').textContent).toBe('/surah/78?ayah=1');
   });
 });

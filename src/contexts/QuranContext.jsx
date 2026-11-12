@@ -29,7 +29,8 @@ import {
 } from '../data/localTranslations';
 import { DEFAULT_RECITER } from '../data/reciters';
 import { OfflineCache } from '../utils/offlineCache';
-import { buildFuseIndex, fuzzySearchSurahs, expandAliases, QURAN_BOOK_TERMS, normalizeTransliteration, parseSearchMode } from '../utils/fuzzySearch';
+import { JUZ_DATA, getJuzStart } from '../data/quran-data.js';
+import { buildFuseIndex, fuzzySearchSurahs, expandAliases, QURAN_BOOK_TERMS, normalizeTransliteration, parseSearchMode, parseJuzQuery } from '../utils/fuzzySearch';
 
 const SUPPORTED_THEMES = ['green', 'red', 'blue', 'light', 'dark', 'sepia'];
 const DEFAULT_THEME = 'light';
@@ -623,6 +624,12 @@ export const QuranProvider = ({ children }) => {
         return [];
       }
 
+      // ── Detect Juz (1-30) queries early ──
+      const juzMatch = parseJuzQuery(trimmedQuery);
+      if (juzMatch?.isOutOfRangeJuzQuery) {
+        return [];
+      }
+
       const lowerQuery = trimmedQuery.toLowerCase();
       const tokens = lowerQuery.split(/\s+/).filter(Boolean);
       const numericTokens = tokens.filter((token) => /^\d+$/.test(token));
@@ -695,6 +702,39 @@ export const QuranProvider = ({ children }) => {
           null
         );
       };
+
+      const buildJuzResult = (juzEntry, translationText = '') => {
+        const entry = index.verseMap.get(`${juzEntry.surahNumber}:${juzEntry.ayahNumber}`);
+        const surahInfo = surahLookup.find((item) => item.id === juzEntry.surahNumber);
+        return {
+          type: 'juz',
+          id: `juz-${juzEntry.juzNumber}`,
+          juzNumber: juzEntry.juzNumber,
+          surahNumber: juzEntry.surahNumber,
+          ayahNumber: juzEntry.ayahNumber,
+          snippet: entry ? buildSnippet(entry) : '',
+          translationSnippet: translationText ? buildTranslationSnippet(translationText) : '',
+          arabic: entry?.textArabic || '',
+          surahName: surahInfo?.name_simple || `Surah ${juzEntry.surahNumber}`,
+          surahArabicName: surahInfo?.name_arabic || '',
+          surahEnglishName: surahInfo?.translated_name?.name || '',
+          versesCount: surahInfo?.verses_count || 0
+        };
+      };
+
+      if (juzMatch?.isExactJuzQuery) {
+        const juzEntry = getJuzStart(juzMatch.juzNumber);
+        if (!juzEntry) {
+          return [];
+        }
+        const entry = index.verseMap.get(`${juzEntry.surahNumber}:${juzEntry.ayahNumber}`);
+        const translationText = entry ? await getTranslationForEntry(entry) : '';
+        return [buildJuzResult(juzEntry, translationText || '')];
+      }
+
+      if (juzMatch?.isJuzBrowse) {
+        return JUZ_DATA.map((juzEntry) => buildJuzResult(juzEntry));
+      }
 
       const addAyahResult = (entry) => {
         if (!entry) {

@@ -119,6 +119,49 @@ export const surahsInfo = [
   { id: 114, name_simple: "An-Nas", name_arabic: "الناس", translated_name: { name: "Mankind" }, revelation_place: "makkah", verses_count: 6 }
 ];
 
+// Standard 30 Juz (Para) starting boundaries (Hafs 'an 'Asim / Madinah Mushaf)
+export const JUZ_DATA = [
+  { juzNumber: 1, surahNumber: 1, ayahNumber: 1 },
+  { juzNumber: 2, surahNumber: 2, ayahNumber: 142 },
+  { juzNumber: 3, surahNumber: 2, ayahNumber: 253 },
+  { juzNumber: 4, surahNumber: 3, ayahNumber: 93 },
+  { juzNumber: 5, surahNumber: 4, ayahNumber: 24 },
+  { juzNumber: 6, surahNumber: 4, ayahNumber: 148 },
+  { juzNumber: 7, surahNumber: 5, ayahNumber: 82 },
+  { juzNumber: 8, surahNumber: 6, ayahNumber: 111 },
+  { juzNumber: 9, surahNumber: 7, ayahNumber: 88 },
+  { juzNumber: 10, surahNumber: 8, ayahNumber: 41 },
+  { juzNumber: 11, surahNumber: 9, ayahNumber: 93 },
+  { juzNumber: 12, surahNumber: 11, ayahNumber: 6 },
+  { juzNumber: 13, surahNumber: 12, ayahNumber: 53 },
+  { juzNumber: 14, surahNumber: 15, ayahNumber: 1 },
+  { juzNumber: 15, surahNumber: 17, ayahNumber: 1 },
+  { juzNumber: 16, surahNumber: 18, ayahNumber: 75 },
+  { juzNumber: 17, surahNumber: 21, ayahNumber: 1 },
+  { juzNumber: 18, surahNumber: 23, ayahNumber: 1 },
+  { juzNumber: 19, surahNumber: 25, ayahNumber: 21 },
+  { juzNumber: 20, surahNumber: 27, ayahNumber: 56 },
+  { juzNumber: 21, surahNumber: 29, ayahNumber: 46 },
+  { juzNumber: 22, surahNumber: 33, ayahNumber: 31 },
+  { juzNumber: 23, surahNumber: 36, ayahNumber: 28 },
+  { juzNumber: 24, surahNumber: 39, ayahNumber: 32 },
+  { juzNumber: 25, surahNumber: 41, ayahNumber: 47 },
+  { juzNumber: 26, surahNumber: 46, ayahNumber: 1 },
+  { juzNumber: 27, surahNumber: 51, ayahNumber: 31 },
+  { juzNumber: 28, surahNumber: 58, ayahNumber: 1 },
+  { juzNumber: 29, surahNumber: 67, ayahNumber: 1 },
+  { juzNumber: 30, surahNumber: 78, ayahNumber: 1 }
+];
+
+// Helper function to get starting surah/ayah for a specific Juz (1-30)
+export const getJuzStart = (juzNumber) => {
+  const num = Number(juzNumber);
+  if (!Number.isInteger(num) || num < 1 || num > 30) {
+    return null;
+  }
+  return JUZ_DATA[num - 1] || null;
+};
+
 // Helper function to get all surahs info
 export const getAllSurahsInfo = () => {
   return surahsInfo;

@@ -576,3 +576,78 @@ export const highlightMatches = (text, searchQuery) => {
     highlighted: expandedTokens.has(part.toLowerCase()) || pattern.test(part)
   }));
 };
+
+// ──────────────────────────────────────────────
+//  4.  JUZ QUERY PARSER (1 - 30)
+// ──────────────────────────────────────────────
+
+const ARABIC_INDIC_DIGITS = {
+  '٠': '0',
+  '١': '1',
+  '٢': '2',
+  '٣': '3',
+  '٤': '4',
+  '٥': '5',
+  '٦': '6',
+  '٧': '7',
+  '٨': '8',
+  '٩': '9'
+};
+
+/**
+ * Parse a user search query that targets a Juz (Para) from 1 to 30.
+ *
+ * Examples:
+ *  - "juz 4", "juz4", "Juz 04", "juz:4", "juz #4", "juz no 4", "para 4", "جزء 4" -> { juzNumber: 4, isExactJuzQuery: true }
+ *  - "4 juz", "4th juz" -> { juzNumber: 4, isExactJuzQuery: true }
+ *  - "juz" / "para" / "جزء" -> { juzNumber: null, isJuzBrowse: true }
+ *  - "juz 0" / "juz 31" -> { juzNumber: null, isOutOfRangeJuzQuery: true }
+ *  - Any unrelated query -> null
+ */
+export const parseJuzQuery = (rawQuery) => {
+  if (typeof rawQuery !== 'string') {
+    return null;
+  }
+
+  const trimmed = rawQuery.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalizedDigits = trimmed.replace(/[٠-٩]/g, (d) => ARABIC_INDIC_DIGITS[d] || d);
+  const normalized = normalizedDigits
+    .toLowerCase()
+    .replace(/['’`]/g, '')
+    .replace(/\s+/g, ' ');
+
+  // Forward pattern: "juz 4", "juz4", "juz-4", "juz:4", "juz #4", "juz no 4", "juz number 4", "para 4", "sipara 4", "جزء 4"
+  const forwardMatch = normalized.match(
+    /^(?:al[\s-]*)?(?:juz+|juzuk|para|parah|sipara|الجزء|جزء)(?:\s*(?:no\.?|num(?:ber)?|#|:|-)\s*|\s*)(\d+)$/i
+  );
+  if (forwardMatch) {
+    const num = Number(forwardMatch[1]);
+    if (Number.isInteger(num) && num >= 1 && num <= 30) {
+      return { juzNumber: num, isExactJuzQuery: true };
+    }
+    return { juzNumber: null, isOutOfRangeJuzQuery: true };
+  }
+
+  // Reverse pattern: "4 juz", "4th juz", "4 para"
+  const reverseMatch = normalized.match(
+    /^(\d+)(?:st|nd|rd|th)?\s*(?:juz+|juzuk|para|parah|sipara|جزء)$/i
+  );
+  if (reverseMatch) {
+    const num = Number(reverseMatch[1]);
+    if (Number.isInteger(num) && num >= 1 && num <= 30) {
+      return { juzNumber: num, isExactJuzQuery: true };
+    }
+    return { juzNumber: null, isOutOfRangeJuzQuery: true };
+  }
+
+  // Browse pattern: "juz", "para", "جزء" without number
+  if (/^(?:al[\s-]*)?(?:juz+|juzuk|para|parah|sipara|الجزء|جزء)$/i.test(normalized)) {
+    return { juzNumber: null, isJuzBrowse: true };
+  }
+
+  return null;
+};
