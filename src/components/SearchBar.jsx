@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useQuranData } from '../contexts/QuranContext';
-import { getJuzStart } from '../data/quran-data.js';
+import { getJuzStart, getSurahInfo } from '../data/quran-data.js';
 import { highlightMatches, parseJuzQuery } from '../utils/fuzzySearch';
 
 const {
@@ -19,6 +19,7 @@ const {
 const RECENT_SEARCHES_KEY = 'quran_recent_searches';
 const MAX_RECENT_SEARCHES = 5;
 const TOTAL_SURAHS = 114;
+const TOTAL_JUZS = 30;
 const ARTICLE_PREFIXES = new Set([
   'al',
   'an',
@@ -29,6 +30,17 @@ const ARTICLE_PREFIXES = new Set([
   'ad',
   'at'
 ]);
+
+const truncateArabicWords = (text, maxWords = 6) => {
+  if (!text) {
+    return '';
+  }
+  const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  if (words.length <= maxWords) {
+    return words.join(' ');
+  }
+  return `${words.slice(0, maxWords).join(' ')} …`;
+};
 
 const THEME_HUD_STYLES = {
   green: {
@@ -163,6 +175,8 @@ const SearchBar = ({ variant = 'global' }) => {
   const [isOpen, setIsOpen] = useState(isNavVariant);
   const [recentSearches, setRecentSearches] = useState([]);
   const [visibleAyah, setVisibleAyah] = useState(1);
+  const [visibleSurah, setVisibleSurah] = useState(1);
+  const [homeScrubMode, setHomeScrubMode] = useState('surah');
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [hudVisible, setHudVisible] = useState(false);
@@ -176,6 +190,8 @@ const SearchBar = ({ variant = 'global' }) => {
     dragging: false,
     pointerId: null,
     startY: 0,
+    startX: 0,
+    mode: 'surah',
     lastAyah: 1,
     rafId: null,
     fadeTimer: null
@@ -184,6 +200,7 @@ const SearchBar = ({ variant = 'global' }) => {
 
   const hasQuery = query.trim().length > 0;
   const isExpanded = isNavVariant || isOpen || hasQuery || isFocused;
+  const isHomePage = location.pathname === '/';
 
   const currentSurahNumber = useMemo(() => {
     const match = location.pathname.match(/^\/surah\/(\d+)/);
@@ -259,6 +276,7 @@ const SearchBar = ({ variant = 'global' }) => {
   useEffect(() => {
     setIsFocused(false);
     setVisibleAyah(currentAyahFromQuery || 1);
+    setVisibleSurah(1);
     setScrubAyah(currentAyahFromQuery || 1);
     setScrubArabic('');
     setScrubSnippet('');
@@ -273,15 +291,17 @@ const SearchBar = ({ variant = 'global' }) => {
     }
   }, [location.pathname, location.search, isNavVariant, currentAyahFromQuery]);
 
-  // Track currently visible ayah while scrolling inside a surah
+  // Track currently visible ayah (Surah page) or surah (Main page) while scrolling
   useEffect(() => {
-    if (!currentSurahNumber || isNavVariant) {
+    if ((!currentSurahNumber && !isHomePage) || isNavVariant) {
       return undefined;
     }
 
     let ticking = false;
+    const selector = currentSurahNumber ? '[data-ayah]' : '[data-surah]';
+    const attrName = currentSurahNumber ? 'data-ayah' : 'data-surah';
 
-    const updateVisibleAyahFromScroll = () => {
+    const updateVisibleItemFromScroll = () => {
       ticking = false;
       if (scrubStateRef.current.dragging) {
         return;
@@ -290,23 +310,22 @@ const SearchBar = ({ variant = 'global' }) => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
       setIsScrolledDown(scrollTop > 140);
 
-      const ayahNodes = document.querySelectorAll('[data-ayah]');
-      if (!ayahNodes.length) {
+      const nodes = document.querySelectorAll(selector);
+      if (!nodes.length) {
         return;
       }
 
       const readingLineY = window.innerHeight * 0.32;
-      let closestAyah = 1;
+      let closestId = 1;
       let smallestDistance = Infinity;
 
-      for (let i = 0; i < ayahNodes.length; i += 1) {
-        const node = ayahNodes[i];
+      for (let i = 0; i < nodes.length; i += 1) {
+        const node = nodes[i];
         const rect = node.getBoundingClientRect();
-        // Check if reading line falls inside this ayah card, or find closest card top
         if (rect.top <= readingLineY && rect.bottom >= readingLineY) {
-          const parsed = Number(node.getAttribute('data-ayah'));
+          const parsed = Number(node.getAttribute(attrName));
           if (Number.isInteger(parsed) && parsed > 0) {
-            closestAyah = parsed;
+            closestId = parsed;
             break;
           }
         }
@@ -314,30 +333,34 @@ const SearchBar = ({ variant = 'global' }) => {
         const distance = Math.abs(rect.top - readingLineY);
         if (distance < smallestDistance) {
           smallestDistance = distance;
-          const parsed = Number(node.getAttribute('data-ayah'));
+          const parsed = Number(node.getAttribute(attrName));
           if (Number.isInteger(parsed) && parsed > 0) {
-            closestAyah = parsed;
+            closestId = parsed;
           }
         }
       }
 
-      setVisibleAyah(closestAyah);
+      if (currentSurahNumber) {
+        setVisibleAyah(closestId);
+      } else {
+        setVisibleSurah(closestId);
+      }
     };
 
     const handleScroll = () => {
       if (!ticking) {
         ticking = true;
-        window.requestAnimationFrame(updateVisibleAyahFromScroll);
+        window.requestAnimationFrame(updateVisibleItemFromScroll);
       }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    updateVisibleAyahFromScroll();
+    updateVisibleItemFromScroll();
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [currentSurahNumber, isNavVariant]);
+  }, [currentSurahNumber, isHomePage, isNavVariant]);
 
   // Cleanup any pending scrub timers/frames on unmount
   useEffect(() => {
@@ -529,7 +552,9 @@ const SearchBar = ({ variant = 'global' }) => {
   }, [closeSearchPanel, navigate]);
 
   const totalAyahsInCurrentSurah = currentSurah?.verses_count || 0;
-  const isScrubEnabled = Boolean(!isNavVariant && currentSurah && totalAyahsInCurrentSurah > 1);
+  const isSurahScrubContext = Boolean(!isNavVariant && currentSurah && totalAyahsInCurrentSurah > 1);
+  const isHomeScrubContext = Boolean(!isNavVariant && isHomePage);
+  const isScrubEnabled = isSurahScrubContext || isHomeScrubContext;
 
   const extractAyahData = useCallback((ayahNumber) => {
     const ayahNode = document.querySelector(`[data-ayah="${ayahNumber}"]`);
@@ -537,11 +562,11 @@ const SearchBar = ({ variant = 'global' }) => {
       return { arabic: '', translation: '' };
     }
 
-    // Extract Arabic words from .quran-text-pak
+    // Extract Arabic words from .quran-text-pak and keep only the first few words
     const arabicEl = ayahNode.querySelector('.quran-text-pak');
     let arabic = '';
     if (arabicEl) {
-      arabic = arabicEl.textContent?.replace(/\s+/g, ' ').trim() || '';
+      arabic = truncateArabicWords(arabicEl.textContent || '', 6);
     }
 
     // Extract translation snippet
@@ -557,6 +582,46 @@ const SearchBar = ({ variant = 'global' }) => {
 
     return { arabic, translation };
   }, []);
+
+  const extractHomeScrubData = useCallback(
+    (mode, targetNumber) => {
+      if (mode === 'juz') {
+        const juzEntry = getJuzStart(targetNumber);
+        if (!juzEntry) {
+          return { arabic: '', translation: '' };
+        }
+        const surahInfo =
+          getSurahInfo(juzEntry.surahNumber) ||
+          (Array.isArray(surahs) ? surahs.find((item) => item.id === juzEntry.surahNumber) : null);
+        const arabic = truncateArabicWords(
+          juzEntry.arabicPreview || surahInfo?.name_arabic || '',
+          6
+        );
+        const surahLabel = surahInfo?.name_simple || `Surah ${juzEntry.surahNumber}`;
+        const translation = juzEntry.translationPreview
+          ? `Juz ${juzEntry.juzNumber} • ${surahLabel} (${juzEntry.surahNumber}:${juzEntry.ayahNumber}) — ${juzEntry.translationPreview}`
+          : `Juz ${juzEntry.juzNumber} • ${surahLabel} (${juzEntry.surahNumber}:${juzEntry.ayahNumber})`;
+        return { arabic, translation };
+      }
+
+      const surahInfo =
+        getSurahInfo(targetNumber) ||
+        (Array.isArray(surahs) ? surahs.find((item) => item.id === targetNumber) : null);
+      if (!surahInfo) {
+        return { arabic: '', translation: '' };
+      }
+      const arabic = truncateArabicWords(
+        surahInfo.arabicPreview || surahInfo.name_arabic || '',
+        6
+      );
+      const meaning = surahInfo.translated_name?.name ? ` (${surahInfo.translated_name.name})` : '';
+      const translation = surahInfo.translationPreview
+        ? `${surahInfo.name_simple}${meaning} — ${surahInfo.translationPreview}`
+        : `${surahInfo.name_simple}${meaning}`;
+      return { arabic, translation };
+    },
+    [surahs]
+  );
 
   const handleCirclePointerDown = useCallback(
     (event) => {
@@ -577,11 +642,24 @@ const SearchBar = ({ variant = 'global' }) => {
       scrubState.dragging = false;
       scrubState.pointerId = event.pointerId;
       scrubState.startY = event.clientY;
-      scrubState.lastAyah = visibleAyah || 1;
+      scrubState.startX = Number.isFinite(event.clientX) ? event.clientX : 0;
+      scrubState.mode = homeScrubMode;
 
-      const initialData = extractAyahData(visibleAyah || 1);
-      setScrubArabic(initialData.arabic);
-      setScrubSnippet(initialData.translation);
+      if (isHomeScrubContext) {
+        const initialTarget = homeScrubMode === 'juz' ? 1 : visibleSurah || 1;
+        scrubState.lastAyah = initialTarget;
+        setScrubAyah(initialTarget);
+        const initialData = extractHomeScrubData(homeScrubMode, initialTarget);
+        setScrubArabic(initialData.arabic);
+        setScrubSnippet(initialData.translation);
+      } else {
+        const initialTarget = visibleAyah || 1;
+        scrubState.lastAyah = initialTarget;
+        setScrubAyah(initialTarget);
+        const initialData = extractAyahData(initialTarget);
+        setScrubArabic(initialData.arabic);
+        setScrubSnippet(initialData.translation);
+      }
 
       try {
         event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -589,7 +667,7 @@ const SearchBar = ({ variant = 'global' }) => {
         // Ignore pointer capture errors in synthetic test environments
       }
     },
-    [extractAyahData, isScrubEnabled, visibleAyah]
+    [extractAyahData, extractHomeScrubData, homeScrubMode, isHomeScrubContext, isScrubEnabled, visibleAyah, visibleSurah]
   );
 
   const handleCirclePointerMove = useCallback(
@@ -610,24 +688,54 @@ const SearchBar = ({ variant = 'global' }) => {
         setHudVisible(true);
       }
 
+      if (isHomeScrubContext && Number.isFinite(event.clientX)) {
+        const deltaX = event.clientX - scrubState.startX;
+        if (deltaX > 36 && scrubState.mode !== 'juz') {
+          scrubState.mode = 'juz';
+          scrubState.lastAyah = -1;
+          setHomeScrubMode('juz');
+        } else if (deltaX < -36 && scrubState.mode !== 'surah') {
+          scrubState.mode = 'surah';
+          scrubState.lastAyah = -1;
+          setHomeScrubMode('surah');
+        }
+      }
+
+      const activeMode = scrubState.mode;
+      const maxItems = isHomeScrubContext
+        ? activeMode === 'juz'
+          ? TOTAL_JUZS
+          : TOTAL_SURAHS
+        : totalAyahsInCurrentSurah;
+
       const trackTop = 24;
       const trackBottom = Math.max(trackTop + 140, window.innerHeight - 108);
       const clampedY = Math.min(trackBottom, Math.max(trackTop, event.clientY));
       const progress = (clampedY - trackTop) / (trackBottom - trackTop);
-      const targetAyah = Math.max(
+      const targetItem = Math.max(
         1,
-        Math.min(totalAyahsInCurrentSurah, Math.round(1 + progress * (totalAyahsInCurrentSurah - 1)))
+        Math.min(maxItems, Math.round(1 + progress * (maxItems - 1)))
       );
 
       setScrubOffsetY(clampedY - trackTop);
-      setScrubAyah(targetAyah);
+      setScrubAyah(targetItem);
 
-      if (targetAyah !== scrubState.lastAyah) {
-        scrubState.lastAyah = targetAyah;
-        setVisibleAyah(targetAyah);
-        const ayahData = extractAyahData(targetAyah);
-        setScrubArabic(ayahData.arabic);
-        setScrubSnippet(ayahData.translation);
+      if (targetItem !== scrubState.lastAyah) {
+        scrubState.lastAyah = targetItem;
+
+        if (isHomeScrubContext) {
+          if (activeMode === 'surah') {
+            setVisibleSurah(targetItem);
+          }
+          const homeData = extractHomeScrubData(activeMode, targetItem);
+          setScrubArabic(homeData.arabic);
+          setScrubSnippet(homeData.translation);
+        } else {
+          setVisibleAyah(targetItem);
+          const ayahData = extractAyahData(targetItem);
+          setScrubArabic(ayahData.arabic);
+          setScrubSnippet(ayahData.translation);
+        }
 
         if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
           try {
@@ -641,14 +749,27 @@ const SearchBar = ({ variant = 'global' }) => {
           window.cancelAnimationFrame(scrubState.rafId);
         }
         scrubState.rafId = window.requestAnimationFrame(() => {
-          const ayahEl = document.querySelector(`[data-ayah="${targetAyah}"]`);
-          if (ayahEl && typeof ayahEl.scrollIntoView === 'function') {
-            ayahEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+          if (isHomeScrubContext) {
+            const surahToScroll =
+              activeMode === 'juz'
+                ? getJuzStart(targetItem)?.surahNumber
+                : targetItem;
+            const surahEl = surahToScroll
+              ? document.querySelector(`[data-surah="${surahToScroll}"]`)
+              : null;
+            if (surahEl && typeof surahEl.scrollIntoView === 'function') {
+              surahEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+            }
+          } else {
+            const ayahEl = document.querySelector(`[data-ayah="${targetItem}"]`);
+            if (ayahEl && typeof ayahEl.scrollIntoView === 'function') {
+              ayahEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+            }
           }
         });
       }
     },
-    [extractAyahData, isScrubEnabled, totalAyahsInCurrentSurah]
+    [extractAyahData, extractHomeScrubData, isHomeScrubContext, isScrubEnabled, totalAyahsInCurrentSurah]
   );
 
   const finishScrubGesture = useCallback(
@@ -667,7 +788,8 @@ const SearchBar = ({ variant = 'global' }) => {
       }
 
       const wasDragging = scrubState.dragging;
-      const finalAyah = scrubState.lastAyah;
+      const finalTarget = scrubState.lastAyah;
+      const finalMode = scrubState.mode;
 
       scrubState.active = false;
       scrubState.dragging = false;
@@ -678,15 +800,35 @@ const SearchBar = ({ variant = 'global' }) => {
         setIsScrubbing(false);
         setScrubOffsetY(0);
 
-        const ayahEl = document.querySelector(`[data-ayah="${finalAyah}"]`);
-        if (ayahEl) {
-          if (typeof ayahEl.scrollIntoView === 'function') {
-            ayahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (isHomeScrubContext) {
+          if (finalMode === 'juz') {
+            const juzStart = getJuzStart(finalTarget);
+            if (juzStart) {
+              navigate(`/surah/${juzStart.surahNumber}?ayah=${juzStart.ayahNumber}`);
+            }
+          } else {
+            const surahEl = document.querySelector(`[data-surah="${finalTarget}"]`);
+            if (surahEl) {
+              if (typeof surahEl.scrollIntoView === 'function') {
+                surahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+              surahEl.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
+              window.setTimeout(() => {
+                surahEl.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
+              }, 2000);
+            }
           }
-          ayahEl.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
-          window.setTimeout(() => {
-            ayahEl.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
-          }, 2000);
+        } else {
+          const ayahEl = document.querySelector(`[data-ayah="${finalTarget}"]`);
+          if (ayahEl) {
+            if (typeof ayahEl.scrollIntoView === 'function') {
+              ayahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            ayahEl.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
+            window.setTimeout(() => {
+              ayahEl.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
+            }, 2000);
+          }
         }
 
         scrubState.fadeTimer = window.setTimeout(() => {
@@ -694,7 +836,7 @@ const SearchBar = ({ variant = 'global' }) => {
         }, 420);
       }
     },
-    []
+    [isHomeScrubContext, navigate]
   );
 
   const handleCircleClick = useCallback(
@@ -748,9 +890,15 @@ const SearchBar = ({ variant = 'global' }) => {
     ? 'absolute left-1/2 top-full z-50 mt-3 w-[min(36rem,90vw)] -translate-x-1/2'
     : 'mt-3 w-full';
 
+  const scrubTotalItems = isHomeScrubContext
+    ? homeScrubMode === 'juz'
+      ? TOTAL_JUZS
+      : TOTAL_SURAHS
+    : totalAyahsInCurrentSurah;
+
   const scrubProgressPercent =
-    totalAyahsInCurrentSurah > 1
-      ? Math.round(((scrubAyah - 1) / (totalAyahsInCurrentSurah - 1)) * 100)
+    scrubTotalItems > 1
+      ? Math.round(((scrubAyah - 1) / (scrubTotalItems - 1)) * 100)
       : 100;
 
   return (
@@ -758,7 +906,7 @@ const SearchBar = ({ variant = 'global' }) => {
       <div className={containerClasses}>
         <div className={outerWrapperClasses}>
           {!isNavVariant && !isExpanded ? (
-            <div className="pointer-events-auto">
+            <div className="pointer-events-auto inline-flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleCircleClick}
@@ -776,8 +924,20 @@ const SearchBar = ({ variant = 'global' }) => {
                     ? 'border-amber-400 ring-4 ring-amber-400/30 cursor-grabbing transition-transform duration-0'
                     : 'border-blue-100 transition-all duration-200'
                 } ${isScrubEnabled && (isScrolledDown || isScrubbing) ? 'px-3.5 py-2.5' : 'p-3'}`}
-                aria-label={isScrubEnabled ? 'Open search or drag to scrub ayahs' : 'Open search'}
-                title={isScrubEnabled ? 'Tap to search • Drag up/down to scrub ayahs' : 'Open search'}
+                aria-label={
+                  isHomeScrubContext
+                    ? 'Open search or drag to scrub surahs and juz'
+                    : isSurahScrubContext
+                    ? 'Open search or drag to scrub ayahs'
+                    : 'Open search'
+                }
+                title={
+                  isHomeScrubContext
+                    ? 'Tap to search • Drag down to scrub Surahs or Juz'
+                    : isSurahScrubContext
+                    ? 'Tap to search • Drag up/down to scrub ayahs'
+                    : 'Open search'
+                }
               >
                 <SafeIcon icon={FiSearch} className="text-xl flex-shrink-0" />
                 {isScrubEnabled && (isScrolledDown || isScrubbing) && (
@@ -785,10 +945,52 @@ const SearchBar = ({ variant = 'global' }) => {
                     data-testid="live-ayah-badge"
                     className="text-xs font-bold tabular-nums tracking-tight text-slate-700"
                   >
-                    {isScrubbing ? `${scrubAyah}/${totalAyahsInCurrentSurah}` : `${currentSurah.id}:${visibleAyah}`}
+                    {isHomeScrubContext
+                      ? isScrubbing
+                        ? homeScrubMode === 'juz'
+                          ? `Juz ${scrubAyah}/${TOTAL_JUZS}`
+                          : `${scrubAyah}/${TOTAL_SURAHS}`
+                        : `S ${visibleSurah}/${TOTAL_SURAHS}`
+                      : isScrubbing
+                      ? `${scrubAyah}/${totalAyahsInCurrentSurah}`
+                      : `${currentSurah.id}:${visibleAyah}`}
                   </span>
                 )}
               </button>
+              {isHomeScrubContext && !isScrubbing && (
+                <div
+                  role="group"
+                  aria-label="Main page scrub mode"
+                  className="inline-flex items-center rounded-full border border-blue-100 bg-white/95 p-0.5 shadow-md backdrop-blur-sm text-[11px] font-semibold"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setHomeScrubMode('surah')}
+                    aria-label="Scrub by Surah"
+                    aria-pressed={homeScrubMode === 'surah'}
+                    className={`px-2.5 py-1 rounded-full transition-colors ${
+                      homeScrubMode === 'surah'
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Surah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHomeScrubMode('juz')}
+                    aria-label="Scrub by Juz"
+                    aria-pressed={homeScrubMode === 'juz'}
+                    className={`px-2.5 py-1 rounded-full transition-colors ${
+                      homeScrubMode === 'juz'
+                        ? 'bg-amber-600 text-white'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Juz
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
           <div className={innerWidthClasses}>
@@ -1063,6 +1265,18 @@ const SearchBar = ({ variant = 'global' }) => {
               )}
 
               <div className={`${scrubArabic ? 'mt-2.5' : 'mt-0'} flex items-baseline justify-center gap-2`}>
+                {isHomeScrubContext && (
+                  <span
+                    data-testid="scrub-mode-badge"
+                    className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      homeScrubMode === 'juz'
+                        ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
+                        : 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+                    }`}
+                  >
+                    {homeScrubMode === 'juz' ? 'Juz' : 'Surah'}
+                  </span>
+                )}
                 <span
                   data-testid="scrub-ayah-number"
                   className={`text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none ${hudStyles.number}`}
@@ -1071,11 +1285,17 @@ const SearchBar = ({ variant = 'global' }) => {
                   {scrubAyah}
                 </span>
                 <span className={`text-sm sm:text-base font-semibold tabular-nums ${hudStyles.totalText}`}>
-                  / {totalAyahsInCurrentSurah}
+                  / {scrubTotalItems}
                 </span>
               </div>
 
-              <div className={`mt-3.5 w-full h-1.5 ${hudStyles.trackBg} rounded-full overflow-hidden`}>
+              {isHomeScrubContext && (
+                <div className={`mt-2 text-[11px] font-medium tracking-wide opacity-75 ${hudStyles.totalText}`}>
+                  {homeScrubMode === 'juz' ? 'Slide ← for Surah' : 'Slide → for Juz'}
+                </div>
+              )}
+
+              <div className={`mt-3 w-full h-1.5 ${hudStyles.trackBg} rounded-full overflow-hidden`}>
                 <div
                   className={`h-full ${hudStyles.trackFill} rounded-full transition-all duration-75`}
                   style={{ width: `${scrubProgressPercent}%` }}
@@ -1083,7 +1303,10 @@ const SearchBar = ({ variant = 'global' }) => {
               </div>
 
               {scrubSnippet && (
-                <p className={`mt-3 text-xs sm:text-sm line-clamp-2 leading-relaxed px-1 ${hudStyles.snippetText}`}>
+                <p
+                  data-testid="scrub-translation"
+                  className={`mt-3 text-xs sm:text-sm line-clamp-2 leading-relaxed px-1 ${hudStyles.snippetText}`}
+                >
                   {scrubSnippet}
                 </p>
               )}

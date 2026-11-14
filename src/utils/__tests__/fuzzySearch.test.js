@@ -69,9 +69,9 @@ describe('fuzzySearch surah matching', () => {
 describe('Juz search query parsing & boundaries (1-30)', () => {
   it('contains all 30 Juz entries in order with valid surah/ayah start coordinates', () => {
     expect(JUZ_DATA).toHaveLength(30);
-    expect(getJuzStart(1)).toEqual({ juzNumber: 1, surahNumber: 1, ayahNumber: 1 });
-    expect(getJuzStart(4)).toEqual({ juzNumber: 4, surahNumber: 3, ayahNumber: 93 });
-    expect(getJuzStart(30)).toEqual({ juzNumber: 30, surahNumber: 78, ayahNumber: 1 });
+    expect(getJuzStart(1)).toMatchObject({ juzNumber: 1, surahNumber: 1, ayahNumber: 1 });
+    expect(getJuzStart(4)).toMatchObject({ juzNumber: 4, surahNumber: 3, ayahNumber: 93 });
+    expect(getJuzStart(30)).toMatchObject({ juzNumber: 30, surahNumber: 78, ayahNumber: 1 });
     expect(getJuzStart(0)).toBeNull();
     expect(getJuzStart(31)).toBeNull();
 
@@ -82,6 +82,8 @@ describe('Juz search query parsing & boundaries (1-30)', () => {
       expect(entry.surahNumber).toBeGreaterThanOrEqual(1);
       expect(entry.surahNumber).toBeLessThanOrEqual(114);
       expect(entry.ayahNumber).toBeGreaterThanOrEqual(1);
+      expect(entry.arabicPreview).toBeTruthy();
+      expect(entry.translationPreview).toBeTruthy();
     }
   });
 

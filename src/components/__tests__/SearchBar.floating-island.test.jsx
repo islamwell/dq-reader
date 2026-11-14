@@ -187,4 +187,102 @@ describe('SearchBar floating island behaviour', () => {
     await user.click(juzResult);
     expect(screen.getByTestId('current-location').textContent).toBe('/surah/78?ayah=1');
   });
+
+  it('scrubs through Surahs (1-114) on the main page showing first few Arabic words and bottom translation', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true, writable: true });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <SearchBar />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    const button = screen.getByRole('button', { name: /open search or drag to scrub surahs and juz/i });
+    expect(screen.getByRole('button', { name: /scrub by surah/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /scrub by juz/i })).toBeInTheDocument();
+
+    // Drag down roughly halfway down the screen
+    fireEvent.pointerDown(button, { clientY: 24, clientX: 200, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(button, { clientY: 358, clientX: 200, pointerId: 1 });
+
+    expect(screen.getByTestId('scrub-mode-badge').textContent).toBe('Surah');
+    const scrubbedNumber = Number(screen.getByTestId('scrub-ayah-number').textContent);
+    expect(scrubbedNumber).toBeGreaterThan(40);
+    expect(scrubbedNumber).toBeLessThan(80);
+
+    // First few Arabic words displayed on top line
+    const arabicWordsEl = screen.getByTestId('scrub-arabic-words');
+    expect(arabicWordsEl.textContent.trim().length).toBeGreaterThan(0);
+
+    // Translation displayed at bottom
+    const translationEl = screen.getByTestId('scrub-translation');
+    expect(translationEl.textContent.trim().length).toBeGreaterThan(5);
+
+    fireEvent.pointerUp(button, { clientY: 358, clientX: 200, pointerId: 1 });
+    // Stays on '/' (scrolls Surah card rather than navigating away)
+    expect(screen.getByTestId('current-location').textContent).toBe('/');
+  });
+
+  it('switches to Juz mode (1-30) on main page and navigates to selected Juz start ayah on release', async () => {
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true, writable: true });
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <SearchBar />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /scrub by juz/i }));
+    const button = screen.getByRole('button', { name: /open search or drag to scrub surahs and juz/i });
+
+    // Calculate pointerY for Juz 4 out of 30: (338 - 24) / 668 is not exact; let's compute exact:
+    // trackBottom = 800 - 108 = 692, span = 668. progress for Juz 4: (4 - 1) / (30 - 1) = 3/29
+    // clientY = 24 + 668 * (3/29) ~= 93.1 -> round(1 + ((93-24)/668)*29) = round(1 + 2.995) = 4
+    fireEvent.pointerDown(button, { clientY: 24, clientX: 200, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(button, { clientY: 93, clientX: 200, pointerId: 1 });
+
+    expect(screen.getByTestId('scrub-mode-badge').textContent).toBe('Juz');
+    expect(screen.getByTestId('scrub-ayah-number').textContent).toBe('4');
+    expect(screen.getByTestId('scrub-translation').textContent).toContain("Juz 4");
+    expect(screen.getByTestId('scrub-translation').textContent).toContain("3:93");
+
+    fireEvent.pointerUp(button, { clientY: 93, clientX: 200, pointerId: 1 });
+    expect(screen.getByTestId('current-location').textContent).toBe('/surah/3?ayah=93');
+  });
+
+  it('truncates long Arabic ayahs to only the first few words during Surah scrubbing', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true, writable: true });
+
+    const mockAyahEl = document.createElement('div');
+    mockAyahEl.setAttribute('data-ayah', '135');
+    mockAyahEl.innerHTML = `
+      <div class="quran-text-pak">كلمة١ كلمة٢ كلمة٣ كلمة٤ كلمة٥ كلمة٦ كلمة٧ كلمة٨ كلمة٩</div>
+      <p>Sample translation at the bottom</p>
+    `;
+    document.body.appendChild(mockAyahEl);
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/surah/2']}>
+          <SearchBar />
+        </MemoryRouter>
+      );
+
+      const button = screen.getByRole('button', { name: /open search or drag to scrub ayahs/i });
+      fireEvent.pointerDown(button, { clientY: 24, pointerId: 1, button: 0 });
+      fireEvent.pointerMove(button, { clientY: 338, pointerId: 1 });
+
+      const arabicWordsEl = screen.getByTestId('scrub-arabic-words');
+      expect(arabicWordsEl.textContent).toBe('كلمة١ كلمة٢ كلمة٣ كلمة٤ كلمة٥ كلمة٦ …');
+      expect(arabicWordsEl.textContent).not.toContain('كلمة٧');
+      expect(screen.getByTestId('scrub-translation').textContent).toContain('Sample translation at the bottom');
+
+      fireEvent.pointerUp(button, { clientY: 338, pointerId: 1 });
+    } finally {
+      mockAyahEl.remove();
+    }
+  });
 });
