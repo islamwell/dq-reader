@@ -150,7 +150,7 @@ const Credits = () => {
           </div>
 
           <div className={`border-2 rounded-xl p-6 shadow-lg ${cardStyle} text-center`}>
-            <p className={`text-sm ${secondaryTextStyle}`}>Version 1.1.18 (updated 2026-11-14 08:52)</p>
+            <p className={`text-sm ${secondaryTextStyle}`}>Version 1.1.19 (updated 2026-11-18 12:59)</p>
           </div>
         </motion.div>
       </div>

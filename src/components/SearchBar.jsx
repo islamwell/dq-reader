@@ -643,13 +643,14 @@ const SearchBar = ({ variant = 'global' }) => {
       scrubState.pointerId = event.pointerId;
       scrubState.startY = event.clientY;
       scrubState.startX = Number.isFinite(event.clientX) ? event.clientX : 0;
-      scrubState.mode = homeScrubMode;
+      scrubState.mode = 'surah';
 
       if (isHomeScrubContext) {
-        const initialTarget = homeScrubMode === 'juz' ? 1 : visibleSurah || 1;
+        setHomeScrubMode('surah');
+        const initialTarget = visibleSurah || 1;
         scrubState.lastAyah = initialTarget;
         setScrubAyah(initialTarget);
-        const initialData = extractHomeScrubData(homeScrubMode, initialTarget);
+        const initialData = extractHomeScrubData('surah', initialTarget);
         setScrubArabic(initialData.arabic);
         setScrubSnippet(initialData.translation);
       } else {
@@ -694,7 +695,7 @@ const SearchBar = ({ variant = 'global' }) => {
           scrubState.mode = 'juz';
           scrubState.lastAyah = -1;
           setHomeScrubMode('juz');
-        } else if (deltaX < -36 && scrubState.mode !== 'surah') {
+        } else if (deltaX < 16 && scrubState.mode !== 'surah') {
           scrubState.mode = 'surah';
           scrubState.lastAyah = -1;
           setHomeScrubMode('surah');
@@ -833,6 +834,9 @@ const SearchBar = ({ variant = 'global' }) => {
 
         scrubState.fadeTimer = window.setTimeout(() => {
           setHudVisible(false);
+          if (isHomeScrubContext) {
+            setHomeScrubMode('surah');
+          }
         }, 420);
       }
     },
@@ -957,40 +961,6 @@ const SearchBar = ({ variant = 'global' }) => {
                   </span>
                 )}
               </button>
-              {isHomeScrubContext && !isScrubbing && (
-                <div
-                  role="group"
-                  aria-label="Main page scrub mode"
-                  className="inline-flex items-center rounded-full border border-blue-100 bg-white/95 p-0.5 shadow-md backdrop-blur-sm text-[11px] font-semibold"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setHomeScrubMode('surah')}
-                    aria-label="Scrub by Surah"
-                    aria-pressed={homeScrubMode === 'surah'}
-                    className={`px-2.5 py-1 rounded-full transition-colors ${
-                      homeScrubMode === 'surah'
-                        ? 'bg-emerald-600 text-white'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Surah
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHomeScrubMode('juz')}
-                    aria-label="Scrub by Juz"
-                    aria-pressed={homeScrubMode === 'juz'}
-                    className={`px-2.5 py-1 rounded-full transition-colors ${
-                      homeScrubMode === 'juz'
-                        ? 'bg-amber-600 text-white'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Juz
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
           <div className={innerWidthClasses}>
@@ -1279,7 +1249,11 @@ const SearchBar = ({ variant = 'global' }) => {
                 )}
                 <span
                   data-testid="scrub-ayah-number"
-                  className={`text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none ${hudStyles.number}`}
+                  className={`text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none ${
+                    isHomeScrubContext && homeScrubMode === 'surah'
+                      ? 'text-emerald-400'
+                      : hudStyles.number
+                  }`}
                   style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
                 >
                   {scrubAyah}

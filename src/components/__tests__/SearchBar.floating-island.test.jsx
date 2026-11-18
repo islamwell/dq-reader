@@ -199,15 +199,17 @@ describe('SearchBar floating island behaviour', () => {
     );
 
     const button = screen.getByRole('button', { name: /open search or drag to scrub surahs and juz/i });
-    expect(screen.getByRole('button', { name: /scrub by surah/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /scrub by juz/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /scrub by surah/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /scrub by juz/i })).not.toBeInTheDocument();
 
     // Drag down roughly halfway down the screen
     fireEvent.pointerDown(button, { clientY: 24, clientX: 200, pointerId: 1, button: 0 });
     fireEvent.pointerMove(button, { clientY: 358, clientX: 200, pointerId: 1 });
 
     expect(screen.getByTestId('scrub-mode-badge').textContent).toBe('Surah');
-    const scrubbedNumber = Number(screen.getByTestId('scrub-ayah-number').textContent);
+    const numberEl = screen.getByTestId('scrub-ayah-number');
+    expect(numberEl.className).toContain('text-emerald-400');
+    const scrubbedNumber = Number(numberEl.textContent);
     expect(scrubbedNumber).toBeGreaterThan(40);
     expect(scrubbedNumber).toBeLessThan(80);
 
@@ -224,9 +226,8 @@ describe('SearchBar floating island behaviour', () => {
     expect(screen.getByTestId('current-location').textContent).toBe('/');
   });
 
-  it('switches to Juz mode (1-30) on main page and navigates to selected Juz start ayah on release', async () => {
+  it('switches to Juz mode (1-30) on main page via horizontal slide and navigates to selected Juz start ayah on release', () => {
     Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true, writable: true });
-    const user = userEvent.setup();
 
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -235,21 +236,24 @@ describe('SearchBar floating island behaviour', () => {
       </MemoryRouter>
     );
 
-    await user.click(screen.getByRole('button', { name: /scrub by juz/i }));
     const button = screen.getByRole('button', { name: /open search or drag to scrub surahs and juz/i });
 
-    // Calculate pointerY for Juz 4 out of 30: (338 - 24) / 668 is not exact; let's compute exact:
+    // Calculate pointerY for Juz 4 out of 30:
     // trackBottom = 800 - 108 = 692, span = 668. progress for Juz 4: (4 - 1) / (30 - 1) = 3/29
     // clientY = 24 + 668 * (3/29) ~= 93.1 -> round(1 + ((93-24)/668)*29) = round(1 + 2.995) = 4
+    // Slide right by +50px (deltaX > 36) to switch to Juz mode
     fireEvent.pointerDown(button, { clientY: 24, clientX: 200, pointerId: 1, button: 0 });
-    fireEvent.pointerMove(button, { clientY: 93, clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(button, { clientY: 93, clientX: 250, pointerId: 1 });
 
     expect(screen.getByTestId('scrub-mode-badge').textContent).toBe('Juz');
-    expect(screen.getByTestId('scrub-ayah-number').textContent).toBe('4');
+    const numberEl = screen.getByTestId('scrub-ayah-number');
+    expect(numberEl.textContent).toBe('4');
+    expect(numberEl.className).toContain('text-amber-400');
+    expect(numberEl.className).not.toContain('text-emerald-400');
     expect(screen.getByTestId('scrub-translation').textContent).toContain("Juz 4");
     expect(screen.getByTestId('scrub-translation').textContent).toContain("3:93");
 
-    fireEvent.pointerUp(button, { clientY: 93, clientX: 200, pointerId: 1 });
+    fireEvent.pointerUp(button, { clientY: 93, clientX: 250, pointerId: 1 });
     expect(screen.getByTestId('current-location').textContent).toBe('/surah/3?ayah=93');
   });
 
