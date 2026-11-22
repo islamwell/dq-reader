@@ -338,6 +338,9 @@ const AyahCard = ({ verse, surahNumber }) => {
 export default memo(AyahCard, (prevProps, nextProps) => {
   return (
     prevProps.surahNumber === nextProps.surahNumber &&
-    prevProps.verse.verse_key === nextProps.verse.verse_key
+    prevProps.verse.verse_key === nextProps.verse.verse_key &&
+    prevProps.verse.text_uthmani === nextProps.verse.text_uthmani &&
+    prevProps.verse.translations?.[0]?.text === nextProps.verse.translations?.[0]?.text &&
+    prevProps.verse.translations?.[0]?.language === nextProps.verse.translations?.[0]?.language
   );
 });

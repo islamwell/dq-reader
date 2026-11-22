@@ -601,9 +601,9 @@ export const QuranProvider = ({ children }) => {
           translationWarningRef.current.add(languageKeyToUse);
 
           if (languageKeyToUse !== DEFAULT_LANGUAGE) {
-            toast.error(`Unable to load ${languageKeyToUse} translation. Falling back to English.`);
+            toast.error(`Unable to load ${languageKeyToUse} translation. Falling back to ${DEFAULT_LANGUAGE}.`);
           } else {
-            toast.error('Unable to load English translation at the moment.');
+            toast.error(`Unable to load ${DEFAULT_LANGUAGE} translation at the moment.`);
           }
         }
 

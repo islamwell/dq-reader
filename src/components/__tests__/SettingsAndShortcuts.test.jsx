@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import SettingsPanel from '../SettingsPanel';
 import KeyboardShortcutsModal from '../KeyboardShortcutsModal';
+import AyahCard from '../AyahCard';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 
 let mockQuranData;
@@ -58,6 +59,9 @@ describe('SettingsPanel & Global Keyboard Shortcuts', () => {
       cacheUrduAudio: vi.fn(),
       grammarMode: 'off',
       setGrammarMode: vi.fn(),
+      grammarData: {},
+      getTafseer: vi.fn(),
+      getVideoForAyah: vi.fn(),
       lastPlayedPosition: { surahNumber: 2, ayahNumber: 255 },
       toggleSettings: vi.fn(),
       closeSettings: vi.fn(),
@@ -154,5 +158,42 @@ describe('SettingsPanel & Global Keyboard Shortcuts', () => {
     expect(dialog?.hasAttribute('open')).toBe(false);
     expect(screen.getByTestId('router-location').textContent).toBe('/');
     expect(mockQuranData.toggleSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers language switch with KeyL even on non-Latin keyboard layouts and re-renders AyahCard translations', () => {
+    render(
+      <MemoryRouter initialEntries={['/surah/1']}>
+        <ShortcutsHarness />
+      </MemoryRouter>
+    );
+
+    fireEvent.keyDown(window, { key: 'م', code: 'KeyL' });
+    expect(mockQuranData.setLanguagePreference).toHaveBeenCalledWith('French');
+
+    const baseVerse = {
+      verse_number: 1,
+      verse_key: '1:1',
+      text_uthmani: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+      translations: [{ text: 'In the name of Allah', language: 'English', label: 'Saheeh International' }]
+    };
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <AyahCard verse={baseVerse} surahNumber={1} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText('In the name of Allah')).toBeInTheDocument();
+
+    const frenchVerse = {
+      ...baseVerse,
+      translations: [{ text: "Au nom d'Allah", language: 'French', label: 'Muhammad Hamidullah' }]
+    };
+
+    rerender(
+      <MemoryRouter>
+        <AyahCard verse={frenchVerse} surahNumber={1} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Au nom d'Allah")).toBeInTheDocument();
   });
 });

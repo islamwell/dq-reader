@@ -189,7 +189,7 @@ export const useGlobalKeyboardShortcuts = () => {
         return;
       }
 
-      if (lowerKey === 'l') {
+      if (lowerKey === 'l' || event.code === 'KeyL') {
         event.preventDefault();
         const currentIndex = LANGUAGE_SEQUENCE.indexOf(language);
         const nextLanguage =

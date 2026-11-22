@@ -71,6 +71,7 @@ const Surah = () => {
   const [surah, setSurah] = useState(null);
   const lastScrolledAyahRef = useRef(null);
   const hasAppliedInitialScrollRef = useRef(false);
+  const loadedSurahIdRef = useRef(null);
 
   const initialAyahFromQuery = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -146,13 +147,25 @@ const Surah = () => {
   }, [initialAyahFromQuery, loading, location.key, scrollToAyah, verses.length]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadSurah = async () => {
-      setLoading(true);
-      const surahInfo = surahs.find((item) => item.id === parseInt(surahNumber, 10)) || null;
+      const normalizedSurahId = parseInt(surahNumber, 10);
+      const isDifferentSurah = loadedSurahIdRef.current !== normalizedSurahId;
+      if (isDifferentSurah) {
+        setLoading(true);
+      }
+
+      const surahInfo = surahs.find((item) => item.id === normalizedSurahId) || null;
+      if (cancelled) return;
+
       setSurah(surahInfo);
       setCurrentSurah(surahInfo);
 
       const versesData = surahInfo ? await fetchSurahVerses(surahNumber) : [];
+      if (cancelled) return;
+
+      loadedSurahIdRef.current = normalizedSurahId;
       setVerses(versesData);
       setLoading(false);
 
@@ -168,6 +181,10 @@ const Surah = () => {
     if (surahs.length > 0) {
       loadSurah();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchSurahVerses, fetchSurahGrammar, setCurrentSurah, surahNumber, surahs, initialAyahFromQuery, addVisitedAyah]);
 
   // Track ayats as the user reads and scrolls through them
