@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import {
   RADICALS,
-  RADICAL_ORDER,
-  CATEGORY_LABELS,
+  getRadicalOrder,
+  getCategoryMeta,
   getCategoryTextClass,
   getRadicalTextClass,
   isDarkSurface,
-  parseQuranRef
+  parseQuranRef,
+  resolveSurah100Shade
 } from './sarfStyles';
+import VerbConjugationModal from './VerbConjugationModal';
 
-const { FiArrowUpRight } = FiIcons;
+const { FiArrowUpRight, FiLink, FiMaximize2 } = FiIcons;
 
 /* ------------------------------------------------------------------------ */
 /* Small building blocks                                                     */
@@ -55,23 +57,122 @@ const RadicalWord = ({ letters, theme, className = '' }) => (
 );
 
 /* ------------------------------------------------------------------------ */
+/* Iḍāfa Construct Chain Card: Muḍāf & Muḍāf Ilayhi                         */
+/* ------------------------------------------------------------------------ */
+
+export const IdafaCard = ({ idafa, theme, cardBg }) => {
+  if (!idafa) return null;
+  const dark = isDarkSurface(theme);
+
+  return (
+    <div
+      data-testid="idafa-card"
+      className={`p-4 rounded-2xl border-2 ${
+        dark
+          ? 'bg-amber-950/35 border-amber-500/60 text-amber-50'
+          : 'bg-amber-50/80 border-amber-400/90 text-slate-900'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
+          <SafeIcon icon={FiLink} className={dark ? 'text-amber-300' : 'text-amber-700'} />
+          <span>Iḍāfa Construct · {idafa.label_en}</span>
+        </span>
+        <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-amber-300' : 'text-amber-900'}`}>
+          تركيب الإضافة ({idafa.label_ar})
+        </span>
+      </div>
+
+      {/* Visual RTL Chain: Muḍāf ⟵ Muḍāf Ilayhi */}
+      <div dir="rtl" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-stretch mb-3">
+        <div
+          className={`p-3 rounded-xl border ${
+            idafa.type === 'mudaf' || idafa.type === 'compound'
+              ? dark
+                ? 'bg-red-950/60 border-red-500/70 ring-1 ring-amber-400/60'
+                : 'bg-white border-red-300 ring-1 ring-amber-400'
+              : dark
+                ? 'bg-black/25 border-white/10'
+                : 'bg-white/80 border-slate-200'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-bold mb-1">
+            <span className={dark ? 'text-amber-300' : 'text-amber-800'}>١. المضاف</span>
+            <span dir="ltr" className="uppercase opacity-75">1. Muḍāf (Construct)</span>
+          </div>
+          <div
+            className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] font-bold ${
+              dark ? '!text-red-300' : '!text-red-700'
+            }`}
+          >
+            {idafa.mudaf_ar}
+          </div>
+          <p dir="ltr" className="text-xs opacity-85 text-left mt-0.5 leading-snug">
+            {idafa.mudaf_en}
+          </p>
+        </div>
+
+        <div
+          className={`p-3 rounded-xl border ${
+            idafa.type === 'mudaf_ilayhi' || idafa.type === 'compound'
+              ? dark
+                ? 'bg-rose-950/60 border-rose-500/70 ring-1 ring-amber-400/60'
+                : 'bg-white border-rose-300 ring-1 ring-amber-400'
+              : dark
+                ? 'bg-black/25 border-white/10'
+                : 'bg-white/80 border-slate-200'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-bold mb-1">
+            <span className={dark ? 'text-amber-300' : 'text-amber-800'}>٢. المضاف إليه</span>
+            <span dir="ltr" className="uppercase opacity-75">2. Muḍāf Ilayhi (Genitive)</span>
+          </div>
+          <div
+            className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] font-bold ${
+              dark ? '!text-rose-200' : '!text-rose-800'
+            }`}
+          >
+            {idafa.mudaf_ilayhi_ar}
+          </div>
+          <p dir="ltr" className="text-xs opacity-85 text-left mt-0.5 leading-snug">
+            {idafa.mudaf_ilayhi_en}
+          </p>
+        </div>
+      </div>
+
+      {idafa.explanation_ar && (
+        <p dir="rtl" className="font-arabic text-sm leading-relaxed">
+          {idafa.explanation_ar}
+        </p>
+      )}
+      {idafa.explanation_en && (
+        <p className="text-xs opacity-90 mt-1 leading-relaxed">
+          {idafa.explanation_en}
+        </p>
+      )}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------------ */
 /* Al-Mīzān al-Ṣarfī: word ↔ pattern mapping                                 */
 /* ------------------------------------------------------------------------ */
 
 export const MizanCard = ({ sarf, theme, cardBg }) => {
   const dark = isDarkSurface(theme);
   const deleted = sarf.deleted_radicals || [];
-  const merged = sarf.stem_letters.some((l) => l.r && l.r.length > 1);
+  const merged = sarf.stem_letters.some((l) => l.r && l.r.length > 1 && l.r !== 'l2');
   const hasAugment =
     sarf.stem_letters.some((l) => !l.r) || sarf.wazn_letters.some((l) => !l.r);
+  const radicalSlots = getRadicalOrder(sarf.root?.length || 3);
 
   return (
     <div className={`p-4 rounded-2xl border ${cardBg}`} data-testid="mizan-card">
       <SectionTitle ar="الميزان الصرفي" en="Morphological scale" theme={theme} />
 
-      {/* Root slots ف ع ل */}
-      <div dir="rtl" className="flex items-stretch justify-center gap-2 mb-4">
-        {RADICAL_ORDER.map((slot, idx) => {
+      {/* Root slots ف ع ل (and ل٢ for quadriliteral roots) */}
+      <div dir="rtl" className="flex flex-wrap items-stretch justify-center gap-2 mb-4">
+        {radicalSlots.map((slot, idx) => {
           const r = RADICALS[slot];
           const isDeleted = deleted.includes(slot);
           return (
@@ -138,9 +239,11 @@ export const MizanCard = ({ sarf, theme, cardBg }) => {
 /* ------------------------------------------------------------------------ */
 
 export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
+  const [isConjugationModalOpen, setIsConjugationModalOpen] = useState(false);
   const dark = isDarkSurface(theme);
   const sarf = word.sarf;
   const segments = word.segments || [];
+  const palette = word.color_palette || 'default';
 
   return (
     <div className="space-y-4">
@@ -149,19 +252,40 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
         <SectionTitle ar="أجزاء الكلمة" en={`Morphemes (${segments.length})`} theme={theme} />
         <div dir="rtl" className="flex flex-wrap gap-2">
           {segments.map((seg, idx) => {
-            const meta = CATEGORY_LABELS[seg.category] || CATEGORY_LABELS.harf;
+            const meta = getCategoryMeta(seg.category, palette);
+            const shade = palette === 'surah_100' ? resolveSurah100Shade(seg.category, seg) : null;
+            const dotClass = shade ? shade.dot : meta.dot;
+
             return (
               <div key={idx} className={`flex-1 min-w-[9rem] p-3 rounded-xl border ${cardBg}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] ${getCategoryTextClass(seg.category, theme)}`}>
+                  <span
+                    className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] ${getCategoryTextClass(
+                      seg.category,
+                      theme,
+                      seg,
+                      palette
+                    )}`}
+                  >
                     {seg.text}
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider opacity-70" dir="ltr">
-                    {seg.role}
-                  </span>
+                  <div className="flex flex-col items-end gap-1" dir="ltr">
+                    <span className="text-[10px] uppercase tracking-wider opacity-70">
+                      {seg.role}
+                    </span>
+                    {shade && (
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                          dark ? shade.darkPill : shade.lightPill
+                        }`}
+                      >
+                        {shade.labelEn}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
                   <span className="font-arabic text-sm font-bold">{seg.pos_name_ar}</span>
                 </div>
                 <p dir="ltr" className="text-xs opacity-85 text-left font-medium">{seg.pos_name_en}</p>
@@ -176,6 +300,9 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
           })}
         </div>
       </div>
+
+      {/* Show Iḍāfa card right in MorphologyTab when present */}
+      {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} cardBg={cardBg} />}
 
       {!sarf ? (
         <div className={`p-4 rounded-2xl border text-center ${cardBg}`} data-testid="sarf-note">
@@ -213,14 +340,39 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
               <>
                 <Fact cardBg={cardBg} labelAr="الجنس والعدد" labelEn="Gender · Number" valueAr={`${sarf.noun.gender_ar} · ${sarf.noun.number_ar}`} valueEn={`${sarf.noun.gender_en} · ${sarf.noun.number_en}`} />
                 <Fact cardBg={cardBg} labelAr="التعريف والحالة" labelEn="Definiteness · Case" valueAr={`${sarf.noun.definiteness_ar} · ${sarf.noun.case_ar}`} valueEn={`${sarf.noun.definiteness_en} · ${sarf.noun.case_en}`} />
+                {sarf.noun.subclass_en && (
+                  <Fact cardBg={cardBg} labelAr="القسم الفرعي للاسم" labelEn="Noun Subclass" valueAr={sarf.noun.subclass_ar} valueEn={sarf.noun.subclass_en} />
+                )}
               </>
             )}
           </div>
 
-          {/* Conjugation strip */}
+          {/* Conjugation strip + Full Conjugation Sub-Modal Trigger */}
           {sarf.verb?.conjugation && (
             <div>
-              <SectionTitle ar="التصريف" en="Conjugation" theme={theme} />
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <h4 className="flex items-baseline gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider opacity-75">Conjugation</span>
+                  <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-islamic-gold' : 'text-amber-800'}`}>
+                    التصريف
+                  </span>
+                </h4>
+
+                <button
+                  type="button"
+                  data-testid="open-conjugation-modal"
+                  onClick={() => setIsConjugationModalOpen(true)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
+                    dark
+                      ? 'bg-emerald-950/90 text-emerald-200 border-emerald-600 hover:bg-emerald-900'
+                      : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+                  }`}
+                >
+                  <SafeIcon icon={FiMaximize2} className="text-xs" />
+                  <span>Full Conjugation Table · جدول التصريف</span>
+                </button>
+              </div>
+
               <div dir="rtl" className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {sarf.verb.conjugation.map((c) => (
                   <div key={c.label_en} className={`p-2 rounded-xl border text-center ${cardBg}`}>
@@ -232,6 +384,13 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                   </div>
                 ))}
               </div>
+
+              <VerbConjugationModal
+                isOpen={isConjugationModalOpen}
+                onClose={() => setIsConjugationModalOpen(false)}
+                word={word}
+                theme={theme}
+              />
             </div>
           )}
 
@@ -312,6 +471,7 @@ export const SyntaxTab = ({ word, theme, cardBg }) => (
     {(word.role_ar || word.role_en) && (
       <Fact cardBg={cardBg} labelAr="الموقع الإعرابي" labelEn="Grammatical role" valueAr={word.role_ar} valueEn={word.role_en} />
     )}
+    {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} cardBg={cardBg} />}
     {word.irab && (
       <div className={`p-4 rounded-2xl border-l-4 border-l-blue-500 border ${cardBg}`}>
         <SectionTitle ar="الإعراب" en="Full iʿrāb" theme={theme} />

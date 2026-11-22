@@ -277,6 +277,7 @@ export const QuranProvider = ({ children }) => {
       return true;
     }
   });
+  const [emphasisPulsePaused, setEmphasisPulsePaused] = useState(false);
   const audioRef = useRef(null);
   const translationsCacheRef = useRef({});
   const translationWarningRef = useRef(new Set());
@@ -2993,7 +2994,9 @@ export const QuranProvider = ({ children }) => {
       grammarData,
       fetchSurahGrammar,
       showInterlinear,
-      setShowInterlinear
+      setShowInterlinear,
+      emphasisPulsePaused,
+      setEmphasisPulsePaused
     }),
     [
       surahs,
@@ -3069,7 +3072,9 @@ export const QuranProvider = ({ children }) => {
       grammarData,
       fetchSurahGrammar,
       showInterlinear,
-      setShowInterlinear
+      setShowInterlinear,
+      emphasisPulsePaused,
+      setEmphasisPulsePaused
     ]
   );
 

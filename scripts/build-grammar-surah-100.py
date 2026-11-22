@@ -1,0 +1,2259 @@
+# -*- coding: utf-8 -*-
+"""
+Builds the enhanced (v3) sarf + i'rab + shaded-color + idafa + conjugation dataset
+for Surah Al-'Adiyat (100).
+
+Color & Grammar System (v3 / color_palette: "surah_100"):
+  - Ism (Noun) -> RED shades by subclass:
+      * singular ('singular'): Crimson Red (e.g., الإنسان، ربّ، حبّ، الخير)
+      * plural ('plural'): Deep Ruby / Rose-Red (e.g., العاديات، الموريات، المغيرات، القبور، الصدور)
+      * pronoun ('pronoun'): Warm Coral-Red (e.g., ـنَ، ـهِ، ـهُ، ـهُم، ذلك، ما، إذا)
+      * derived ('derived'): Bright Scarlet Red (masdars, intensive attributes fa'ul/fa'il, zarf)
+  - Fi'l (Verb) -> GREEN shades by tense:
+      * past ('past'): Deep Forest Emerald (e.g., أثرن، وسطن، بُعثر، حُصّل)
+      * present ('present'): Vibrant Leaf Green (e.g., يعلم)
+      * future ('future' / 'imperative'): Bright Mint / Teal Green (e.g., سيعلم، اعلم)
+  - Harf (Particle) -> ROYAL BLUE:
+      * standard ('particle' / 'preposition' / 'conjunction' / 'determiner' / 'negation' / 'interrogative')
+      * emphasis ('emphasis', emphasis=True): Slow pulsing Royal Blue (واو القسم، إنّ، اللام المزحلقة)
+  - Idafa (مضاف / مضاف إليه):
+      * Annotated on construct chains (لِرَبِّهِۦ، لِحُبِّ ٱلْخَيْرِ، رَبَّهُم، يَوْمَئِذٍ)
+  - Full Verb Conjugation Table (conjugation_table):
+      * Past Active, Present Active, Future, Passive Voice ("it was..."), Imperative/Command ("Create! / Amr")
+
+Run:  python3 scripts/build-grammar-surah-100.py
+"""
+import json
+import os
+import unicodedata
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT_PATH = os.path.join(ROOT_DIR, 'public', 'data', 'grammar', 'surah_100.json')
+VERSES_PATH = os.path.join(ROOT_DIR, 'public', 'data', 'quran-verses.json')
+
+
+def clusters(text):
+    """Split Arabic text into clusters: a base char followed by its combining marks."""
+    out = []
+    for ch in text:
+        if out and unicodedata.category(ch) == 'Mn':
+            out[-1] += ch
+        else:
+            out.append(ch)
+    return out
+
+
+SHADDA = '\u0651'
+
+
+def canon(text):
+    """Canonical mark order used by the Tanzil/Uthmani source: shadda first in each cluster."""
+    out = []
+    for cl in clusters(text):
+        base, marks = cl[0], cl[1:]
+        if SHADDA in marks:
+            marks = SHADDA + marks.replace(SHADDA, '')
+        out.append(base + marks)
+    return ''.join(out)
+
+
+def canon_all(obj):
+    if isinstance(obj, str):
+        return canon(obj)
+    if isinstance(obj, list):
+        return [canon_all(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: canon_all(v) for k, v in obj.items()}
+    return obj
+
+
+def letters(text, labels):
+    cl = clusters(text)
+    assert len(cl) == len(labels), f'{text}: {len(cl)} clusters {cl} vs {len(labels)} labels {labels}'
+    return [{'t': c, 'r': (None if r == '-' else r)} for c, r in zip(cl, labels)]
+
+
+def seg(text, category, tag, role, ar, en, desc_ar=None, desc_en=None,
+        subclass=None, tense=None, emphasis=False, voice=None):
+    data = {
+        'text': text,
+        'category': category,
+        'tag': tag,
+        'role': role,
+        'pos_name_ar': ar,
+        'pos_name_en': en,
+        'desc_ar': desc_ar,
+        'desc_en': desc_en,
+    }
+    if subclass:
+        data['subclass'] = subclass
+    if tense:
+        data['tense'] = tense
+    if emphasis:
+        data['emphasis'] = True
+    if voice:
+        data['voice'] = voice
+    return data
+
+
+AL_QAMARI = lambda: seg(
+    'ٱلْ', 'harf', 'DET', 'prefix', 'أل التعريف', 'Definite article',
+    'لام قمرية: تُنطق اللام الساكنة', 'Moon-letter lām: the lām is pronounced clearly',
+    subclass='determiner'
+)
+AL_SHAMSI = lambda: seg(
+    'ٱل', 'harf', 'DET', 'prefix', 'أل التعريف', 'Definite article',
+    'لام شمسية: تُدغم اللام في الحرف التالي فيُشدَّد', 'Sun-letter lām: assimilated into the next letter',
+    subclass='determiner'
+)
+FA_ATF = lambda desc_ar='فاء العطف للترتيب والتعقيب', desc_en='Conjunction fāʾ: "and then" (immediate sequence)': seg(
+    'فَ', 'harf', 'CONJ', 'prefix', 'حرف عطف', 'Conjunction (fāʾ)', desc_ar, desc_en,
+    subclass='conjunction'
+)
+WAW_ATF = lambda desc_ar='واو العطف', desc_en='Coordinating conjunction: "and"': seg(
+    'وَ', 'harf', 'CONJ', 'prefix', 'حرف عطف', 'Conjunction (wāw)', desc_ar, desc_en,
+    subclass='conjunction'
+)
+LAM_TAWKID = lambda text='لَ': seg(
+    text, 'harf', 'EMPH', 'prefix', 'اللام المزحلقة للتوكيد', 'Emphatic lām (al-muzaḥlaqa)',
+    'لام التوكيد دخلت على خبر إنّ لتقوية الحكم', 'Emphatic lām slid onto the predicate of inna for double certainty',
+    subclass='emphasis', emphasis=True
+)
+
+
+# ---------------------------------------------------------------------------
+# Full Verb Conjugation Tables (Past, Present, Future, Passive, Imperative)
+# ---------------------------------------------------------------------------
+
+CONJ_ATHARNA = {
+    'verb_lemma_ar': 'أَثَارَ',
+    'verb_lemma_en': 'athāra — to stir up, raise (dust)',
+    'root': ['ث', 'و', 'ر'],
+    'form': 'IV (أَفْعَلَ)',
+    'active_occurrence_pronoun': 'هُنَّ',
+    'active_occurrence_tense': 'past',
+    'rows': [
+        {'pronoun_ar': 'هُوَ', 'pronoun_en': 'He', 'past_ar': 'أَثَارَ', 'past_en': 'he stirred up', 'present_ar': 'يُثِيرُ', 'present_en': 'he stirs up', 'future_ar': 'سَيُثِيرُ', 'future_en': 'he will stir up'},
+        {'pronoun_ar': 'هِيَ', 'pronoun_en': 'She', 'past_ar': 'أَثَارَتْ', 'past_en': 'she stirred up', 'present_ar': 'تُثِيرُ', 'present_en': 'she stirs up', 'future_ar': 'سَتُثِيرُ', 'future_en': 'she will stir up'},
+        {'pronoun_ar': 'هُمْ', 'pronoun_en': 'They (m.)', 'past_ar': 'أَثَارُوا', 'past_en': 'they stirred up', 'present_ar': 'يُثِيرُونَ', 'present_en': 'they stir up', 'future_ar': 'سَيُثِيرُونَ', 'future_en': 'they will stir up'},
+        {'pronoun_ar': 'هُنَّ', 'pronoun_en': 'They (f.)', 'past_ar': 'أَثَرْنَ', 'past_en': 'they (f.) stirred up', 'present_ar': 'يُثِرْنَ', 'present_en': 'they (f.) stir up', 'future_ar': 'سَيُثِرْنَ', 'future_en': 'they (f.) will stir up', 'in_ayah': True},
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'past_ar': 'أَثَرْتَ', 'past_en': 'you stirred up', 'present_ar': 'تُثِيرُ', 'present_en': 'you stir up', 'future_ar': 'سَتُثِيرُ', 'future_en': 'you will stir up'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'past_ar': 'أَثَرْتِ', 'past_en': 'you (f.) stirred up', 'present_ar': 'تُثِيرِينَ', 'present_en': 'you (f.) stir up', 'future_ar': 'سَتُثِيرِينَ', 'future_en': 'you (f.) will stir up'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'past_ar': 'أَثَرْتُمْ', 'past_en': 'you all stirred up', 'present_ar': 'تُثِيرُونَ', 'present_en': 'you all stir up', 'future_ar': 'سَتُثِيرُونَ', 'future_en': 'you all will stir up'},
+        {'pronoun_ar': 'أَنَا', 'pronoun_en': 'I', 'past_ar': 'أَثَرْتُ', 'past_en': 'I stirred up', 'present_ar': 'أُثِيرُ', 'present_en': 'I stir up', 'future_ar': 'سَأُثِيرُ', 'future_en': 'I will stir up'},
+        {'pronoun_ar': 'نَحْنُ', 'pronoun_en': 'We', 'past_ar': 'أَثَرْنَا', 'past_en': 'we stirred up', 'present_ar': 'نُثِيرُ', 'present_en': 'we stir up', 'future_ar': 'سَنُثِيرُ', 'future_en': 'we will stir up'},
+    ],
+    'passive': [
+        {'label_ar': 'الماضي المجهول (هو)', 'label_en': 'Past Passive (It/He)', 'ar': 'أُثِيرَ', 'en': 'it was stirred up'},
+        {'label_ar': 'الماضي المجهول (هي)', 'label_en': 'Past Passive (She/It f.)', 'ar': 'أُثِيرَتْ', 'en': 'it (f.) was stirred up'},
+        {'label_ar': 'المضارع المجهول (هو)', 'label_en': 'Present Passive (It/He)', 'ar': 'يُثَارُ', 'en': 'it is stirred up'},
+        {'label_ar': 'المضارع المجهول (هي)', 'label_en': 'Present Passive (She/It f.)', 'ar': 'تُثَارُ', 'en': 'it (f.) is stirred up'},
+    ],
+    'imperative': [
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'ar': 'أَثِرْ', 'en': 'Stir up!'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'ar': 'أَثِيرِي', 'en': 'Stir up! (f.)'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'ar': 'أَثِيرُوا', 'en': 'Stir up! (all)'},
+        {'pronoun_ar': 'النهي', 'pronoun_en': 'Prohibition', 'ar': 'لَا تُثِرْ', 'en': 'Do not stir up!'},
+    ],
+}
+
+CONJ_WASATNA = {
+    'verb_lemma_ar': 'وَسَطَ',
+    'verb_lemma_en': 'wasaṭa — to penetrate into the middle / center of',
+    'root': ['و', 'س', 'ط'],
+    'form': 'I (فَعَلَ – يَسِطُ)',
+    'active_occurrence_pronoun': 'هُنَّ',
+    'active_occurrence_tense': 'past',
+    'rows': [
+        {'pronoun_ar': 'هُوَ', 'pronoun_en': 'He', 'past_ar': 'وَسَطَ', 'past_en': 'he cleaved the center', 'present_ar': 'يَسِطُ', 'present_en': 'he cleaves the center', 'future_ar': 'سَيَسِطُ', 'future_en': 'he will cleave the center'},
+        {'pronoun_ar': 'هِيَ', 'pronoun_en': 'She', 'past_ar': 'وَسَطَتْ', 'past_en': 'she cleaved the center', 'present_ar': 'تَسِطُ', 'present_en': 'she cleaves the center', 'future_ar': 'سَتَسِطُ', 'future_en': 'she will cleave the center'},
+        {'pronoun_ar': 'هُمْ', 'pronoun_en': 'They (m.)', 'past_ar': 'وَسَطُوا', 'past_en': 'they cleaved the center', 'present_ar': 'يَسِطُونَ', 'present_en': 'they cleave the center', 'future_ar': 'سَيَسِطُونَ', 'future_en': 'they will cleave the center'},
+        {'pronoun_ar': 'هُنَّ', 'pronoun_en': 'They (f.)', 'past_ar': 'وَسَطْنَ', 'past_en': 'they (f.) cleaved the center', 'present_ar': 'يَسِطْنَ', 'present_en': 'they (f.) cleave the center', 'future_ar': 'سَيَسِطْنَ', 'future_en': 'they (f.) will cleave the center', 'in_ayah': True},
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'past_ar': 'وَسَطْتَ', 'past_en': 'you cleaved the center', 'present_ar': 'تَسِطُ', 'present_en': 'you cleave the center', 'future_ar': 'سَتَسِطُ', 'future_en': 'you will cleave the center'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'past_ar': 'وَسَطْتِ', 'past_en': 'you (f.) cleaved the center', 'present_ar': 'تَسِطِينَ', 'present_en': 'you (f.) cleave the center', 'future_ar': 'سَتَسِطِينَ', 'future_en': 'you (f.) will cleave the center'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'past_ar': 'وَسَطْتُمْ', 'past_en': 'you all cleaved the center', 'present_ar': 'تَسِطُونَ', 'present_en': 'you all cleave the center', 'future_ar': 'سَتَسِطُونَ', 'future_en': 'you all will cleave the center'},
+        {'pronoun_ar': 'أَنَا', 'pronoun_en': 'I', 'past_ar': 'وَسَطْتُ', 'past_en': 'I cleaved the center', 'present_ar': 'أَسِطُ', 'present_en': 'I cleave the center', 'future_ar': 'سَأَسِطُ', 'future_en': 'I will cleave the center'},
+        {'pronoun_ar': 'نَحْنُ', 'pronoun_en': 'We', 'past_ar': 'وَسَطْنَا', 'past_en': 'we cleaved the center', 'present_ar': 'نَسِطُ', 'present_en': 'we cleave the center', 'future_ar': 'سَنَسِطُ', 'future_en': 'we will cleave the center'},
+    ],
+    'passive': [
+        {'label_ar': 'الماضي المجهول (هو)', 'label_en': 'Past Passive (It/He)', 'ar': 'وُسِطَ', 'en': 'its center was penetrated'},
+        {'label_ar': 'الماضي المجهول (هي)', 'label_en': 'Past Passive (She/It f.)', 'ar': 'وُسِطَتْ', 'en': 'its (f.) center was penetrated'},
+        {'label_ar': 'المضارع المجهول (هو)', 'label_en': 'Present Passive (It/He)', 'ar': 'يُوسَطُ', 'en': 'its center is penetrated'},
+        {'label_ar': 'المضارع المجهول (هي)', 'label_en': 'Present Passive (She/It f.)', 'ar': 'تُوسَطُ', 'en': 'its (f.) center is penetrated'},
+    ],
+    'imperative': [
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'ar': 'سِطْ', 'en': 'Penetrate the center!'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'ar': 'سِطِي', 'en': 'Penetrate the center! (f.)'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'ar': 'سِطُوا', 'en': 'Penetrate the center! (all)'},
+        {'pronoun_ar': 'النهي', 'pronoun_en': 'Prohibition', 'ar': 'لَا تَسِطْ', 'en': 'Do not penetrate!'},
+    ],
+}
+
+CONJ_YALAMU = {
+    'verb_lemma_ar': 'عَلِمَ',
+    'verb_lemma_en': 'ʿalima — to know with certainty',
+    'root': ['ع', 'ل', 'م'],
+    'form': 'I (فَعِلَ – يَفْعَلُ)',
+    'active_occurrence_pronoun': 'هُوَ',
+    'active_occurrence_tense': 'present',
+    'rows': [
+        {'pronoun_ar': 'هُوَ', 'pronoun_en': 'He', 'past_ar': 'عَلِمَ', 'past_en': 'he knew', 'present_ar': 'يَعْلَمُ', 'present_en': 'he knows', 'future_ar': 'سَيَعْلَمُ', 'future_en': 'he will know', 'in_ayah': True},
+        {'pronoun_ar': 'هِيَ', 'pronoun_en': 'She', 'past_ar': 'عَلِمَتْ', 'past_en': 'she knew', 'present_ar': 'تَعْلَمُ', 'present_en': 'she knows', 'future_ar': 'سَتَعْلَمُ', 'future_en': 'she will know'},
+        {'pronoun_ar': 'هُمْ', 'pronoun_en': 'They (m.)', 'past_ar': 'عَلِمُوا', 'past_en': 'they knew', 'present_ar': 'يَعْلَمُونَ', 'present_en': 'they know', 'future_ar': 'سَيَعْلَمُونَ', 'future_en': 'they will know'},
+        {'pronoun_ar': 'هُنَّ', 'pronoun_en': 'They (f.)', 'past_ar': 'عَلِمْنَ', 'past_en': 'they (f.) knew', 'present_ar': 'يَعْلَمْنَ', 'present_en': 'they (f.) know', 'future_ar': 'سَيَعْلَمْنَ', 'future_en': 'they (f.) will know'},
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'past_ar': 'عَلِمْتَ', 'past_en': 'you knew', 'present_ar': 'تَعْلَمُ', 'present_en': 'you know', 'future_ar': 'سَتَعْلَمُ', 'future_en': 'you will know'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'past_ar': 'عَلِمْتِ', 'past_en': 'you (f.) knew', 'present_ar': 'تَعْلَمِينَ', 'present_en': 'you (f.) know', 'future_ar': 'سَتَعْلَمِينَ', 'future_en': 'you (f.) will know'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'past_ar': 'عَلِمْتُمْ', 'past_en': 'you all knew', 'present_ar': 'تَعْلَمُونَ', 'present_en': 'you all know', 'future_ar': 'سَتَعْلَمُونَ', 'future_en': 'you all will know'},
+        {'pronoun_ar': 'أَنَا', 'pronoun_en': 'I', 'past_ar': 'عَلِمْتُ', 'past_en': 'I knew', 'present_ar': 'أَعْلَمُ', 'present_en': 'I know', 'future_ar': 'سَأَعْلَمُ', 'future_en': 'I will know'},
+        {'pronoun_ar': 'نَحْنُ', 'pronoun_en': 'We', 'past_ar': 'عَلِمْنَا', 'past_en': 'we knew', 'present_ar': 'نَعْلَمُ', 'present_en': 'we know', 'future_ar': 'سَنَعْلَمُ', 'future_en': 'we will know'},
+    ],
+    'passive': [
+        {'label_ar': 'الماضي المجهول (هو)', 'label_en': 'Past Passive (It/He)', 'ar': 'عُلِمَ', 'en': 'it was known'},
+        {'label_ar': 'الماضي المجهول (هي)', 'label_en': 'Past Passive (She/It f.)', 'ar': 'عُلِمَتْ', 'en': 'it (f.) was known'},
+        {'label_ar': 'المضارع المجهول (هو)', 'label_en': 'Present Passive (It/He)', 'ar': 'يُعْلَمُ', 'en': 'it is known'},
+        {'label_ar': 'المضارع المجهول (هي)', 'label_en': 'Present Passive (She/It f.)', 'ar': 'تُعْلَمُ', 'en': 'it (f.) is known'},
+    ],
+    'imperative': [
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'ar': 'ٱعْلَمْ', 'en': 'Know!'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'ar': 'ٱعْلَمِي', 'en': 'Know! (f.)'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'ar': 'ٱعْلَمُوا', 'en': 'Know! (all)'},
+        {'pronoun_ar': 'النهي', 'pronoun_en': 'Prohibition', 'ar': 'لَا تَعْلَمْ', 'en': 'Do not know / disregard'},
+    ],
+}
+
+CONJ_BUTHIRA = {
+    'verb_lemma_ar': 'بَعْثَرَ',
+    'verb_lemma_en': 'baʿthara — to overturn, turn upside down, scatter out',
+    'root': ['ب', 'ع', 'ث', 'ر'],
+    'form': 'Quadriliteral I (فَعْلَلَ – يُفَعْلِلُ)',
+    'active_occurrence_pronoun': 'هُوَ (مبني للمجهول)',
+    'active_occurrence_tense': 'passive_past',
+    'rows': [
+        {'pronoun_ar': 'هُوَ', 'pronoun_en': 'He', 'past_ar': 'بَعْثَرَ', 'past_en': 'he overturned / scattered', 'present_ar': 'يُبَعْثِرُ', 'present_en': 'he overturns', 'future_ar': 'سَيُبَعْثِرُ', 'future_en': 'he will overturn'},
+        {'pronoun_ar': 'هِيَ', 'pronoun_en': 'She', 'past_ar': 'بَعْثَرَتْ', 'past_en': 'she overturned / scattered', 'present_ar': 'تُبَعْثِرُ', 'present_en': 'she overturns', 'future_ar': 'سَتُبَعْثِرُ', 'future_en': 'she will overturn'},
+        {'pronoun_ar': 'هُمْ', 'pronoun_en': 'They (m.)', 'past_ar': 'بَعْثَرُوا', 'past_en': 'they overturned', 'present_ar': 'يُبَعْثِرُونَ', 'present_en': 'they overturn', 'future_ar': 'سَيُبَعْثِرُونَ', 'future_en': 'they will overturn'},
+        {'pronoun_ar': 'هُنَّ', 'pronoun_en': 'They (f.)', 'past_ar': 'بَعْثَرْنَ', 'past_en': 'they (f.) overturned', 'present_ar': 'يُبَعْثِرْنَ', 'present_en': 'they (f.) overturn', 'future_ar': 'سَيُبَعْثِرْنَ', 'future_en': 'they (f.) will overturn'},
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'past_ar': 'بَعْثَرْتَ', 'past_en': 'you overturned', 'present_ar': 'تُبَعْثِرُ', 'present_en': 'you overturn', 'future_ar': 'سَتُبَعْثِرُ', 'future_en': 'you will overturn'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'past_ar': 'بَعْثَرْتِ', 'past_en': 'you (f.) overturned', 'present_ar': 'تُبَعْثِرِينَ', 'present_en': 'you (f.) overturn', 'future_ar': 'سَتُبَعْثِرِينَ', 'future_en': 'you (f.) will overturn'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'past_ar': 'بَعْثَرْتُمْ', 'past_en': 'you all overturned', 'present_ar': 'تُبَعْثِرُونَ', 'present_en': 'you all overturn', 'future_ar': 'سَتُبَعْثِرُونَ', 'future_en': 'you all will overturn'},
+        {'pronoun_ar': 'أَنَا', 'pronoun_en': 'I', 'past_ar': 'بَعْثَرْتُ', 'past_en': 'I overturned', 'present_ar': 'أُبَعْثِرُ', 'present_en': 'I overturn', 'future_ar': 'سَأُبَعْثِرُ', 'future_en': 'I will overturn'},
+        {'pronoun_ar': 'نَحْنُ', 'pronoun_en': 'We', 'past_ar': 'بَعْثَرْنَا', 'past_en': 'we overturned / scattered', 'present_ar': 'نُبَعْثِرُ', 'present_en': 'we overturn', 'future_ar': 'سَنُبَعْثِرُ', 'future_en': 'we will overturn'},
+    ],
+    'passive': [
+        {'label_ar': 'الماضي المجهول (هو) — في الآية', 'label_en': 'Past Passive (It/He) — In this Ayah', 'ar': 'بُعْثِرَ', 'en': 'it was overturned / scattered out', 'in_ayah': True},
+        {'label_ar': 'الماضي المجهول (هي)', 'label_en': 'Past Passive (She/It f.)', 'ar': 'بُعْثِرَتْ', 'en': 'it (f.) was overturned / scattered out'},
+        {'label_ar': 'المضارع المجهول (هو)', 'label_en': 'Present Passive (It/He)', 'ar': 'يُبَعْثَرُ', 'en': 'it is overturned / scattered out'},
+        {'label_ar': 'المضارع المجهول (هي)', 'label_en': 'Present Passive (She/It f.)', 'ar': 'تُبَعْثَرُ', 'en': 'it (f.) is overturned / scattered out'},
+    ],
+    'imperative': [
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'ar': 'بَعْثِرْ', 'en': 'Overturn / scatter!'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'ar': 'بَعْثِرِي', 'en': 'Overturn / scatter! (f.)'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'ar': 'بَعْثِرُوا', 'en': 'Overturn / scatter! (all)'},
+        {'pronoun_ar': 'النهي', 'pronoun_en': 'Prohibition', 'ar': 'لَا تُبَعْثِرْ', 'en': 'Do not overturn / scatter!'},
+    ],
+}
+
+CONJ_HUSSILA = {
+    'verb_lemma_ar': 'حَصَّلَ',
+    'verb_lemma_en': 'ḥaṣṣala — to extract, bring out the essence, collect & separate',
+    'root': ['ح', 'ص', 'ل'],
+    'form': 'II (فَعَّلَ – يُفَعِّلُ)',
+    'active_occurrence_pronoun': 'هُوَ (مبني للمجهول)',
+    'active_occurrence_tense': 'passive_past',
+    'rows': [
+        {'pronoun_ar': 'هُوَ', 'pronoun_en': 'He', 'past_ar': 'حَصَّلَ', 'past_en': 'he extracted / brought out', 'present_ar': 'يُحَصِّلُ', 'present_en': 'he extracts', 'future_ar': 'سَيُحَصِّلُ', 'future_en': 'he will extract'},
+        {'pronoun_ar': 'هِيَ', 'pronoun_en': 'She', 'past_ar': 'حَصَّلَتْ', 'past_en': 'she extracted / brought out', 'present_ar': 'تُحَصِّلُ', 'present_en': 'she extracts', 'future_ar': 'سَتُحَصِّلُ', 'future_en': 'she will extract'},
+        {'pronoun_ar': 'هُمْ', 'pronoun_en': 'They (m.)', 'past_ar': 'حَصَّلُوا', 'past_en': 'they extracted', 'present_ar': 'يُحَصِّلُونَ', 'present_en': 'they extract', 'future_ar': 'سَيُحَصِّلُونَ', 'future_en': 'they will extract'},
+        {'pronoun_ar': 'هُنَّ', 'pronoun_en': 'They (f.)', 'past_ar': 'حَصَّلْنَ', 'past_en': 'they (f.) extracted', 'present_ar': 'يُحَصِّلْنَ', 'present_en': 'they (f.) extract', 'future_ar': 'سَيُحَصِّلْنَ', 'future_en': 'they (f.) will extract'},
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'past_ar': 'حَصَّلْتَ', 'past_en': 'you extracted', 'present_ar': 'تُحَصِّلُ', 'present_en': 'you extract', 'future_ar': 'سَتُحَصِّلُ', 'future_en': 'you will extract'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'past_ar': 'حَصَّلْتِ', 'past_en': 'you (f.) extracted', 'present_ar': 'تُحَصِّلِينَ', 'present_en': 'you (f.) extract', 'future_ar': 'سَتُحَصِّلِينَ', 'future_en': 'you (f.) will extract'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'past_ar': 'حَصَّلْتُمْ', 'past_en': 'you all extracted', 'present_ar': 'تُحَصِّلُونَ', 'present_en': 'you all extract', 'future_ar': 'سَتُحَصِّلُونَ', 'future_en': 'you all will extract'},
+        {'pronoun_ar': 'أَنَا', 'pronoun_en': 'I', 'past_ar': 'حَصَّلْتُ', 'past_en': 'I extracted', 'present_ar': 'أُحَصِّلُ', 'present_en': 'I extract', 'future_ar': 'سَأُحَصِّلُ', 'future_en': 'I will extract'},
+        {'pronoun_ar': 'نَحْنُ', 'pronoun_en': 'We', 'past_ar': 'حَصَّلْنَا', 'past_en': 'we extracted / brought out', 'present_ar': 'نُحَصِّلُ', 'present_en': 'we extract', 'future_ar': 'سَنُحَصِّلُ', 'future_en': 'we will extract'},
+    ],
+    'passive': [
+        {'label_ar': 'الماضي المجهول (هو) — في الآية', 'label_en': 'Past Passive (It/He) — In this Ayah', 'ar': 'حُصِّلَ', 'en': 'it was extracted / made distinct', 'in_ayah': True},
+        {'label_ar': 'الماضي المجهول (هي)', 'label_en': 'Past Passive (She/It f.)', 'ar': 'حُصِّلَتْ', 'en': 'it (f.) was extracted / made distinct'},
+        {'label_ar': 'المضارع المجهول (هو)', 'label_en': 'Present Passive (It/He)', 'ar': 'يُحَصَّلُ', 'en': 'it is extracted / made distinct'},
+        {'label_ar': 'المضارع المجهول (هي)', 'label_en': 'Present Passive (She/It f.)', 'ar': 'تُحَصَّلُ', 'en': 'it (f.) is extracted / made distinct'},
+    ],
+    'imperative': [
+        {'pronoun_ar': 'أَنتَ', 'pronoun_en': 'You (m. sg.)', 'ar': 'حَصِّلْ', 'en': 'Extract /distinguish!'},
+        {'pronoun_ar': 'أَنتِ', 'pronoun_en': 'You (f. sg.)', 'ar': 'حَصِّلِي', 'en': 'Extract / distinguish! (f.)'},
+        {'pronoun_ar': 'أَنتُمْ', 'pronoun_en': 'You (m. pl.)', 'ar': 'حَصِّلُوا', 'en': 'Extract / distinguish! (all)'},
+        {'pronoun_ar': 'النهي', 'pronoun_en': 'Prohibition', 'ar': 'لَا تُحَصِّلْ', 'en': 'Do not extract!'},
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
+# Surah Al-'Adiyat (100) — All 11 Ayahs, 40 Words
+# ---------------------------------------------------------------------------
+
+AYAHS = {
+    1: {
+        'structure_ar': 'جملة القسم الأولى: واو القسم (حرف توكيد وجر) + المقسم به (العادياتِ — جمع مؤنث سالم) + مفعول مطلق أو حال (ضبحًا).',
+        'structure_en': 'First oath clause: wāw of oath (emphatic preposition) + the sworn-by chargers (al-ʿādiyāti, sound fem. plural) + cognate accusative / state (ḍabḥan, "panting").',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'وَٱلْعَـٰدِيَـٰتِ',
+                'translation': 'By the racers',
+                'transliteration': 'wal-ʿādiyāti',
+                'primary_category': 'ism',
+                'subclass': 'plural',
+                'has_emphasis': True,
+                'role_ar': 'واو القسم + مُقسَم به مجرور',
+                'role_en': 'Oath particle + sworn-by noun (genitive)',
+                'segments': [
+                    seg('وَ', 'harf', 'P', 'prefix', 'واو القسم (توكيد)', 'Wāw of oath (emphasis)',
+                        'حرف جر وقسم يُؤكّد به المقسم عليه في الآية ٦', 'Oath preposition swearing upon the charging horses to emphasize the verdict in Ayah 6',
+                        subclass='emphasis', emphasis=True),
+                    AL_QAMARI(),
+                    seg('عَـٰدِيَـٰتِ', 'ism', 'N', 'stem', 'اسم فاعل (جمع مؤنث سالم)', 'Active participle (fem. plural)',
+                        'الخيل المسرعة في العَدْو', 'The galloping warhorses charging swiftly',
+                        subclass='plural'),
+                ],
+                'sarf': {
+                    'root': ['ع', 'د', 'و'],
+                    'root_meaning': 'to run swiftly, gallop, charge forward; to pass beyond',
+                    'root_type_ar': 'ناقص واوي',
+                    'root_type_en': 'Defective root (3rd radical is wāw)',
+                    'wazn': 'فَاعِلَات',
+                    'wazn_original': 'عَادِوَات',
+                    'stem_letters': letters('عَـٰدِيَـٰتِ', ['f', '-', 'a', 'l', '-', '-']),
+                    'wazn_letters': letters('فَاعِلَاتِ', ['f', '-', 'a', 'l', '-', '-']),
+                    'word_type_ar': 'اسم فاعل من «عَدَا يَعْدُو» — جمع مؤنث سالم',
+                    'word_type_en': 'Active participle of ʿadā – yaʿdū — sound feminine plural',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مؤنث', 'gender_en': 'Feminine',
+                        'number_ar': 'جمع مؤنث سالم', 'number_en': 'Sound feminine plural',
+                        'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)',
+                        'case_ar': 'مجرور بواو القسم', 'case_en': 'Genitive (governed by wāw of oath)',
+                        'subclass_ar': 'جمع مؤنث سالم (اسم فاعل)', 'subclass_en': 'Plural noun (active participle)',
+                    },
+                    'transformation': {
+                        'type_ar': 'إعلال بالقلب',
+                        'type_en': 'Weak-letter conversion (wāw → yāʾ)',
+                        'ar': 'أصله «عَادِوَات» من «عَدَا يَعْدُو»: تطرّفت الواو بعد كسرة فقُلبت ياءً فصار «عَادِيَات».',
+                        'en': 'Originally ʿādiwāt from ʿ-d-w: the 3rd radical wāw followed a kasra (di), so it transformed into a yāʾ (ʿādiyāt).',
+                    },
+                    'family': [
+                        {'ar': 'فَمَنِ ٱعْتَدَىٰ', 'en': 'whoever transgresses / goes beyond', 'ref': '2:178'},
+                        {'ar': 'وَلَا تَعْدُ عَيْنَاكَ', 'en': 'let not your eyes pass beyond', 'ref': '18:28'},
+                        {'ar': 'عَدُوٌّ', 'en': 'an enemy (one who charges against)', 'ref': '2:36'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'الواو: واو القسم، حرف جر وتوكيد مبني على الفتح. العادياتِ: اسم مجرور بواو القسم وعلامة جره الكسرة الظاهرة، والجار والمجرور متعلقان بفعل قسم محذوف تقديره: أُقسِمُ.',
+                    'en': 'wa-: wāw of oath, an emphatic preposition. al-ʿādiyāti: genitive sound feminine plural noun marked by kasra, attached to an implied verb "I swear".',
+                },
+                'insight': {
+                    'title_ar': 'قسمٌ بالخيل المخلصة لصاحبها',
+                    'title_en': 'An oath by horses loyal to their master',
+                    'en': 'The sūrah opens with a cinematic oath by warhorses galloping at full speed for the rider who feeds and trains them — setting up a piercing contrast with human beings (Ayah 6), who receive infinitely more from their Lord yet remain ungrateful.',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'ضَبْحًا',
+                'translation': 'panting',
+                'transliteration': 'ḍabḥan',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'role_ar': 'مفعول مطلق / حال منصوب',
+                'role_en': 'Cognate accusative / circumstantial qualifier',
+                'segments': [
+                    seg('ضَبْحًا', 'ism', 'N', 'stem', 'مصدر منصوب', 'Verbal noun (accusative)',
+                        'صوت أجواف الخيل عند شدة العدو', 'The deep panting sound from a horse\'s chest while galloping',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ض', 'ب', 'ح'],
+                    'root_meaning': 'to pant, breathe audibly from the chest while running; to scorch',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعْلًا',
+                    'stem_letters': letters('ضَبْحًا', ['f', 'a', 'l', '-']),
+                    'wazn_letters': letters('فَعْلًا', ['f', 'a', 'l', '-']),
+                    'word_type_ar': 'مصدر ثلاثي منصوب',
+                    'word_type_en': 'Triliteral verbal noun (maṣdar) in the accusative',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد (مصدر)', 'number_en': 'Singular (verbal noun)',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'منصوب', 'case_en': 'Accusative (-an)',
+                        'subclass_ar': 'مصدر (مفعول مطلق / حال)', 'subclass_en': 'Derived verbal noun (maṣdar)',
+                    },
+                    'family': [],
+                },
+                'irab': {
+                    'ar': 'مفعول مطلق لفعل محذوف تقديره (تضبح ضبحًا) العامل فيه «العاديات»، أو حال بمعنى (ضابحةً)، منصوب وعلامة نصبه الفتحة الظاهرة.',
+                    'en': 'Cognate accusative (mafʿūl muṭlaq) governed by the active participle al-ʿādiyāt (meaning "panting with a loud panting"), or a circumstantial qualifier (ḥāl), accusative with fatḥatān.',
+                },
+                'insight': {
+                    'title_ar': 'صوتٌ لا يُسمع إلا عند بذل أقصى الجهد',
+                    'title_en': 'A sound heard only at maximum exertion',
+                    'en': 'Ḍabḥ is neither neighing (ṣahīl) nor calm breathing — Arabic reserves ḍabḥ exclusively for the rhythmic heave of a horse\'s chest when it strains every muscle in the charge.',
+                },
+            },
+        ],
+    },
+    2: {
+        'structure_ar': 'عطف على المقسم به: الفاء للعطف + المورياتِ (اسم فاعل جمع مؤنث سالم مجرور) + قدحًا (مفعول مطلق منصوب).',
+        'structure_en': 'Second stage of the oath: fāʾ ("and then") + al-mūriyāti (the spark-strikers, genitive plural participle) + qadḥan ("striking sparks", cognate accusative).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'فَٱلْمُورِيَـٰتِ',
+                'translation': 'And the producers of sparks',
+                'transliteration': 'fal-mūriyāti',
+                'primary_category': 'ism',
+                'subclass': 'plural',
+                'role_ar': 'معطوف على المقسم به مجرور',
+                'role_en': 'Coordinated with the sworn-by noun (genitive)',
+                'segments': [
+                    FA_ATF(),
+                    AL_QAMARI(),
+                    seg('مُورِيَـٰتِ', 'ism', 'N', 'stem', 'اسم فاعل (جمع مؤنث سالم)', 'Active participle (fem. plural)',
+                        'الخيل تُخرج النار بحوافرها من الحجارة', 'Horses striking fire from stones with their hooves',
+                        subclass='plural'),
+                ],
+                'sarf': {
+                    'root': ['و', 'ر', 'ي'],
+                    'root_meaning': 'to kindle fire, strike sparks; to conceal',
+                    'root_type_ar': 'لفيف مفروق',
+                    'root_type_en': 'Doubly weak root (1st radical wāw, 3rd radical yāʾ)',
+                    'wazn': 'مُفْعِلَات',
+                    'stem_letters': letters('مُورِيَـٰتِ', ['-', 'f', 'a', 'l', '-', '-']),
+                    'wazn_letters': letters('مُفْعِلَاتِ', ['-', 'f', 'a', 'l', '-', '-']),
+                    'word_type_ar': 'اسم فاعل من الرباعي «أَوْرَىٰ يُورِي» — جمع مؤنث سالم',
+                    'word_type_en': 'Form IV active participle of awrā – yūrī — sound feminine plural',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مؤنث', 'gender_en': 'Feminine',
+                        'number_ar': 'جمع مؤنث سالم', 'number_en': 'Sound feminine plural',
+                        'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)',
+                        'case_ar': 'مجرور بالعطف', 'case_en': 'Genitive (coordinated with al-ʿādiyāti)',
+                        'subclass_ar': 'جمع مؤنث سالم (اسم فاعل)', 'subclass_en': 'Plural noun (Form IV active participle)',
+                    },
+                    'transformation': {
+                        'type_ar': 'سكون الواو بعد الضم',
+                        'type_en': 'Quiescent wāw after ḍamma',
+                        'ar': 'من «أَوْرَى يُورِي فهو مُورٍ»: سكنت واو الفاء بعد ضمة الميم فصارت مدًّا «مُورِيَات».',
+                        'en': 'From Form IV awrā – yūrī (participle mūrin, fem. mūriya): the 1st radical wāw is silent after the prefix mū-, lengthening the vowel into mūriyāt.',
+                    },
+                    'family': [
+                        {'ar': 'ٱلنَّارَ ٱلَّتِى تُورُونَ', 'en': 'the fire which you kindle', 'ref': '56:71'},
+                        {'ar': 'يُوَٰرِى سَوْءَةَ أَخِيهِ', 'en': 'to hide the dead body of his brother', 'ref': '5:31'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'الفاء: حرف عطف مبني على الفتح. المورياتِ: اسم معطوف على «العادياتِ» مجرور وعلامة جره الكسرة الظاهرة.',
+                    'en': 'fa-: coordinating conjunction indicating immediate sequence. al-mūriyāti: genitive plural participle coordinated with al-ʿādiyāti, marked by kasra.',
+                },
+                'insight': {
+                    'title_ar': 'شرار الحوافر في ظلام الليل',
+                    'title_en': 'Hooves striking sparks in the pre-dawn dark',
+                    'en': 'First you hear their chests panting (Ayah 1); next you see sparks flying under their iron hooves as they strike rocky ground in the dark before dawn (Ayah 2).',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'قَدْحًا',
+                'translation': 'striking',
+                'transliteration': 'qadḥan',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'role_ar': 'مفعول مطلق منصوب',
+                'role_en': 'Cognate accusative (maṣdar)',
+                'segments': [
+                    seg('قَدْحًا', 'ism', 'N', 'stem', 'مصدر منصوب', 'Verbal noun (accusative)',
+                        'صكّ الحافر للحجر حتى يخرج الشرر', 'The forceful striking of flint/stone to produce sparks',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ق', 'د', 'ح'],
+                    'root_meaning': 'to strike flint/stone to kindle fire; to pierce',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعْلًا',
+                    'stem_letters': letters('قَدْحًا', ['f', 'a', 'l', '-']),
+                    'wazn_letters': letters('فَعْلًا', ['f', 'a', 'l', '-']),
+                    'word_type_ar': 'مصدر ثلاثي منصوب (مفعول مطلق من المعنى)',
+                    'word_type_en': 'Triliteral verbal noun (cognate accusative by meaning)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد (مصدر)', 'number_en': 'Singular (verbal noun)',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'منصوب', 'case_en': 'Accusative (-an)',
+                        'subclass_ar': 'مصدر (مفعول مطلق)', 'subclass_en': 'Derived verbal noun (maṣdar)',
+                    },
+                    'family': [],
+                },
+                'irab': {
+                    'ar': 'مفعول مطلق من معنى «الموريات» (لأن الإيراء بمعنى القدح) منصوب وعلامة نصبه الفتحة الظاهرة.',
+                    'en': 'Cognate accusative by semantic equivalence (since īrāʾ means striking fire, qadḥ), governed by al-mūriyāti, accusative with fatḥatān.',
+                },
+                'insight': {
+                    'title_ar': 'المفعول المطلق المعنوي',
+                    'title_en': 'A cognate accusative of meaning',
+                    'en': 'Instead of repeating the same root (īrāʾan), the Qur\'ān switches to qadḥan — adding the physical impact of stone striking stone to the visual flash of the spark.',
+                },
+            },
+        ],
+    },
+    3: {
+        'structure_ar': 'عطف ثالث في القسم: الفاء للعطف + المغيراتِ (معطوف مجرور) + صبحًا (ظرف زمان منصوب متعلق بالمغيرات).',
+        'structure_en': 'Third stage of the oath: fāʾ ("and then") + al-mughīrāti (the raiders, genitive plural participle) + ṣubḥan ("at dawn", accusative adverbial of time).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'فَٱلْمُغِيرَٰتِ',
+                'translation': 'And the chargers',
+                'transliteration': 'fal-mughīrāti',
+                'primary_category': 'ism',
+                'subclass': 'plural',
+                'role_ar': 'معطوف على المقسم به مجرور',
+                'role_en': 'Coordinated with the sworn-by noun (genitive)',
+                'segments': [
+                    FA_ATF(),
+                    AL_QAMARI(),
+                    seg('مُغِيرَٰتِ', 'ism', 'N', 'stem', 'اسم فاعل (جمع مؤنث سالم)', 'Active participle (fem. plural)',
+                        'الخيل تُغير على العدو وقت الصباح', 'Horses launching a sudden raid at daybreak',
+                        subclass='plural'),
+                ],
+                'sarf': {
+                    'root': ['غ', 'و', 'ر'],
+                    'root_meaning': 'to descend into a lowland; Form IV (aghāra): to launch a swift raid; a cave (ghār)',
+                    'root_type_ar': 'أجوف واوي',
+                    'root_type_en': 'Hollow root (2nd radical is wāw)',
+                    'wazn': 'مُفْعِلَات',
+                    'wazn_original': 'مُغْوِرَات',
+                    'stem_letters': letters('مُغِيرَٰتِ', ['-', 'f', 'a', 'l', '-']),
+                    'wazn_letters': letters('مُفْعِلَٰتِ', ['-', 'f', 'a', 'l', '-']),
+                    'word_type_ar': 'اسم فاعل من الرباعي «أَغَارَ يُغِيرُ» — جمع مؤنث سالم',
+                    'word_type_en': 'Form IV active participle of aghāra – yughīru — sound feminine plural',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مؤنث', 'gender_en': 'Feminine',
+                        'number_ar': 'جمع مؤنث سالم', 'number_en': 'Sound feminine plural',
+                        'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)',
+                        'case_ar': 'مجرور بالعطف', 'case_en': 'Genitive (coordinated with al-ʿādiyāti)',
+                        'subclass_ar': 'جمع مؤنث سالم (اسم فاعل)', 'subclass_en': 'Plural noun (Form IV active participle)',
+                    },
+                    'transformation': {
+                        'type_ar': 'إعلال بالنقل والقلب',
+                        'type_en': 'Vowel transfer & conversion (wāw → yāʾ)',
+                        'ar': 'أصله «مُغْوِرَات»: نُقلت كسرة الواو إلى الغين الساكنة قبلها، ثم قُلبت الواو ياءً لمناسبة الكسرة فصار «مُغِيرَات».',
+                        'en': 'Originally mughwirāt: the kasra on the wāw shifted to the preceding ghayn, and the wāw turned into a long yāʾ to match the kasra — mughīrāt.',
+                    },
+                    'family': [
+                        {'ar': 'إِذْ هُمَا فِى ٱلْغَارِ', 'en': 'when the two of them were in the cave', 'ref': '9:40'},
+                        {'ar': 'أَوْ مُغَارَٰتٍ', 'en': 'or caves', 'ref': '9:57'},
+                        {'ar': 'مَآؤُكُمْ غَوْرًا', 'en': 'your water sunken deep into the earth', 'ref': '67:30'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'الفاء: حرف عطف مبني على الفتح. المغيراتِ: اسم معطوف على «العادياتِ» مجرور وعلامة جره الكسرة الظاهرة.',
+                    'en': 'fa-: conjunction. al-mughīrāti: genitive sound feminine plural coordinated with al-ʿādiyāti, marked by kasra.',
+                },
+                'insight': {
+                    'title_ar': 'الترتيب الزمني للغارة',
+                    'title_en': 'From night march to dawn raid',
+                    'en': 'Notice the timeline built by the conjunction fa-: galloping through the night (Ayah 1) → hooves sparking against stones in the dark (Ayah 2) → arriving for the raid right as dawn breaks (Ayah 3).',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'صُبْحًا',
+                'translation': '(at) dawn',
+                'transliteration': 'ṣubḥan',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'role_ar': 'ظرف زمان منصوب',
+                'role_en': 'Adverbial of time (accusative)',
+                'segments': [
+                    seg('صُبْحًا', 'ism', 'N', 'stem', 'ظرف زمان منصوب', 'Time adverbial (accusative)',
+                        'وقت الصباح أول النهار', 'At daybreak / early morning',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ص', 'ب', 'ح'],
+                    'root_meaning': 'dawn, morning light; to enter the morning',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فُعْلًا',
+                    'stem_letters': letters('صُبْحًا', ['f', 'a', 'l', '-']),
+                    'wazn_letters': letters('فُعْلًا', ['f', 'a', 'l', '-']),
+                    'word_type_ar': 'اسم زمان / مصدر منصوب على الظرفية',
+                    'word_type_en': 'Time noun in the accusative of time (ẓarf zamān)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'منصوب على الظرفية الزمانية', 'case_en': 'Accusative of time (mafʿūl fīhi)',
+                        'subclass_ar': 'ظرف زمان منصوب', 'subclass_en': 'Derived time adverbial (ẓarf zamān)',
+                    },
+                    'family': [
+                        {'ar': 'وَٱلصُّبْحِ إِذَا تَنَفَّسَ', 'en': 'and by the dawn when it breathes', 'ref': '81:18'},
+                        {'ar': 'فَالِقُ ٱلْإِصْبَاحِ', 'en': 'Cleaver of daybreak', 'ref': '6:96'},
+                        {'ar': 'مِصْبَاحٌ', 'en': 'a lamp', 'ref': '24:35'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'ظرف زمان (مفعول فيه) منصوب وعلامة نصبه الفتحة الظاهرة، متعلق باسم الفاعل «المغيرات».',
+                    'en': 'Adverbial of time (ẓarf zamān / mafʿūl fīhi), accusative with fatḥatān, attached to the participle al-mughīrāti.',
+                },
+                'insight': {
+                    'title_ar': 'تنوع المنصوبات مع اتحاد الإيقاع',
+                    'title_en': 'Same rhyme, different grammatical role',
+                    'en': 'While ḍabḥan and qadḥan were cognate accusatives (mafʿūl muṭlaq), ṣubḥan keeps the exact same -an rhyme while shifting grammatical function to an adverbial of time (ẓarf zamān).',
+                },
+            },
+        ],
+    },
+    4: {
+        'structure_ar': 'الانتقال من الاسم إلى الفعل الماضي: الفاء للعطف + أثرْنَ (فعل ماضٍ + نون النسوة فاعل) + به (جار ومجرور) + نقعًا (مفعول به منصوب).',
+        'structure_en': 'Shift from participles to past verbs: fāʾ + atharna (past active verb + fem. plural subject -na) + bihi ("thereby") + naqʿan ("dust", direct object).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'فَأَثَرْنَ',
+                'translation': 'Then raise',
+                'transliteration': 'fa-atharna',
+                'primary_category': 'fil',
+                'tense': 'past',
+                'voice': 'active',
+                'role_ar': 'فعل ماضٍ + فاعل (نون النسوة)',
+                'role_en': 'Past active verb + fem. plural subject',
+                'segments': [
+                    FA_ATF(),
+                    seg('أَثَرْ', 'fil', 'V', 'stem', 'فعل ماضٍ (أَفْعَلَ)', 'Perfect (past) verb — Form IV',
+                        'من أَثَارَ: هيّج ورفع الغبار', 'From athāra: stirred up, raised a cloud of dust',
+                        tense='past', voice='active'),
+                    seg('نَ', 'ism', 'PRON', 'suffix', 'نون النسوة (فاعل)', 'Subject pronoun "they (f.)"',
+                        'ضمير متصل مبني على الفتح في محل رفع فاعل يعود على الخيل', 'Attached feminine plural subject pronoun referring to the horses',
+                        subclass='pronoun'),
+                ],
+                'sarf': {
+                    'root': ['ث', 'و', 'ر'],
+                    'root_meaning': 'to stir up, rise and spread (dust, smoke); to plow up the earth',
+                    'root_type_ar': 'أجوف واوي',
+                    'root_type_en': 'Hollow root (2nd radical is wāw)',
+                    'wazn': 'أَفَلْنَ',
+                    'wazn_original': 'أَفْعَلْنَ (أَثْوَرْنَ ← أَثَارْنَ)',
+                    'stem_letters': letters('أَثَرْ', ['-', 'f', 'l']),
+                    'wazn_letters': letters('أَفَلْ', ['-', 'f', 'l']),
+                    'deleted_radicals': ['a'],
+                    'word_type_ar': 'فعل ماضٍ مزيد بالهمزة (الوزن الرابع: أَفْعَلَ)',
+                    'word_type_en': 'Form IV perfect active verb (augmented by hamza)',
+                    'verb': {
+                        'form': 'IV',
+                        'pattern': 'أَفْعَلَ – يُفْعِلُ – إِفْعَال (أَثَارَ – يُثِيرُ – إِثَارَة)',
+                        'meaning_of_form_ar': 'التعدية: جعل الغبار ثائرًا مرتفعًا',
+                        'meaning_of_form_en': 'Causative — causing the dust to rise and billow',
+                        'tense_ar': 'ماضٍ',
+                        'tense_en': 'Perfect (past)',
+                        'person_ar': 'غائب – جمع – مؤنث (هُنَّ)',
+                        'person_en': '3rd person · feminine · plural (they [f.])',
+                        'voice_ar': 'مبني للمعلوم',
+                        'voice_en': 'Active voice',
+                        'conjugation': [
+                            {'label_ar': 'الماضي', 'label_en': 'Perfect', 'ar': 'أَثَارَ'},
+                            {'label_ar': 'المضارع', 'label_en': 'Imperfect', 'ar': 'يُثِيرُ'},
+                            {'label_ar': 'الأمر', 'label_en': 'Imperative', 'ar': 'أَثِرْ'},
+                            {'label_ar': 'المصدر', 'label_en': 'Verbal noun', 'ar': 'إِثَارَة'},
+                            {'label_ar': 'اسم الفاعل', 'label_en': 'Active participle', 'ar': 'مُثِير'},
+                        ],
+                        'conjugation_table': CONJ_ATHARNA,
+                    },
+                    'noun': None,
+                    'transformation': {
+                        'type_ar': 'إعلال بالقلب ثم الحذف لالتقاء الساكنين',
+                        'type_en': 'Conversion to alif, then deletion before sukūn',
+                        'ar': 'أصله «أَثْوَرْنَ»: قُلبت الواو ألفًا «أَثَارْنَ»، فلما سكنت الراء لاتصالها بنون النسوة حُذفت الألف (عين الكلمة) منعًا لالتقاء الساكنين فصار «أَثَرْنَ» على وزن «أَفَلْنَ».',
+                        'en': 'Originally athwarna → athārna: when the 3rd radical rāʾ became vowelless before the feminine pronoun -na, the middle alif (2nd radical) was deleted to prevent two consecutive sukūns — yielding atharna on the pattern afalna.',
+                    },
+                    'family': [
+                        {'ar': 'فَتُثِيرُ سَحَابًا', 'en': 'and they stir up clouds', 'ref': '30:48'},
+                        {'ar': 'وَأَثَارُوا۟ ٱلْأَرْضَ', 'en': 'and they plowed up the earth', 'ref': '30:9'},
+                        {'ar': 'تُثِيرُ ٱلْأَرْضَ', 'en': 'plowing the ground', 'ref': '2:71'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'الفاء: حرف عطف مبني على الفتح. أثرْنَ: فعل ماضٍ مبني على السكون لاتصاله بنون النسوة، ونون النسوة ضمير متصل مبني على الفتح في محل رفع فاعل.',
+                    'en': 'fa-: conjunction. atharna: past active verb built on sukūn due to the attached feminine plural pronoun -na, which is in the nominative position as subject (fāʿil).',
+                },
+                'insight': {
+                    'title_ar': 'لماذا تحوّل السرد من الأسماء إلى الأفعال؟',
+                    'title_en': 'Why switch from nouns to verbs in Ayah 4?',
+                    'en': 'Ayahs 1–3 used nouns (al-ʿādiyāt, al-mūriyāt, al-mughīrāt) to paint a lasting portrait of the horses\' qualities; Ayahs 4–5 switch to past verbs (fa-atharna, fa-wasaṭna) to capture the sudden burst of action once the raid begins.',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'بِهِۦ',
+                'translation': 'thereby',
+                'transliteration': 'bihi',
+                'primary_category': 'harf',
+                'role_ar': 'جار ومجرور متعلق بـ«أثرن»',
+                'role_en': 'Prepositional phrase (linked to atharna)',
+                'segments': [
+                    seg('بِ', 'harf', 'P', 'prefix', 'حرف جر', 'Preposition (bi-)',
+                        'باء السببية أو الظرفية', 'Denotes cause ("thereby") or location ("in that place/time")',
+                        subclass='preposition'),
+                    seg('هِۦ', 'ism', 'PRON', 'stem', 'ضمير الغائب المجرور', 'Attached pronoun "it"',
+                        'ضمير متصل في محل جر بالباء، وألحقت به ياء الصلة الصغرى', 'Attached 3rd person masculine singular pronoun in genitive case',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'مركّب من حرف الجر (الباء) والضمير المتصل (الهاء)، وكلاهما مبني لا يدخله الميزان الصرفي.',
+                'sarf_note_en': 'Composed of the preposition bi- and the attached pronoun -hi; both are fixed (mabnī) and outside morphological root patterns.',
+                'irab': {
+                    'ar': 'الباء: حرف جر مبني على الكسر. والهاء: ضمير متصل مبني على الكسر في محل جر بالباء، والجار والمجرور متعلقان بالفعل «أثرن».',
+                    'en': 'bi-: preposition. -hi: attached pronoun built on kasra in the genitive place, linked to the verb atharna ("by means of that gallop / in that place").',
+                },
+                'insight': {
+                    'title_ar': 'عَوْد الضمير في «به»',
+                    'title_en': 'What does "thereby" (bihi) refer to?',
+                    'en': 'Classical commentators note two rich possibilities: "by means of that charging gallop" (al-ʿadw) or "at that time/place of dawn" (al-ṣubḥ / al-makān) — both converge on the sudden dust cloud rising from the charge.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'نَقْعًا',
+                'translation': 'dust',
+                'transliteration': 'naqʿan',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'role_ar': 'مفعول به منصوب',
+                'role_en': 'Direct object (accusative)',
+                'segments': [
+                    seg('نَقْعًا', 'ism', 'N', 'stem', 'مفعول به منصوب', 'Noun (accusative direct object)',
+                        'الغبار الساطع المنتشر في الجو', 'Thick, billowing battle-dust rising into the air',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ن', 'ق', 'ع'],
+                    'root_meaning': 'billowing dust raised by hooves; water collecting in a basin',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعْلًا',
+                    'stem_letters': letters('نَقْعًا', ['f', 'a', 'l', '-']),
+                    'wazn_letters': letters('فَعْلًا', ['f', 'a', 'l', '-']),
+                    'word_type_ar': 'اسم ثلاثي منصوب (مفعول به)',
+                    'word_type_en': 'Triliteral noun in the accusative (direct object)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد (اسم جنس)', 'number_en': 'Singular (mass noun)',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'منصوب (مفعول به)', 'case_en': 'Accusative (direct object)',
+                        'subclass_ar': 'اسم منصوب (مفعول به)', 'subclass_en': 'Accusative noun (direct object)',
+                    },
+                    'family': [],
+                },
+                'irab': {
+                    'ar': 'مفعول به للفعل «أثرن» منصوب وعلامة نصبه الفتحة الظاهرة.',
+                    'en': 'Direct object (mafʿūl bihi) of the verb atharna, accusative marked by fatḥatān.',
+                },
+                'insight': {
+                    'title_ar': 'مشهد الغبار يملأ الأفق',
+                    'title_en': 'A dust cloud filling the horizon',
+                    'en': 'Here the -an word (naqʿan) shifts to a direct object (mafʿūl bihi): the horses\' charge physically produces a curtain of dust before they plunge into the center of the ranks.',
+                },
+            },
+        ],
+    },
+    5: {
+        'structure_ar': 'عطف فعلي: الفاء للعطف + وسطْنَ (فعل ماضٍ + نون النسوة فاعل) + به (جار ومجرور) + جمعًا (مفعول به منصوب).',
+        'structure_en': 'Climax of the oath scene: fāʾ + wasaṭna (past active verb + fem. plural subject -na) + bihi ("thereby") + jamʿan ("a host/gathering", direct object).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'فَوَسَطْنَ',
+                'translation': 'Then penetrate [into the center]',
+                'transliteration': 'fawasaṭna',
+                'primary_category': 'fil',
+                'tense': 'past',
+                'voice': 'active',
+                'role_ar': 'فعل ماضٍ + فاعل (نون النسوة)',
+                'role_en': 'Past active verb + fem. plural subject',
+                'segments': [
+                    FA_ATF(),
+                    seg('وَسَطْ', 'fil', 'V', 'stem', 'فعل ماضٍ (فَعَلَ)', 'Perfect (past) verb — Form I',
+                        'توسّطن ودخلن في قلب الجمع', 'Plunged right into the middle/heart of the crowd',
+                        tense='past', voice='active'),
+                    seg('نَ', 'ism', 'PRON', 'suffix', 'نون النسوة (فاعل)', 'Subject pronoun "they (f.)"',
+                        'ضمير متصل مبني على الفتح في محل رفع فاعل', 'Attached feminine plural subject pronoun',
+                        subclass='pronoun'),
+                ],
+                'sarf': {
+                    'root': ['و', 'س', 'ط'],
+                    'root_meaning': 'the center, middle, heart of something; to cleave the middle; balanced/just',
+                    'root_type_ar': 'مثال واوي',
+                    'root_type_en': 'Assimilated root (1st radical is wāw)',
+                    'wazn': 'فَعَلْنَ',
+                    'stem_letters': letters('وَسَطْ', ['f', 'a', 'l']),
+                    'wazn_letters': letters('فَعَلْ', ['f', 'a', 'l']),
+                    'word_type_ar': 'فعل ماضٍ ثلاثي مجرد',
+                    'word_type_en': 'Form I perfect active verb (bare triliteral)',
+                    'verb': {
+                        'form': 'I',
+                        'pattern': 'فَعَلَ – يَفْعِلُ (وَسَطَ – يَسِطُ)',
+                        'meaning_of_form_ar': 'الدخول في وسط الشيء وقلبه دفعةً واحدة',
+                        'meaning_of_form_en': 'Base transitive verb — to cleave directly into the center of a group',
+                        'tense_ar': 'ماضٍ',
+                        'tense_en': 'Perfect (past)',
+                        'person_ar': 'غائب – جمع – مؤنث (هُنَّ)',
+                        'person_en': '3rd person · feminine · plural (they [f.])',
+                        'voice_ar': 'مبني للمعلوم',
+                        'voice_en': 'Active voice',
+                        'conjugation': [
+                            {'label_ar': 'الماضي', 'label_en': 'Perfect', 'ar': 'وَسَطَ'},
+                            {'label_ar': 'المضارع', 'label_en': 'Imperfect', 'ar': 'يَسِطُ'},
+                            {'label_ar': 'الأمر', 'label_en': 'Imperative', 'ar': 'سِطْ'},
+                            {'label_ar': 'المصدر', 'label_en': 'Verbal noun', 'ar': 'وَسْط'},
+                            {'label_ar': 'اسم الفاعل', 'label_en': 'Active participle', 'ar': 'وَاسِط'},
+                        ],
+                        'conjugation_table': CONJ_WASATNA,
+                    },
+                    'noun': None,
+                    'family': [
+                        {'ar': 'أُمَّةً وَسَطًا', 'en': 'a justly balanced nation', 'ref': '2:143'},
+                        {'ar': 'ٱلصَّلَوٰةِ ٱلْوُسْطَىٰ', 'en': 'the middle prayer', 'ref': '2:238'},
+                        {'ar': 'أَوْسَطُهُمْ', 'en': 'the most moderate/best of them', 'ref': '68:28'},
+                        {'ar': 'فَوَسَطْنَ بِهِۦ جَمْعًا', 'en': 'and cleaved the center of a host', 'ref': '100:5'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'الفاء: حرف عطف مبني على الفتح. وسطْنَ: فعل ماضٍ مبني على السكون لاتصاله بنون النسوة، ونون النسوة ضمير متصل مبني على الفتح في محل رفع فاعل.',
+                    'en': 'fa-: conjunction. wasaṭna: Form I past active verb built on sukūn, with the attached feminine plural pronoun -na as subject (fāʿil).',
+                },
+                'insight': {
+                    'title_ar': 'الشجاعة في اقتحام القلب',
+                    'title_en': 'Fearless loyalty unto the center of danger',
+                    'en': 'A horse naturally fears crowds and noise, yet out of loyalty to its rider it charges straight into the heart (wasaṭ) of the enemy host — completing the 5-verse oath before the pivot to human ingratitude.',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'بِهِۦ',
+                'translation': 'thereby',
+                'transliteration': 'bihi',
+                'primary_category': 'harf',
+                'role_ar': 'جار ومجرور متعلق بـ«وسطن»',
+                'role_en': 'Prepositional phrase (linked to wasaṭna)',
+                'segments': [
+                    seg('بِ', 'harf', 'P', 'prefix', 'حرف جر', 'Preposition (bi-)',
+                        'باء المصاحبة أو السببية', 'Denotes accompaniment ("carrying the riders/dust") or cause',
+                        subclass='preposition'),
+                    seg('هِۦ', 'ism', 'PRON', 'stem', 'ضمير الغائب المجرور', 'Attached pronoun "it"',
+                        'ضمير متصل في محل جر بالباء', 'Attached 3rd person masculine singular pronoun in genitive case',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'جار ومجرور (حرف جر + ضمير متصل مبني)، لا ميزان صرفي له.',
+                'sarf_note_en': 'Preposition + attached pronoun (both mabnī / non-inflecting).',
+                'irab': {
+                    'ar': 'الباء: حرف جر مبني على الكسر. والهاء: ضمير متصل مبني على الكسر في محل جر بالباء، والجار والمجرور متعلقان بالفعل «وسطن».',
+                    'en': 'bi-: preposition. -hi: attached pronoun in the genitive place, linked to the verb wasaṭna.',
+                },
+                'insight': {
+                    'title_ar': 'التلاحم بين الغبار والاقتحام',
+                    'title_en': 'Shrouded in dust as they cleave the ranks',
+                    'en': 'Repeating bihi links Ayah 5 directly to the dust cloud (naqʿ) of Ayah 4: while still cloaked in the dust they just raised, the horses are already in the middle of the host.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'جَمْعًا',
+                'translation': 'collectively / a host',
+                'transliteration': 'jamʿan',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'role_ar': 'مفعول به منصوب',
+                'role_en': 'Direct object (accusative)',
+                'segments': [
+                    seg('جَمْعًا', 'ism', 'N', 'stem', 'مفعول به منصوب', 'Noun (accusative direct object)',
+                        'الجماعة المجتمعة من الأعداء', 'An assembled troop / gathering of the enemy',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ج', 'م', 'ع'],
+                    'root_meaning': 'to gather, assemble, bring together into one body',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعْلًا',
+                    'stem_letters': letters('جَمْعًا', ['f', 'a', 'l', '-']),
+                    'wazn_letters': letters('فَعْلًا', ['f', 'a', 'l', '-']),
+                    'word_type_ar': 'مصدر أُريد به اسم المفعول أو الجماعة المجتمعة',
+                    'word_type_en': 'Verbal noun used for an assembled host/crowd (direct object)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد يدل على الجمع', 'number_en': 'Singular collective noun',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'منصوب (مفعول به)', 'case_en': 'Accusative (direct object)',
+                        'subclass_ar': 'مصدر / اسم جمع منصوب', 'subclass_en': 'Derived collective noun (accusative)',
+                    },
+                    'family': [
+                        {'ar': 'يَوْمَ ٱلْجَمْعِ', 'en': 'the Day of Assembly', 'ref': '42:7'},
+                        {'ar': 'سَيُهْزَمُ ٱلْجَمْعُ', 'en': 'the multitude will be defeated', 'ref': '54:45'},
+                        {'ar': 'جَمَعَ مَالًا', 'en': 'who amassed wealth', 'ref': '104:2'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'مفعول به للفعل «وسطن» منصوب وعلامة نصبه الفتحة الظاهرة.',
+                    'en': 'Direct object (mafʿūl bihi) of the transitive verb wasaṭna, accusative with fatḥatān.',
+                },
+                'insight': {
+                    'title_ar': 'تمام لوحة القسم الخماسية',
+                    'title_en': 'Completing the five-verse oath crescendo',
+                    'en': 'With jamʿan, the five-verse oath reaches its physical center. Now comes the thunderous verdict (jawāb al-qasam) in Ayah 6.',
+                },
+            },
+        ],
+    },
+    6: {
+        'structure_ar': 'جواب القسم: إنّ (حرف توكيد) + الإنسانَ (اسم إنّ) + لِربِّهِ (جار ومجرور + تركيب إضافة: ربِّ مضاف والهاء مضاف إليه) + لَكنودٌ (اللام المزحلقة للتوكيد + خبر إنّ).',
+        'structure_en': 'Answer to the oath: inna (emphasis) + al-insāna (subject) + li-rabbihi (preposition + iḍāfa construct: rabbi [Muḍāf] + -hi [Muḍāf Ilayhi]) + la-kanūdun (emphatic lām + predicate).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'إِنَّ',
+                'translation': 'Indeed',
+                'transliteration': 'inna',
+                'primary_category': 'harf',
+                'subclass': 'emphasis',
+                'has_emphasis': True,
+                'role_ar': 'حرف توكيد ونصب',
+                'role_en': 'Particle of emphasis & accusative',
+                'segments': [
+                    seg('إِنَّ', 'harf', 'ACC', 'stem', 'حرف توكيد ونصب', 'Particle of emphasis (inna)',
+                        'ينصب الاسم ويرفع الخبر، ويؤكد جواب القسم', 'Emphasizes the nominal clause and makes its subject accusative',
+                        subclass='emphasis', emphasis=True),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'حرف مبني لا يدخله التصريف ولا الميزان الصرفي.',
+                'sarf_note_en': 'Fixed particle (mabnī) — outside morphological root patterns.',
+                'irab': {
+                    'ar': 'حرف توكيد ونصب مبني على الفتح لا محل له من الإعراب، والجملة الاسمية بعده جواب القسم لا محل لها من الإعراب.',
+                    'en': 'Particle of emphasis and accusative built on fatḥa; the nominal sentence it introduces is the answer to the oath (jawāb al-qasam).',
+                },
+                'insight': {
+                    'title_ar': 'توكيد بعد خمسة أقسام',
+                    'title_en': 'Emphasis stacked upon a fivefold oath',
+                    'en': 'After five verses of oath, the verdict opens with inna (emphasis) and seals its predicate with la- (the emphatic lām) — triple reinforcement for a truth human beings hate to admit about themselves.',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'ٱلْإِنسَـٰنَ',
+                'translation': 'mankind',
+                'transliteration': 'l-insāna',
+                'primary_category': 'ism',
+                'subclass': 'singular',
+                'role_ar': 'اسم إنّ منصوب',
+                'role_en': 'Subject of inna (accusative)',
+                'segments': [
+                    seg('ٱلْ', 'harf', 'DET', 'prefix', 'أل الجنسية', 'Generic definite article',
+                        'لام قمرية؛ وأل هنا لبيان الجنس', 'Moon-letter lām denoting the human species by default',
+                        subclass='determiner'),
+                    seg('إِنسَـٰنَ', 'ism', 'N', 'stem', 'اسم إنّ منصوب', 'Noun (accusative subject of inna)',
+                        'جنس الإنسان إلا من رحم الله', 'Humanity in its unredeemed default state',
+                        subclass='singular'),
+                ],
+                'sarf': {
+                    'root': ['أ', 'ن', 'س'],
+                    'root_meaning': 'to be familiar, sociable, perceive; contrasted with forgetfulness (n-s-y)',
+                    'root_type_ar': 'مهموز الفاء',
+                    'root_type_en': 'Hamzated root (1st radical is hamza)',
+                    'wazn': 'فِعْلَان',
+                    'stem_letters': letters('إِنسَـٰنَ', ['f', 'a', 'l', '-', '-']),
+                    'wazn_letters': letters('فِعْلَانَ', ['f', 'a', 'l', '-', '-']),
+                    'word_type_ar': 'اسم جنس مفرد',
+                    'word_type_en': 'Generic singular noun (ism jins)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد (اسم جنس)', 'number_en': 'Singular (generic noun)',
+                        'definiteness_ar': 'معرفة بأل الجنسية', 'definiteness_en': 'Definite (generic al-)',
+                        'case_ar': 'منصوب (اسم إنّ)', 'case_en': 'Accusative (subject of inna)',
+                        'subclass_ar': 'اسم مفرد (اسم جنس)', 'subclass_en': 'Singular generic noun',
+                    },
+                    'family': [
+                        {'ar': 'إِنَّ ٱلْإِنسَٰنَ لَفِى خُسْرٍ', 'en': 'Indeed mankind is in loss', 'ref': '103:2'},
+                        {'ar': 'خُلِقَ ٱلْإِنسَٰنُ مِنْ عَجَلٍ', 'en': 'Man was created of haste', 'ref': '21:37'},
+                        {'ar': 'ءَانَسَ مِن جَانِبِ ٱلطُّورِ نَارًا', 'en': 'he perceived a fire on the side of the Mount', 'ref': '28:29'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اسم «إنّ» منصوب وعلامة نصبه الفتحة الظاهرة على آخره.',
+                    'en': 'Subject (ism) of inna, accusative marked by the visible fatḥa.',
+                },
+                'insight': {
+                    'title_ar': 'المقابلة بين الفرس والإنسان',
+                    'title_en': 'The warhorse vs. the human being',
+                    'en': 'A horse risks its life for a handful of fodder given by its human rider; yet al-insān enjoys life, breath, intellect, and provision from his Lord and still counts only his hardships while forgetting his blessings.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'لِرَبِّهِۦ',
+                'translation': 'to his Lord',
+                'transliteration': 'lirabbihi',
+                'primary_category': 'ism',
+                'subclass': 'singular',
+                'role_ar': 'جار ومجرور + تركيب إضافة (مضاف ومضاف إليه)',
+                'role_en': 'Prepositional phrase + Iḍāfa (Muḍāf + Muḍāf Ilayhi)',
+                'idafa': {
+                    'type': 'compound',
+                    'pair_id': '100:6:rabb-hi',
+                    'label_ar': 'مضاف + مضاف إليه',
+                    'label_en': 'Muḍāf + Muḍāf Ilayhi',
+                    'mudaf_ar': 'رَبِّ',
+                    'mudaf_en': 'Lord (construct noun / Muḍāf — drops al- and tanwīn)',
+                    'mudaf_ilayhi_ar': 'ـهِۦ',
+                    'mudaf_ilayhi_en': 'his (attached pronoun in the genitive position / Muḍāf Ilayhi)',
+                    'explanation_ar': 'أُضيف الاسم «رَبِّ» إلى ضمير الإنسان «ـهِ» لإظهار قبح الكفران: فهو لا يجحد أجنبيًّا، بل يجحد ربَّه الذي ربّاه وأنعم عليه.',
+                    'explanation_en': 'The construct noun rabb ("Lord, Nurturer") is joined in iḍāfa to the possessive pronoun -hi ("his") — heightening the indictment: man is ungrateful not to a stranger, but to his own Nurturer.',
+                },
+                'segments': [
+                    seg('لِ', 'harf', 'P', 'prefix', 'حرف جر', 'Preposition (li-)',
+                        'لام الجر المتعلقة بـ«كنود»', 'Preposition "to / toward", linked to kanūd',
+                        subclass='preposition'),
+                    seg('رَبِّ', 'ism', 'N', 'stem', 'اسم مجرور وهو مضاف', 'Genitive noun (Muḍāf)',
+                        'المالك المربّي المنعم (مضاف)', 'The Sustainer and Nurturer (construct state / Muḍāf)',
+                        subclass='singular'),
+                    seg('هِۦ', 'ism', 'PRON', 'suffix', 'ضمير متصل مضاف إليه', 'Possessive pronoun "his" (Muḍāf Ilayhi)',
+                        'ضمير متصل مبني على الكسر في محل جر مضاف إليه', 'Attached pronoun in genitive place as Muḍāf Ilayhi',
+                        subclass='pronoun'),
+                ],
+                'sarf': {
+                    'root': ['ر', 'ب', 'ب'],
+                    'root_meaning': 'to nurture, sustain, bring to maturity step by step; master and owner',
+                    'root_type_ar': 'مضعّف ثلاثي',
+                    'root_type_en': 'Doubled root (2nd & 3rd radicals identical)',
+                    'wazn': 'فَعْل',
+                    'stem_letters': letters('رَبِّ', ['f', 'al']),
+                    'wazn_letters': letters('فَعْلِ', ['f', 'a', 'l']),
+                    'word_type_ar': 'صفة مشبهة / اسم ثلاثي مضعّف',
+                    'word_type_en': 'Assimilated attribute / doubled triliteral noun',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'معرفة بالإضافة إلى الضمير', 'definiteness_en': 'Definite by iḍāfa (possessive pronoun)',
+                        'case_ar': 'مجرور باللام (وهو مضاف)', 'case_en': 'Genitive (and Muḍāf to -hi)',
+                        'subclass_ar': 'اسم مفرد مضاف', 'subclass_en': 'Singular construct noun (Muḍāf)',
+                    },
+                    'transformation': {
+                        'type_ar': 'إدغام المثلين',
+                        'type_en': 'Assimilation of identical radicals (idghām)',
+                        'ar': 'أصله «رَبْبِ»: أُدغمت الباء الأولى الساكنة في الباء الثانية فصارت باءً واحدة مشدّدة تجمع عين الكلمة ولامها.',
+                        'en': 'Originally rabb-bi: the silent 2nd radical bāʾ merged into the 3rd radical bāʾ with a shadda representing both ع and ل.',
+                    },
+                    'family': [
+                        {'ar': 'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ', 'en': 'Praise be to Allah, Lord of the worlds', 'ref': '1:2'},
+                        {'ar': 'كَمَا رَبَّيَانِى صَغِيرًا', 'en': 'as they nurtured me when I was small', 'ref': '17:24'},
+                        {'ar': 'رَبَّٰنِيِّـۧنَ', 'en': 'devoted scholars of the Lord', 'ref': '3:79'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اللام: حرف جر مبني على الكسر. ربِّ: اسم مجرور باللام وعلامة جره الكسرة الظاهرة، وهو مضاف. والهاء: ضمير متصل مبني على الكسر في محل جر مضاف إليه. والجار والمجرور متعلقان بـ«كنود» قُدِّما للاهتمام.',
+                    'en': 'li-: preposition. rabbi: genitive noun marked by kasra, acting as Muḍāf. -hi: attached pronoun built on kasra in the genitive position as Muḍāf Ilayhi. Fronted before la-kanūdun for rhetorical emphasis.',
+                },
+                'insight': {
+                    'title_ar': 'تقديم «لربه» وإضافته إلى الضمير',
+                    'title_en': 'Why front "to his Lord" before "ungrateful"?',
+                    'en': 'In normal word order, "li-rabbihi" would follow "la-kanūdun". Fronting it — and using the intimate iḍāfa "his Lord" (rabb-ihi) — puts the Creator\'s constant nurturing care right next to man\'s betrayal.',
+                },
+            },
+            {
+                'position': 4,
+                'text_uthmani': 'لَكَنُودٌ',
+                'translation': '(is) surely ungrateful',
+                'transliteration': 'lakanūdun',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'has_emphasis': True,
+                'role_ar': 'اللام المزحلقة + خبر إنّ مرفوع',
+                'role_en': 'Emphatic lām + predicate of inna (nominative)',
+                'segments': [
+                    LAM_TAWKID('لَ'),
+                    seg('كَنُودٌ', 'ism', 'N', 'stem', 'صيغة مبالغة (خبر إنّ)', 'Intensive noun (predicate of inna)',
+                        'شديد الكفران، يعدّ المصائب وينسى النعم (كالأرض الكنود التي لا تنبت)', 'Chronically ungrateful: counts afflictions and forgets blessings (like barren earth)',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ك', 'ن', 'د'],
+                    'root_meaning': 'barren soil that yields nothing; to be deeply ungrateful, count hardships and deny blessings',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعُول',
+                    'stem_letters': letters('كَنُودٌ', ['f', 'a', '-', 'l']),
+                    'wazn_letters': letters('فَعُولٌ', ['f', 'a', '-', 'l']),
+                    'word_type_ar': 'صيغة مبالغة على وزن «فَعُول»',
+                    'word_type_en': 'Intensive adjective / hyperbolic form (ṣīghat mubālagha) on pattern faʿūl',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'مرفوع (خبر إنّ)', 'case_en': 'Nominative (predicate of inna)',
+                        'subclass_ar': 'صيغة مبالغة (فَعُول)', 'subclass_en': 'Derived intensive attribute (faʿūl)',
+                    },
+                    'family': [],
+                },
+                'irab': {
+                    'ar': 'اللام: اللام المزحلقة للتوكيد، حرف مبني على الفتح لا محل له من الإعراب. كنودٌ: خبر «إنّ» مرفوع وعلامة رفعه الضمة الظاهرة.',
+                    'en': 'la-: emphatic lām (al-muzaḥlaqa). kanūdun: predicate (khabar) of inna, nominative marked by ḍammatān.',
+                },
+                'insight': {
+                    'title_ar': 'الأرض الكنود والإنسان الكنود',
+                    'title_en': 'Barren earth that drinks rain and gives nothing back',
+                    'en': 'In classical Arabic, arḍ kanūd is barren land that absorbs rain yet refuses to sprout a single blade. Al-Ḥasan al-Baṣrī explained: al-kanūd is the one who counts his trials and forgets God\'s favors.',
+                },
+            },
+        ],
+    },
+    7: {
+        'structure_ar': 'جملة معطوفة مؤكدة: الواو للعطف + إنّ (توكيد) + الهاء (اسم إنّ) + على ذلك (جار ومجرور متعلق بشهيد) + لَشهيدٌ (اللام المزحلقة للتوكيد + خبر إنّ).',
+        'structure_en': 'Second emphasized verdict: wa- + inna (emphasis) + -hu (subject pronoun) + ʿalā dhālika ("upon that") + la-shahīdun (emphatic lām + intensive predicate).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'وَإِنَّهُۥ',
+                'translation': 'And indeed, he',
+                'transliteration': 'wa-innahu',
+                'primary_category': 'harf',
+                'subclass': 'emphasis',
+                'has_emphasis': True,
+                'role_ar': 'عطف + حرف توكيد + اسم إنّ (ضمير)',
+                'role_en': 'Conjunction + emphasis particle + subject pronoun',
+                'segments': [
+                    WAW_ATF(),
+                    seg('إِنَّ', 'harf', 'ACC', 'stem', 'حرف توكيد ونصب', 'Particle of emphasis (inna)',
+                        'حرف مشبه بالفعل للتوكيد', 'Emphatic particle governing the nominal clause',
+                        subclass='emphasis', emphasis=True),
+                    seg('هُۥ', 'ism', 'PRON', 'suffix', 'ضمير متصل (اسم إنّ)', 'Subject pronoun "he"',
+                        'ضمير متصل مبني على الضم في محل نصب اسم إنّ', 'Attached 3rd person singular pronoun in accusative position as subject of inna',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'مركّب من واو العطف وحرف التوكيد «إنّ» وضمير الغائب «ـهُ»، وكلّها مبنيات لا ميزان صرفي لها.',
+                'sarf_note_en': 'Compound of conjunction wa-, emphatic particle inna, and attached pronoun -hu; all are fixed (mabnī).',
+                'irab': {
+                    'ar': 'الواو: حرف عطف مبني على الفتح. إنّ: حرف توكيد ونصب مبني على الفتح. والهاء: ضمير متصل مبني على الضم في محل نصب اسم «إنّ».',
+                    'en': 'wa-: conjunction. inna: particle of emphasis. -hu: attached pronoun built on ḍamma in the accusative place as the subject (ism) of inna.',
+                },
+                'insight': {
+                    'title_ar': 'شهادة الإنسان على نفسه',
+                    'title_en': 'A witness against himself',
+                    'en': 'Whether the pronoun -hu refers to man himself or to his Lord, man\'s own conscience, actions, and tongue testify to his ingratitude even when he tries to deny it.',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'عَلَىٰ',
+                'translation': 'to / upon',
+                'transliteration': 'ʿalā',
+                'primary_category': 'harf',
+                'role_ar': 'حرف جر',
+                'role_en': 'Preposition',
+                'segments': [
+                    seg('عَلَىٰ', 'harf', 'P', 'stem', 'حرف جر', 'Preposition (ʿalā)',
+                        'حرف جر مبني على السكون متعلق بـ«شهيد»', 'Preposition "upon / concerning", linked to shahīd',
+                        subclass='preposition'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'حرف جر مبني على السكون، لا يدخله التصريف.',
+                'sarf_note_en': 'Fixed preposition (mabnī) — no morphological scale.',
+                'irab': {
+                    'ar': 'حرف جر مبني على السكون لا محل له من الإعراب.',
+                    'en': 'Preposition built on sukūn, with no grammatical case.',
+                },
+                'insight': {
+                    'title_ar': 'الشهادة «على» الشيء',
+                    'title_en': 'Testifying "upon" a reality',
+                    'en': 'Shahida ʿalā in Arabic carries the weight of bearing witness over or against an undeniable fact.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'ذَٰلِكَ',
+                'translation': 'that',
+                'transliteration': 'dhālika',
+                'primary_category': 'ism',
+                'subclass': 'pronoun',
+                'role_ar': 'اسم إشارة في محل جر',
+                'role_en': 'Demonstrative pronoun (genitive position)',
+                'segments': [
+                    seg('ذَٰ', 'ism', 'DEM', 'stem', 'اسم إشارة', 'Demonstrative pronoun ("that")',
+                        'يعود على الكنود وكفران النعمة', 'Points back to man\'s ingratitude (al-kanūd)',
+                        subclass='pronoun'),
+                    seg('لِ', 'harf', 'PART', 'suffix', 'لام البُعد', 'Lām of distance / gravity',
+                        'حرف يدل على بُعد المشار إليه أو عِظم شأنه', 'Particle indicating remoteness or gravity of the matter',
+                        subclass='particle'),
+                    seg('كَ', 'harf', 'PART', 'suffix', 'كاف الخطاب', 'Kāf of address',
+                        'حرف خطاب لا محل له من الإعراب', 'Particle of address directing attention to the listener',
+                        subclass='particle'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'أسماء الإشارة من الأسماء المبنية، فلا تدخلها الأوزان الصرفية.',
+                'sarf_note_en': 'Demonstrative pronouns (asmāʾ al-ishāra) are built-in (mabnī) nouns outside root-and-pattern morphology.',
+                'irab': {
+                    'ar': 'ذا: اسم إشارة مبني على السكون في محل جر بـ«على»، واللام للبعد، والكاف حرف خطاب. والجار والمجرور متعلقان بـ«شهيد» قُدِّما للاختصاص والاهتمام.',
+                    'en': 'dhā: demonstrative pronoun built on sukūn in the genitive position after ʿalā; li- is the particle of distance; -ka is the particle of address. Fronted before la-shahīdun for emphasis.',
+                },
+                'insight': {
+                    'title_ar': 'الإشارة بالبعيد للتعظيم',
+                    'title_en': 'Pointing to the gravity of ingratitude',
+                    'en': 'Using dhālika ("that", with the lām of distance) highlights how glaring and weighty this trait of ingratitude is.',
+                },
+            },
+            {
+                'position': 4,
+                'text_uthmani': 'لَشَهِيدٌ',
+                'translation': '(is) surely a witness',
+                'transliteration': 'lashahīdun',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'has_emphasis': True,
+                'role_ar': 'اللام المزحلقة + خبر إنّ مرفوع',
+                'role_en': 'Emphatic lām + predicate of inna (nominative)',
+                'segments': [
+                    LAM_TAWKID('لَ'),
+                    seg('شَهِيدٌ', 'ism', 'N', 'stem', 'صفة مشبهة / مبالغة (خبر إنّ)', 'Intensive noun (predicate of inna)',
+                        'حاضر الشهادة لا يستطيع الإنكار', 'An ever-present, unmistakable witness',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ش', 'ه', 'د'],
+                    'root_meaning': 'to witness firsthand, be present, testify openly',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعِيل',
+                    'stem_letters': letters('شَهِيدٌ', ['f', 'a', '-', 'l']),
+                    'wazn_letters': letters('فَعِيلٌ', ['f', 'a', '-', 'l']),
+                    'word_type_ar': 'صفة مشبهة / صيغة مبالغة على وزن «فَعِيل»',
+                    'word_type_en': 'Intensive attribute on pattern faʿīl',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'مرفوع (خبر إنّ)', 'case_en': 'Nominative (predicate of inna)',
+                        'subclass_ar': 'صيغة مبالغة (فَعِيل)', 'subclass_en': 'Derived intensive attribute (faʿīl)',
+                    },
+                    'family': [
+                        {'ar': 'وَٱللَّهُ عَلَىٰ كُلِّ شَىْءٍ شَهِيدٌ', 'en': 'and Allah is Witness over all things', 'ref': '85:9'},
+                        {'ar': 'شَهِدَ ٱللَّهُ', 'en': 'Allah witnesses', 'ref': '3:18'},
+                        {'ar': 'وَجِا۟ىٓءَ بِٱلنَّبِيِّـۧنَ وَٱلشُّهَدَآءِ', 'en': 'and the prophets and witnesses will be brought', 'ref': '39:69'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اللام: اللام المزحلقة للتوكيد. شهيدٌ: خبر «إنّ» مرفوع وعلامة رفعه الضمة الظاهرة.',
+                    'en': 'la-: emphatic lām. shahīdun: predicate (khabar) of inna, nominative marked by ḍammatān.',
+                },
+                'insight': {
+                    'title_ar': 'شهيد لا مجرّد شاهد',
+                    'title_en': 'Why shahīd (faʿīl) instead of shāhid (fāʿil)?',
+                    'en': 'Shāhid is someone who happens to witness once; shahīd (on the intensive pattern faʿīl) is a constant, undeniable witness whose testimony is permanently present.',
+                },
+            },
+        ],
+    },
+    8: {
+        'structure_ar': 'الجملة المؤكدة الثالثة مع تركيب إضافة ظاهر: الواو + إنّ (توكيد) + الهاء (اسم إنّ) + لِحُبِّ (جار ومجرور وهو مضاف) + الخيرِ (مضاف إليه مجرور) + لَشديدٌ (اللام المزحلقة للتوكيد + خبر إنّ).',
+        'structure_en': 'Third emphasized verdict with two-word Iḍāfa: wa- + inna + -hu + li-ḥubbi [Muḍāf] + al-khayri [Muḍāf Ilayhi] ("because of the love of wealth") + la-shadīdun (emphatic lām + predicate).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'وَإِنَّهُۥ',
+                'translation': 'And indeed, he',
+                'transliteration': 'wa-innahu',
+                'primary_category': 'harf',
+                'subclass': 'emphasis',
+                'has_emphasis': True,
+                'role_ar': 'عطف + حرف توكيد + اسم إنّ (ضمير)',
+                'role_en': 'Conjunction + emphasis particle + subject pronoun',
+                'segments': [
+                    WAW_ATF(),
+                    seg('إِنَّ', 'harf', 'ACC', 'stem', 'حرف توكيد ونصب', 'Particle of emphasis (inna)',
+                        'حرف توكيد ينصب الاسم ويرفع الخبر', 'Emphatic particle introducing the root cause of human ingratitude',
+                        subclass='emphasis', emphasis=True),
+                    seg('هُۥ', 'ism', 'PRON', 'suffix', 'ضمير متصل (اسم إنّ)', 'Subject pronoun "he"',
+                        'ضمير متصل مبني على الضم في محل نصب اسم إنّ يعود على الإنسان', 'Attached pronoun referring to al-insān',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'مركّب من واو العطف وحرف التوكيد «إنّ» وضمير الغائب «ـهُ»، وكلّها مبنيات.',
+                'sarf_note_en': 'Compound of conjunction wa-, emphatic particle inna, and attached pronoun -hu (all mabnī).',
+                'irab': {
+                    'ar': 'الواو: حرف عطف مبني على الفتح. إنّ: حرف توكيد ونصب مبني على الفتح. والهاء: ضمير متصل مبني على الضم في محل نصب اسم «إنّ».',
+                    'en': 'wa-: conjunction. inna: particle of emphasis. -hu: attached pronoun in the accusative position as subject (ism) of inna.',
+                },
+                'insight': {
+                    'title_ar': 'تشخيص علّة الكفران',
+                    'title_en': 'Diagnosing the root cause of ingratitude',
+                    'en': 'Why is man ungrateful to his Lord (Ayah 6)? Ayah 8 exposes the root disease: his consuming attachment to wealth (ḥubb al-khayr).',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'لِحُبِّ',
+                'translation': 'in (the) love of',
+                'transliteration': 'liḥubbi',
+                'primary_category': 'ism',
+                'subclass': 'singular',
+                'role_ar': 'جار ومجرور وهو مضاف (تركيب إضافة مع «الخير»)',
+                'role_en': 'Prepositional phrase & Muḍāf (construct noun paired with al-khayri)',
+                'idafa': {
+                    'type': 'mudaf',
+                    'pair_id': '100:8:hubb-khayr',
+                    'partner_position': 3,
+                    'label_ar': 'مضاف ⟵ الخيرِ',
+                    'label_en': 'Muḍāf (Construct)',
+                    'mudaf_ar': 'حُبِّ',
+                    'mudaf_en': 'love of (construct noun / Muḍāf — stripped of al- and tanwīn)',
+                    'mudaf_ilayhi_ar': 'ٱلْخَيْرِ',
+                    'mudaf_ilayhi_en': 'the wealth / good (genitive possessor / Muḍāf Ilayhi in word 3)',
+                    'explanation_ar': 'إضافة المصدر «حُبِّ» إلى مفعوله في المعنى «الخيرِ»: حُذف التنوين و«أل» من المضاف (حُبِّ)، وجُرّ المضاف إليه (الخيرِ) بالكسرة.',
+                    'explanation_en': 'Two-word noun-to-noun Iḍāfa: the verbal noun ḥubb ("love of") is the Muḍāf (so it drops both al- and tanwīn) and binds directly to the next word al-khayri (its Muḍāf Ilayhi in the genitive case).',
+                },
+                'segments': [
+                    seg('لِ', 'harf', 'P', 'prefix', 'حرف جر للتعليل', 'Preposition of cause (li-)',
+                        'لام التعليل: أي لأجل حبّه للخير', 'Causal lām: "because of / on account of [his] love of…"',
+                        subclass='preposition'),
+                    seg('حُبِّ', 'ism', 'N', 'stem', 'اسم مجرور وهو مضاف', 'Genitive noun (Muḍāf)',
+                        'مصدر مضاف إلى «الخير»، خالٍ من أل والتنوين للإضافة', 'Verbal noun in construct state (Muḍāf) governing al-khayri',
+                        subclass='singular'),
+                ],
+                'sarf': {
+                    'root': ['ح', 'ب', 'ب'],
+                    'root_meaning': 'to love deeply, cling to; a seed or core of grain (ḥabba)',
+                    'root_type_ar': 'مضعّف ثلاثي',
+                    'root_type_en': 'Doubled root (2nd & 3rd radicals identical)',
+                    'wazn': 'فُعْل',
+                    'stem_letters': letters('حُبِّ', ['f', 'al']),
+                    'wazn_letters': letters('فُعْلِ', ['f', 'a', 'l']),
+                    'word_type_ar': 'مصدر ثلاثي مضعّف (مضاف)',
+                    'word_type_en': 'Doubled triliteral verbal noun (construct state / Muḍāf)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد (مصدر)', 'number_en': 'Singular (verbal noun)',
+                        'definiteness_ar': 'معرفة بالإضافة إلى «الخير»', 'definiteness_en': 'Definite by iḍāfa to al-khayri',
+                        'case_ar': 'مجرور باللام (وهو مضاف)', 'case_en': 'Genitive (and Muḍāf)',
+                        'subclass_ar': 'اسم مفرد مضاف', 'subclass_en': 'Singular construct noun (Muḍāf)',
+                    },
+                    'transformation': {
+                        'type_ar': 'إدغام المثلين',
+                        'type_en': 'Assimilation of identical radicals (idghām)',
+                        'ar': 'أصله «حُبْبِ»: أُدغمت الباء الأولى الساكنة في الباء الثانية فصارت باءً مشدّدة تجمع العين واللام.',
+                        'en': 'Originally ḥubb-bi: the 2nd and 3rd bāʾ radicals merged under a single shadda.',
+                    },
+                    'family': [
+                        {'ar': 'وَتُحِبُّونَ ٱلْمَالَ حُبًّا جَمًّا', 'en': 'and you love wealth with immense love', 'ref': '89:20'},
+                        {'ar': 'كَمَثَلِ حَبَّةٍ أَنۢبَتَتْ سَبْعَ سَنَابِلَ', 'en': 'like a grain of seed that sprouts seven ears', 'ref': '2:261'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اللام: حرف جر وتعليل مبني على الكسر. حُبِّ: اسم مجرور باللام وعلامة جره الكسرة الظاهرة، وهو مضاف إلى «الخيرِ»، والجار والمجرور متعلقان بـ«شديد».',
+                    'en': 'li-: causal preposition ("because of"). ḥubbi: genitive noun marked by kasra, acting as Muḍāf (construct noun) to al-khayri, linked to la-shadīdun.',
+                },
+                'insight': {
+                    'title_ar': 'الحبّ من الحَبّة التي تسكن القلب',
+                    'title_en': 'Ḥubb and ḥabba — the seed planted in the heart',
+                    'en': 'Ḥubb (love) shares its root with ḥabba (a seed/core): whatever you love settles into the core of your heart and grows until it directs your actions.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'ٱلْخَيْرِ',
+                'translation': 'wealth / good',
+                'transliteration': 'l-khayri',
+                'primary_category': 'ism',
+                'subclass': 'singular',
+                'role_ar': 'مضاف إليه مجرور (المكمّل لتركيب الإضافة مع «حُبِّ»)',
+                'role_en': 'Muḍāf Ilayhi (genitive noun completing the iḍāfa with ḥubbi)',
+                'idafa': {
+                    'type': 'mudaf_ilayhi',
+                    'pair_id': '100:8:hubb-khayr',
+                    'partner_position': 2,
+                    'label_ar': 'حُبِّ ⟶ مضاف إليه',
+                    'label_en': 'Muḍāf Ilayhi (Genitive)',
+                    'mudaf_ar': 'حُبِّ',
+                    'mudaf_en': 'love of (Muḍāf in word 2)',
+                    'mudaf_ilayhi_ar': 'ٱلْخَيْرِ',
+                    'mudaf_ilayhi_en': 'the wealth / good (Muḍāf Ilayhi — always Majrūr with kasra)',
+                    'explanation_ar': '«الخيرِ» مضاف إليه مجرور بالكسرة، عرّف المضاف «حُبِّ» وحدّد متعلّقه: حبُّ المال.',
+                    'explanation_en': 'As Muḍāf Ilayhi, al-khayri takes the obligatory genitive case (majrūr with kasra) and makes the preceding construct noun ḥubbi definite ("the love of wealth").',
+                },
+                'segments': [
+                    AL_QAMARI(),
+                    seg('خَيْرِ', 'ism', 'N', 'stem', 'مضاف إليه مجرور', 'Genitive noun (Muḍāf Ilayhi)',
+                        'المال في لغة العرب، مجرور بالإضافة إلى «حُبِّ»', 'Wealth / worldly good, in the genitive case as Muḍāf Ilayhi of ḥubbi',
+                        subclass='singular'),
+                ],
+                'sarf': {
+                    'root': ['خ', 'ي', 'ر'],
+                    'root_meaning': 'good, benefit, wealth, what is chosen and preferred',
+                    'root_type_ar': 'أجوف يائي',
+                    'root_type_en': 'Hollow root (2nd radical is yāʾ)',
+                    'wazn': 'فَعْل',
+                    'stem_letters': letters('خَيْرِ', ['f', 'a', 'l']),
+                    'wazn_letters': letters('فَعْلِ', ['f', 'a', 'l']),
+                    'word_type_ar': 'اسم ثلاثي (مضاف إليه)',
+                    'word_type_en': 'Triliteral noun (Muḍāf Ilayhi in genitive case)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)',
+                        'case_ar': 'مجرور بالإضافة (مضاف إليه)', 'case_en': 'Genitive (Muḍāf Ilayhi)',
+                        'subclass_ar': 'اسم مفرد (مضاف إليه)', 'subclass_en': 'Singular genitive noun (Muḍāf Ilayhi)',
+                    },
+                    'family': [
+                        {'ar': 'إِن تَرَكَ خَيْرًا', 'en': 'if he leaves behind wealth (khayran)', 'ref': '2:180'},
+                        {'ar': 'إِنِّىٓ أَحْبَبْتُ حُبَّ ٱلْخَيْرِ', 'en': 'Indeed I loved the love of good/horses', 'ref': '38:32'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'مضاف إليه مجرور وعلامة جره الكسرة الظاهرة على آخره.',
+                    'en': 'Muḍāf Ilayhi (genitive specifier of ḥubbi), marked by the visible kasra at the end.',
+                },
+                'insight': {
+                    'title_ar': 'لماذا سُمّي المال «الخير»؟',
+                    'title_en': 'Why does the Qur\'ān call wealth al-khayr ("the good")?',
+                    'en': 'The Qur\'ān often calls wealth al-khayr (as in 2:180) — both because people view wealth as the ultimate good, and because wealth itself is a potential good until man\'s grasping stinginess (shadīd) corrupts him.',
+                },
+            },
+            {
+                'position': 4,
+                'text_uthmani': 'لَشَدِيدٌ',
+                'translation': '(is) surely intense',
+                'transliteration': 'lashadīdun',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'has_emphasis': True,
+                'role_ar': 'اللام المزحلقة + خبر إنّ مرفوع',
+                'role_en': 'Emphatic lām + predicate of inna (nominative)',
+                'segments': [
+                    LAM_TAWKID('لَ'),
+                    seg('شَدِيدٌ', 'ism', 'N', 'stem', 'صفة مشبهة (خبر إنّ)', 'Intensive attribute (predicate of inna)',
+                        'قويّ ممسك بخيل بسبب حبّه للمال', 'Intensely tight-fisted, fiercely gripped by love of wealth',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['ش', 'د', 'د'],
+                    'root_meaning': 'to tie tightly, bind fast, be hard, intense, tight-fisted',
+                    'root_type_ar': 'مضعّف ثلاثي',
+                    'root_type_en': 'Doubled root (2nd & 3rd radicals identical)',
+                    'wazn': 'فَعِيل',
+                    'stem_letters': letters('شَدِيدٌ', ['f', 'a', '-', 'l']),
+                    'wazn_letters': letters('فَعِيلٌ', ['f', 'a', '-', 'l']),
+                    'word_type_ar': 'صفة مشبهة على وزن «فَعِيل»',
+                    'word_type_en': 'Intensive attribute (ṣifa mushabbaha) on pattern faʿīl',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'نكرة منوّنة', 'definiteness_en': 'Indefinite (tanwīn)',
+                        'case_ar': 'مرفوع (خبر إنّ)', 'case_en': 'Nominative (predicate of inna)',
+                        'subclass_ar': 'صفة مشبهة (فَعِيل)', 'subclass_en': 'Derived intensive attribute (faʿīl)',
+                    },
+                    'family': [
+                        {'ar': 'وَشَدَدْنَا مُلْكَهُۥ', 'en': 'and We strengthened his kingdom', 'ref': '38:20'},
+                        {'ar': 'إِنَّ بَطْشَ رَبِّكَ لَشَدِيدٌ', 'en': 'Indeed the grip of your Lord is severe', 'ref': '85:12'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اللام: اللام المزحلقة للتوكيد. شديدٌ: خبر «إنّ» مرفوع وعلامة رفعه الضمة الظاهرة.',
+                    'en': 'la-: emphatic lām. shadīdun: predicate (khabar) of inna, nominative marked by ḍammatān.',
+                },
+                'insight': {
+                    'title_ar': 'الشديد: القويّ الممسك',
+                    'title_en': 'Shadīd — knotted tight with greed',
+                    'en': 'Shadda means to pull a knot tight: because of his love of wealth, man becomes shadīd — tightly knotted, unyielding, and stingy toward his Lord and others.',
+                },
+            },
+        ],
+    },
+    9: {
+        'structure_ar': 'استفهام إنكاري وانتقال إلى الفعل المضارع ثم الماضي المبني للمجهول: أفلا (همزة الاستفهام + الفاء + لا النافية) + يعلمُ (مضارع مرفوع) + إذا (ظرف زمان) + بُعثرَ (ماضٍ رباعي مبني للمجهول) + ما (نائب فاعل) + في القبورِ.',
+        'structure_en': 'Rhetorical awakening shifting from present active to past passive: a-fa-lā ("Then does he not") + yaʿlamu (present active verb) + idhā ("when") + buʿthira (quadriliteral past passive verb) + mā (passive subject) + fī l-qubūri ("in the graves").',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'أَفَلَا',
+                'translation': 'Then does not',
+                'transliteration': 'afalā',
+                'primary_category': 'harf',
+                'role_ar': 'همزة الاستفهام + فاء العطف + لا النافية',
+                'role_en': 'Interrogative hamza + conjunction fāʾ + negative lā',
+                'segments': [
+                    seg('أَ', 'harf', 'INTG', 'prefix', 'همزة الاستفهام التوبيخي', 'Interrogative hamza',
+                        'حرف استفهام للإنكار والتنبيه', 'Rhetorical question particle awakening the heedless listener',
+                        subclass='interrogative'),
+                    FA_ATF('فاء الاستئناف والعطف، قُدّمت الهمزة عليها لأن لها الصدارة', 'Conjunction fāʾ placed after the interrogative hamza'),
+                    seg('لَا', 'harf', 'NEG', 'stem', 'لا النافية', 'Negative particle (lā)',
+                        'حرف نفي لا عمل له', 'Particle of negation ("not")',
+                        subclass='negation'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'كلمة مركّبة من ثلاثة حروف معانٍ (الهمزة + الفاء + لا)، وكلّها مبنية لا ميزان صرفي لها.',
+                'sarf_note_en': 'Three particles combined into one word (a- + fa- + lā); all three are fixed particles (mabnī).',
+                'irab': {
+                    'ar': 'الهمزة: حرف استفهام إنكاري مبني على الفتح. الفاء: حرف عطف مبني على الفتح. لا: حرف نفي مبني على السكون لا محل له من الإعراب.',
+                    'en': 'a-: rhetorical interrogative particle. fa-: coordinating conjunction. lā: negative particle built on sukūn.',
+                },
+                'insight': {
+                    'title_ar': 'ثلاثة حروف توقظ الغافل',
+                    'title_en': 'Three particles that jolt the sleeper awake',
+                    'en': 'A-fa-lā packs three grammatical particles into four letters: a question (a-), a consequence (fa-), and a negation (lā) — "Given all this, does he still not know?!"',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'يَعْلَمُ',
+                'translation': 'he know',
+                'transliteration': 'yaʿlamu',
+                'primary_category': 'fil',
+                'tense': 'present',
+                'voice': 'active',
+                'role_ar': 'فعل مضارع مرفوع',
+                'role_en': 'Present (imperfect) active verb — nominative',
+                'segments': [
+                    seg('يَعْلَمُ', 'fil', 'V', 'stem', 'فعل مضارع مرفوع', 'Present (imperfect) active verb',
+                        'مرفوع بالضمة، وفاعله ضمير مستتر تقديره «هو» يعود على الإنسان', 'Present tense verb in the indicative mood (marfūʿ with ḍamma)',
+                        tense='present', voice='active'),
+                ],
+                'sarf': {
+                    'root': ['ع', 'ل', 'م'],
+                    'root_meaning': 'to know, perceive with certainty; a sign or landmark (ʿalam)',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'يَفْعَلُ',
+                    'stem_letters': letters('يَعْلَمُ', ['-', 'f', 'a', 'l']),
+                    'wazn_letters': letters('يَفْعَلُ', ['-', 'f', 'a', 'l']),
+                    'word_type_ar': 'فعل مضارع ثلاثي مجرد (من باب عَلِمَ يَعْلَمُ)',
+                    'word_type_en': 'Form I imperfect (present) active verb',
+                    'verb': {
+                        'form': 'I',
+                        'pattern': 'فَعِلَ – يَفْعَلُ (عَلِمَ – يَعْلَمُ)',
+                        'meaning_of_form_ar': 'إدراك الحقيقة واليقين بها',
+                        'meaning_of_form_en': 'To know and realize a truth with certainty',
+                        'tense_ar': 'مضارع (حاضر / مستقبل)',
+                        'tense_en': 'Imperfect (present)',
+                        'person_ar': 'غائب – مفرد – مذكر (هُوَ)',
+                        'person_en': '3rd person · masculine · singular (he)',
+                        'voice_ar': 'مبني للمعلوم',
+                        'voice_en': 'Active voice',
+                        'conjugation': [
+                            {'label_ar': 'الماضي', 'label_en': 'Perfect', 'ar': 'عَلِمَ'},
+                            {'label_ar': 'المضارع', 'label_en': 'Imperfect', 'ar': 'يَعْلَمُ'},
+                            {'label_ar': 'الأمر', 'label_en': 'Imperative', 'ar': 'ٱعْلَمْ'},
+                            {'label_ar': 'المصدر', 'label_en': 'Verbal noun', 'ar': 'عِلْم'},
+                            {'label_ar': 'اسم الفاعل', 'label_en': 'Active participle', 'ar': 'عَالِم'},
+                        ],
+                        'conjugation_table': CONJ_YALAMU,
+                    },
+                    'noun': None,
+                    'family': [
+                        {'ar': 'كَلَّا سَوْفَ تَعْلَمُونَ', 'en': 'No! Soon you will know', 'ref': '102:3'},
+                        {'ar': 'عَلَّمَ ٱلْإِنسَٰنَ مَا لَمْ يَعْلَمْ', 'en': 'taught man what he did not know', 'ref': '96:5'},
+                        {'ar': 'عَٰلِمُ ٱلْغَيْبِ وَٱلشَّهَٰدَةِ', 'en': 'Knower of the unseen and the witnessed', 'ref': '59:22'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'فعل مضارع مرفوع لتجرده من الناصب والجازم وعلامة رفعه الضمة الظاهرة، والفاعل ضمير مستتر جوازًا تقديره «هو» يعود على الإنسان.',
+                    'en': 'Imperfect (present) active verb in the nominative/indicative mood (marfūʿ), marked by the visible ḍamma; its subject is an implied pronoun "he" (referring to mankind).',
+                },
+                'insight': {
+                    'title_ar': 'الفعل المضارع الوحيد في السورة',
+                    'title_en': 'The only present-tense verb in Surah Al-ʿĀdiyāt',
+                    'en': 'Yaʿlamu is the sole present-tense verb in the entire sūrah — addressing man in his living present moment right now, before the passive verbs of Resurrection (buʿthira, ḥuṣṣila) overtake him.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'إِذَا',
+                'translation': 'when',
+                'transliteration': 'idhā',
+                'primary_category': 'ism',
+                'subclass': 'pronoun',
+                'role_ar': 'ظرف لما يُستقبل من الزمان (مضاف إلى الجملة بعده)',
+                'role_en': 'Future time adverbial (construct to the following verbal clause)',
+                'segments': [
+                    seg('إِذَا', 'ism', 'T', 'stem', 'ظرف زمان مستقبل', 'Time adverbial ("when")',
+                        'ظرف زمان مبني على السكون مضاف إلى جملة «بُعثر»', 'Built-in time noun pointing to a certain future event',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'ظرف زمان مبني يتضمّن معنى الشرط، لا يدخله الميزان الصرفي.',
+                'sarf_note_en': 'Built-in time adverbial (mabnī) — outside triliteral root patterns.',
+                'irab': {
+                    'ar': 'ظرف لما يُستقبل من الزمان مبني على السكون في محل نصب، متعلّق بـ«يعلم» أو بجواب محذوف، وهو مضاف وجملة «بُعثر» في محل جر مضاف إليه.',
+                    'en': 'Time adverbial for a certain future event, built on sukūn in the accusative position, acting as construct (Muḍāf) to the verbal clause buʿthira.',
+                },
+                'insight': {
+                    'title_ar': '«إذا» لتحقّق الوقوع',
+                    'title_en': 'Why idhā ("when") instead of in ("if")?',
+                    'en': 'In Arabic grammar, in is used for doubtful or hypothetical conditions ("if"), whereas idhā is used for events certain to arrive ("when").',
+                },
+            },
+            {
+                'position': 4,
+                'text_uthmani': 'بُعْثِرَ',
+                'translation': 'is scattered / overturned',
+                'transliteration': 'buʿthira',
+                'primary_category': 'fil',
+                'tense': 'past',
+                'voice': 'passive',
+                'role_ar': 'فعل ماضٍ رباعي مبني للمجهول',
+                'role_en': 'Quadriliteral past passive verb',
+                'segments': [
+                    seg('بُعْثِرَ', 'fil', 'V', 'stem', 'فعل ماضٍ مبني للمجهول (فُعْلِلَ)', 'Passive perfect verb (quadriliteral)',
+                        'قُلب باطنه ظاهره وأُخرج ما فيه', 'Turned upside down so its hidden contents are scattered out',
+                        tense='past', voice='passive'),
+                ],
+                'sarf': {
+                    'root': ['ب', 'ع', 'ث', 'ر'],
+                    'root_meaning': 'to turn upside down, excavate and scatter out what was buried inside',
+                    'root_type_ar': 'رباعي مجرد',
+                    'root_type_en': 'Quadriliteral root (4 radicals: ب – ع – ث – ر)',
+                    'wazn': 'فُعْلِلَ',
+                    'stem_letters': letters('بُعْثِرَ', ['f', 'a', 'l', 'l2']),
+                    'wazn_letters': letters('فُعْلِلَ', ['f', 'a', 'l', 'l2']),
+                    'word_type_ar': 'فعل ماضٍ رباعي مجرد مبني للمجهول',
+                    'word_type_en': 'Quadriliteral Form I passive perfect verb',
+                    'verb': {
+                        'form': 'Quadriliteral I (رباعي مجرد)',
+                        'pattern': 'فَعْلَلَ – يُفَعْلِلُ – فَعْلَلَة (بَعْثَرَ – يُبَعْثِرُ، للمجهول: بُعْثِرَ)',
+                        'meaning_of_form_ar': 'تقليب الشيء وإخراج ما في قعره إلى ظاهره',
+                        'meaning_of_form_en': 'Overturning a container/grave so its deepest contents are cast out',
+                        'tense_ar': 'ماضٍ (لتحقق وقوعه في المستقبل)',
+                        'tense_en': 'Perfect (past form used for prophetic certainty)',
+                        'person_ar': 'غائب – مفرد – مذكر',
+                        'person_en': '3rd person · masculine · singular',
+                        'voice_ar': 'مبني للمجهول',
+                        'voice_en': 'Passive voice ("it was overturned")',
+                        'conjugation': [
+                            {'label_ar': 'الماضي المعلوم', 'label_en': 'Active Perfect', 'ar': 'بَعْثَرَ'},
+                            {'label_ar': 'الماضي المجهول', 'label_en': 'Passive Perfect', 'ar': 'بُعْثِرَ'},
+                            {'label_ar': 'المضارع المعلوم', 'label_en': 'Active Imperfect', 'ar': 'يُبَعْثِرُ'},
+                            {'label_ar': 'الأمر', 'label_en': 'Imperative', 'ar': 'بَعْثِرْ'},
+                            {'label_ar': 'المصدر', 'label_en': 'Verbal noun', 'ar': 'بَعْثَرَة'},
+                        ],
+                        'conjugation_table': CONJ_BUTHIRA,
+                    },
+                    'noun': None,
+                    'scholarly_note_ar': 'ذكر اللغويون أن «بعثر» رباعيٌّ منحوت يجمع بين معنى «بَعَثَ» (أقام وأخرج) و«أَثَارَ» (قلب ونثر).',
+                    'scholarly_note_en': 'Classical lexicographers note that the 4-letter root b-ʿ-th-r blends baʿatha (to resurrect/send forth) and athāra (to stir up and overturn — echoing fa-atharna in Ayah 4!).',
+                    'family': [
+                        {'ar': 'وَإِذَا ٱلْقُبُورُ بُعْثِرَتْ', 'en': 'and when the graves are overturned', 'ref': '82:4'},
+                        {'ar': 'ثُمَّ بَعَثْنَٰكُم مِّنۢ بَعْدِ مَوْتِكُمْ', 'en': 'then We revived you after your death', 'ref': '2:56'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'فعل ماضٍ مبني للمجهول مبني على الفتح الظاهر، ونائب الفاعل هو الاسم الموصول «ما» بعده.',
+                    'en': 'Quadriliteral past passive verb built on fatḥa; its passive subject (nāʾib al-fāʿil) is the relative pronoun mā that follows.',
+                },
+                'insight': {
+                    'title_ar': 'الصدى الصوتي بين «أثرن» و«بُعثر»',
+                    'title_en': 'The acoustic echo between fa-atharna and buʿthira',
+                    'en': 'Just as the horses stirred up (atharna) the dust of the earth in Ayah 4, the earth itself will be overturned (buʿthira) in Ayah 9 — and using the passive voice ("is overturned") conveys sudden, irresistible divine command.',
+                },
+            },
+            {
+                'position': 5,
+                'text_uthmani': 'مَا',
+                'translation': 'what',
+                'transliteration': 'mā',
+                'primary_category': 'ism',
+                'subclass': 'pronoun',
+                'role_ar': 'اسم موصول (نائب فاعل لـ«بُعثر»)',
+                'role_en': 'Relative pronoun (passive subject of buʿthira)',
+                'segments': [
+                    seg('مَا', 'ism', 'REL', 'stem', 'اسم موصول (نائب فاعل)', 'Relative pronoun ("what / that which")',
+                        'مبني على السكون في محل رفع نائب فاعل لـ«بُعثر»', 'In nominative position as passive subject (nāʾib al-fāʿil) of buʿthira',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'اسم موصول مبني على السكون، لا يدخله الميزان الصرفي.',
+                'sarf_note_en': 'Built-in relative pronoun (mabnī) — outside root-and-pattern morphology.',
+                'irab': {
+                    'ar': 'اسم موصول بمعنى «الذي» مبني على السكون في محل رفع نائب فاعل للفعل المبني للمجهول «بُعثر».',
+                    'en': 'Relative pronoun meaning "that which", built on sukūn in the nominative position as passive subject (nāʾib al-fāʿil) of buʿthira.',
+                },
+                'insight': {
+                    'title_ar': 'لماذا «ما» وليس «مَن»؟',
+                    'title_en': 'Why mā ("what") instead of man ("who")?',
+                    'en': 'In the grave, bodies have crumbled into scattered dust and bones ("what is in the graves", mā), before being reassembled into living persons.',
+                },
+            },
+            {
+                'position': 6,
+                'text_uthmani': 'فِى',
+                'translation': '(is) in',
+                'transliteration': 'fī',
+                'primary_category': 'harf',
+                'role_ar': 'حرف جر (صلة الموصول)',
+                'role_en': 'Preposition (part of the relative clause)',
+                'segments': [
+                    seg('فِى', 'harf', 'P', 'stem', 'حرف جر للظرفية', 'Preposition ("in / inside")',
+                        'يفيد الظرفية المكانية: في باطن القبور', 'Denotes spatial containment inside the graves',
+                        subclass='preposition'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'حرف جر مبني على السكون لا ميزان له.',
+                'sarf_note_en': 'Fixed preposition (mabnī) — no root pattern.',
+                'irab': {
+                    'ar': 'حرف جر مبني على السكون لا محل له من الإعراب.',
+                    'en': 'Preposition built on sukūn, introducing the prepositional phrase of the relative clause.',
+                },
+                'insight': {
+                    'title_ar': 'من باطن القبور إلى العلن',
+                    'title_en': 'From deep containment into the open',
+                    'en': 'Fī ("deep inside") contrasts with buʿthira ("turned inside out"): nothing buried in the earth stays hidden.',
+                },
+            },
+            {
+                'position': 7,
+                'text_uthmani': 'ٱلْقُبُورِ',
+                'translation': 'the graves',
+                'transliteration': 'l-qubūri',
+                'primary_category': 'ism',
+                'subclass': 'plural',
+                'role_ar': 'اسم مجرور (صلة الموصول)',
+                'role_en': 'Genitive plural noun (completing the relative clause)',
+                'segments': [
+                    AL_QAMARI(),
+                    seg('قُبُورِ', 'ism', 'N', 'stem', 'جمع تكسير مجرور', 'Broken plural noun (genitive)',
+                        'جمع «قَبْر» على وزن «فُعُول»', 'Broken plural of qabr ("grave") on the pattern fuʿūl',
+                        subclass='plural'),
+                ],
+                'sarf': {
+                    'root': ['ق', 'ب', 'ر'],
+                    'root_meaning': 'to bury in the earth; a grave (qabr)',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فُعُول',
+                    'stem_letters': letters('قُبُورِ', ['f', 'a', '-', 'l']),
+                    'wazn_letters': letters('فُعُولِ', ['f', 'a', '-', 'l']),
+                    'word_type_ar': 'جمع تكسير للكثرة على وزن «فُعُول»',
+                    'word_type_en': 'Broken plural of abundance (jamʿ taksīr) on pattern fuʿūl',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر (جمعه لغير العاقل)', 'gender_en': 'Masculine (inanimate broken plural)',
+                        'number_ar': 'جمع تكسير (مفرده: قَبْر)', 'number_en': 'Broken plural (singular: qabr)',
+                        'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)',
+                        'case_ar': 'مجرور بـ«في»', 'case_en': 'Genitive (governed by fī)',
+                        'subclass_ar': 'جمع تكسير', 'subclass_en': 'Plural noun (broken plural)',
+                    },
+                    'family': [
+                        {'ar': 'ثُمَّ أَمَاتَهُۥ فَأَقْبَرَهُۥ', 'en': 'then He caused him to die and provided him a grave', 'ref': '80:21'},
+                        {'ar': 'وَأَنَّ ٱللَّهَ يَبْعَثُ مَن فِى ٱلْقُبُورِ', 'en': 'and that Allah will resurrect those in the graves', 'ref': '22:7'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اسم مجرور بـ«في» وعلامة جره الكسرة الظاهرة، وشبه الجملة (في القبور) متعلق بمحذوف صلة الموصول «ما» لا محل لها من الإعراب.',
+                    'en': 'Genitive broken plural noun governed by fī, marked by kasra; the prepositional phrase fī l-qubūri completes the relative clause of mā.',
+                },
+                'insight': {
+                    'title_ar': 'التوازي بين «القبور» و«الصدور»',
+                    'title_en': 'The twin vaults: al-qubūr (the graves) and al-ṣudūr (the chests)',
+                    'en': 'Look at the morphological and acoustic symmetry: al-qubūri (fuʿūl) hides the physical body under the earth, while al-ṣudūri (fuʿūl, Ayah 10) hides intentions inside the chest. Both vaults are opened on that Day.',
+                },
+            },
+        ],
+    },
+    10: {
+        'structure_ar': 'عطف جملة فعلية مبنية للمجهول: الواو للعطف + حُصِّلَ (فعل ماضٍ مضعّف مبني للمجهول) + ما (اسم موصول نائب فاعل) + في الصدورِ (شبه جملة صلة الموصول).',
+        'structure_en': 'Second passive resurrection clause: wa- + ḥuṣṣila (Form II past passive verb, "is extracted and sorted") + mā (passive subject, "what") + fī l-ṣudūri ("is in the chests/breasts").',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'وَحُصِّلَ',
+                'translation': 'And is made apparent / extracted',
+                'transliteration': 'waḥuṣṣila',
+                'primary_category': 'fil',
+                'tense': 'past',
+                'voice': 'passive',
+                'role_ar': 'عطف + فعل ماضٍ مبني للمجهول',
+                'role_en': 'Conjunction + Form II past passive verb',
+                'segments': [
+                    WAW_ATF(),
+                    seg('حُصِّلَ', 'fil', 'V', 'stem', 'فعل ماضٍ مبني للمجهول (فُعِّلَ)', 'Passive perfect verb — Form II',
+                        'أُبرز ومُيّز وجمع ما كان مكنونًا في الصدور', 'Extracted, sorted out, and brought into the open',
+                        tense='past', voice='passive'),
+                ],
+                'sarf': {
+                    'root': ['ح', 'ص', 'ل'],
+                    'root_meaning': 'to remain as the final kernel/outcome; Form II (ḥaṣṣala): to extract the core, peel away the husk, sum up',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فُعِّلَ',
+                    'stem_letters': letters('حُصِّلَ', ['f', 'a', 'l']),
+                    'wazn_letters': letters('فُعِّلَ', ['f', 'a', 'l']),
+                    'word_type_ar': 'فعل ماضٍ مزيد بالتضعيف (فَعَّلَ) مبني للمجهول',
+                    'word_type_en': 'Form II passive perfect verb (doubled middle radical)',
+                    'verb': {
+                        'form': 'II',
+                        'pattern': 'فَعَّلَ – يُفَعِّلُ – تَفْعِيل (للمجهول: حُصِّلَ – يُحَصَّلُ)',
+                        'meaning_of_form_ar': 'التكثير والتخليص: استخلاص اللُّبّ وتمييزه',
+                        'meaning_of_form_en': 'Intensive extraction — separating the true kernel of intention from every excuse',
+                        'tense_ar': 'ماضٍ (مبني للمجهول)',
+                        'tense_en': 'Perfect (past passive)',
+                        'person_ar': 'غائب – مفرد – مذكر',
+                        'person_en': '3rd person · masculine · singular',
+                        'voice_ar': 'مبني للمجهول',
+                        'voice_en': 'Passive voice ("it was extracted")',
+                        'conjugation': [
+                            {'label_ar': 'الماضي المعلوم', 'label_en': 'Active Perfect', 'ar': 'حَصَّلَ'},
+                            {'label_ar': 'الماضي المجهول', 'label_en': 'Passive Perfect', 'ar': 'حُصِّلَ'},
+                            {'label_ar': 'المضارع المعلوم', 'label_en': 'Active Imperfect', 'ar': 'يُحَصِّلُ'},
+                            {'label_ar': 'الأمر', 'label_en': 'Imperative', 'ar': 'حَصِّلْ'},
+                            {'label_ar': 'المصدر', 'label_en': 'Verbal noun', 'ar': 'تَحْصِيل'},
+                        ],
+                        'conjugation_table': CONJ_HUSSILA,
+                    },
+                    'noun': None,
+                    'family': [],
+                },
+                'irab': {
+                    'ar': 'الواو: حرف عطف مبني على الفتح. حُصِّلَ: فعل ماضٍ مبني للمجهول مبني على الفتح الظاهر، والجملة معطوفة على جملة «بُعثر» في محل جر بالإضافة إلى «إذا».',
+                    'en': 'wa-: conjunction. ḥuṣṣila: Form II past passive verb built on fatḥa, coordinated with buʿthira; its passive subject (nāʾib al-fāʿil) is mā.',
+                },
+                'insight': {
+                    'title_ar': 'التحصيل: استخراج اللُّبّ من القشر',
+                    'title_en': 'Taḥṣīl — shelling the nut to expose the kernel',
+                    'en': 'In Arabic, taḥṣīl means threshing grain or cracking a shell to extract the pure kernel inside. On Judgment Day, outward pretenses fall away and the true inner motives in the chest are extracted and tallied.',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'مَا',
+                'translation': 'what',
+                'transliteration': 'mā',
+                'primary_category': 'ism',
+                'subclass': 'pronoun',
+                'role_ar': 'اسم موصول (نائب فاعل لـ«حُصِّلَ»)',
+                'role_en': 'Relative pronoun (passive subject of ḥuṣṣila)',
+                'segments': [
+                    seg('مَا', 'ism', 'REL', 'stem', 'اسم موصول (نائب فاعل)', 'Relative pronoun ("what / that which")',
+                        'في محل رفع نائب فاعل لـ«حُصِّلَ» (النيات والأسرار)', 'Passive subject of ḥuṣṣila: all hidden intentions, beliefs, and motives',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'اسم موصول مبني على السكون لا ميزان له.',
+                'sarf_note_en': 'Built-in relative pronoun (mabnī).',
+                'irab': {
+                    'ar': 'اسم موصول بمعنى «الذي» مبني على السكون في محل رفع نائب فاعل للفعل المبني للمجهول «حُصِّلَ».',
+                    'en': 'Relative pronoun built on sukūn in the nominative place as passive subject (nāʾib al-fāʿil) of ḥuṣṣila.',
+                },
+                'insight': {
+                    'title_ar': 'ما في الصدور',
+                    'title_en': 'The unseen contents of the heart',
+                    'en': 'In this world people are judged by outward deeds; in the Hereafter, mā fī l-ṣudūr — what was concealed in the chest — becomes the decisive ledger.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'فِى',
+                'translation': '(is) in',
+                'transliteration': 'fī',
+                'primary_category': 'harf',
+                'role_ar': 'حرف جر (صلة الموصول)',
+                'role_en': 'Preposition (part of the relative clause)',
+                'segments': [
+                    seg('فِى', 'harf', 'P', 'stem', 'حرف جر للظرفية', 'Preposition ("in / inside")',
+                        'يفيد الظرفية: في مكنون الصدور', 'Denotes containment within the chests',
+                        subclass='preposition'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'حرف جر مبني على السكون لا ميزان له.',
+                'sarf_note_en': 'Fixed preposition (mabnī).',
+                'irab': {
+                    'ar': 'حرف جر مبني على السكون لا محل له من الإعراب.',
+                    'en': 'Preposition built on sukūn.',
+                },
+                'insight': {
+                    'title_ar': 'المقابلة بين باطن الأرض وباطن الصدر',
+                    'title_en': 'What was buried in clay vs. what was buried in the chest',
+                    'en': 'Repeating fī ("inside") draws a direct line between the two hidden chambers: fī l-qubūr and fī l-ṣudūr.',
+                },
+            },
+            {
+                'position': 4,
+                'text_uthmani': 'ٱلصُّدُورِ',
+                'translation': 'the breasts',
+                'transliteration': 'l-ṣudūri',
+                'primary_category': 'ism',
+                'subclass': 'plural',
+                'role_ar': 'اسم مجرور (صلة الموصول)',
+                'role_en': 'Genitive plural noun (completing the relative clause)',
+                'segments': [
+                    AL_SHAMSI(),
+                    seg('صُّدُورِ', 'ism', 'N', 'stem', 'جمع تكسير مجرور', 'Broken plural noun (genitive)',
+                        'جمع «صَدْر» على وزن «فُعُول»', 'Broken plural of ṣadr ("chest / breast") on the pattern fuʿūl',
+                        subclass='plural'),
+                ],
+                'sarf': {
+                    'root': ['ص', 'د', 'ر'],
+                    'root_meaning': 'the chest, breast, forefront; to issue forth or return from water',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فُعُول',
+                    'stem_letters': letters('صُّدُورِ', ['f', 'a', '-', 'l']),
+                    'wazn_letters': letters('فُعُولِ', ['f', 'a', '-', 'l']),
+                    'word_type_ar': 'جمع تكسير للكثرة على وزن «فُعُول»',
+                    'word_type_en': 'Broken plural (jamʿ taksīr) on pattern fuʿūl',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر (جمع لغير العاقل)', 'gender_en': 'Masculine (broken plural)',
+                        'number_ar': 'جمع تكسير (مفرده: صَدْر)', 'number_en': 'Broken plural (singular: ṣadr)',
+                        'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)',
+                        'case_ar': 'مجرور بـ«في»', 'case_en': 'Genitive (governed by fī)',
+                        'subclass_ar': 'جمع تكسير', 'subclass_en': 'Plural noun (broken plural)',
+                    },
+                    'family': [
+                        {'ar': 'يَعْلَمُ خَآئِنَةَ ٱلْأَعْيُنِ وَمَا تُخْفِى ٱلصُّدُورُ', 'en': 'He knows the stealthy glance of the eyes and what the breasts conceal', 'ref': '40:19'},
+                        {'ar': 'أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ', 'en': 'Did We not expand for you your breast?', 'ref': '94:1'},
+                        {'ar': 'يَوْمَئِذٍ يَصْدُرُ ٱلنَّاسُ أَشتَاتًا', 'en': 'That Day, people will proceed forth in scattered groups', 'ref': '99:6'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اسم مجرور بـ«في» وعلامة جره الكسرة الظاهرة، وشبه الجملة (في الصدور) متعلق بمحذوف صلة الموصول «ما».',
+                    'en': 'Genitive broken plural noun governed by fī, marked by kasra; completes the relative clause of mā.',
+                },
+                'insight': {
+                    'title_ar': 'اللام الشمسية في «الصُّدور»',
+                    'title_en': 'Note on the shadda of al-ṣudūr',
+                    'en': 'The shadda on ṣād comes from the assimilation of the sun-letter lām of al- (al-ṣudūr → aṣ-ṣudūr), while the root itself is the sound triliteral ṣ-d-r on pattern fuʿūl.',
+                },
+            },
+        ],
+    },
+    11: {
+        'structure_ar': 'الختام المهيب بتوكيدين وتركيبَي إضافة: إنّ (حرف توكيد) + ربَّهم (اسم إنّ منصوب وهو مضاف + هم مضاف إليه) + بهم (جار ومجرور) + يومئذٍ (ظرف زمان مضاف + إذٍ مضاف إليه بتنوين العِوض) + لَخبيرٌ (اللام المزحلقة للتوكيد + خبر إنّ).',
+        'structure_en': 'Grand finale with double emphasis and two Iḍāfa constructs: inna (emphasis) + rabbahum (Muḍāf + Muḍāf Ilayhi: "their Lord") + bihim ("about them") + yawma-idhin (Adverbial Muḍāf + Muḍāf Ilayhi: "on that Day") + la-khabīrun (emphatic lām + predicate).',
+        'words': [
+            {
+                'position': 1,
+                'text_uthmani': 'إِنَّ',
+                'translation': 'Indeed',
+                'transliteration': 'inna',
+                'primary_category': 'harf',
+                'subclass': 'emphasis',
+                'has_emphasis': True,
+                'role_ar': 'حرف توكيد ونصب',
+                'role_en': 'Particle of emphasis & accusative',
+                'segments': [
+                    seg('إِنَّ', 'harf', 'ACC', 'stem', 'حرف توكيد ونصب', 'Particle of emphasis (inna)',
+                        'لتأكيد إحاطة علم الله وجزائه يوم القيامة', 'Seals the sūrah with emphatic certainty regarding Divine knowledge and recompense',
+                        subclass='emphasis', emphasis=True),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'حرف توكيد ونصب مبني على الفتح لا ميزان له.',
+                'sarf_note_en': 'Fixed particle of emphasis (mabnī).',
+                'irab': {
+                    'ar': 'حرف توكيد ونصب مبني على الفتح لا محل له من الإعراب.',
+                    'en': 'Particle of emphasis and accusative built on fatḥa.',
+                },
+                'insight': {
+                    'title_ar': 'إحكام الخاتمة',
+                    'title_en': 'Answering the passive verbs with the Divine Name',
+                    'en': 'After the unnamed agent of the passive verbs buʿthira ("was overturned") and ḥuṣṣila ("was extracted"), Ayah 11 reveals Who commands that Day: inna rabbahum ("Indeed, their Lord…").',
+                },
+            },
+            {
+                'position': 2,
+                'text_uthmani': 'رَبَّهُم',
+                'translation': 'their Lord',
+                'transliteration': 'rabbahum',
+                'primary_category': 'ism',
+                'subclass': 'singular',
+                'role_ar': 'اسم إنّ منصوب + تركيب إضافة (مضاف ومضاف إليه)',
+                'role_en': 'Subject of inna + Iḍāfa (Muḍāf + Muḍāf Ilayhi)',
+                'idafa': {
+                    'type': 'compound',
+                    'pair_id': '100:11:rabb-hum',
+                    'label_ar': 'مضاف + مضاف إليه',
+                    'label_en': 'Muḍāf + Muḍāf Ilayhi',
+                    'mudaf_ar': 'رَبَّ',
+                    'mudaf_en': 'Lord (construct noun / Muḍāf, accusative as subject of inna)',
+                    'mudaf_ilayhi_ar': 'ـهُم',
+                    'mudaf_ilayhi_en': 'their (attached plural pronoun in genitive place / Muḍāf Ilayhi)',
+                    'explanation_ar': 'أُضيف «رَبَّ» (اسم إنّ المنصوب) إلى ضمير الجمع «ـهُم» (في محل جر مضاف إليه)، فتحوّل الضمير من المفرد في الآية ٦ (لربِّهِ) إلى الجمع (ربَّهُم) ليشمل الخلق جميعًا يوم البعث.',
+                    'explanation_en': 'The construct noun rabba (accusative subject of inna, dropping tanwīn) joins in iḍāfa with the genitive plural pronoun -hum ("their") — shifting from the singular "his Lord" in Ayah 6 to "their Lord" as all humanity stands resurrected.',
+                },
+                'segments': [
+                    seg('رَبَّ', 'ism', 'N', 'stem', 'اسم إنّ منصوب وهو مضاف', 'Accusative noun (Muḍāf)',
+                        'اسم إنّ منصوب بالفتحة، حُذف تنوينه للإضافة', 'Subject of inna in the accusative case, acting as Muḍāf',
+                        subclass='singular'),
+                    seg('هُم', 'ism', 'PRON', 'suffix', 'ضمير الجمع مضاف إليه', 'Possessive pronoun "their" (Muḍāf Ilayhi)',
+                        'ضمير متصل مبني على السكون في محل جر مضاف إليه', 'Attached masculine plural pronoun in genitive position as Muḍāf Ilayhi',
+                        subclass='pronoun'),
+                ],
+                'sarf': {
+                    'root': ['ر', 'ب', 'ب'],
+                    'root_meaning': 'to nurture, sustain, own, and hold accountable',
+                    'root_type_ar': 'مضعّف ثلاثي',
+                    'root_type_en': 'Doubled root (2nd & 3rd radicals identical)',
+                    'wazn': 'فَعْل',
+                    'stem_letters': letters('رَبَّ', ['f', 'al']),
+                    'wazn_letters': letters('فَعْلَ', ['f', 'a', 'l']),
+                    'word_type_ar': 'صفة مشبهة / اسم ثلاثي مضعّف (مضاف)',
+                    'word_type_en': 'Doubled triliteral noun in construct state (Muḍāf)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'معرفة بالإضافة إلى الضمير «هم»', 'definiteness_en': 'Definite by iḍāfa to -hum',
+                        'case_ar': 'منصوب (اسم إنّ) وهو مضاف', 'case_en': 'Accusative (subject of inna) & Muḍāf',
+                        'subclass_ar': 'اسم مفرد مضاف', 'subclass_en': 'Singular construct noun (Muḍāf)',
+                    },
+                    'transformation': {
+                        'type_ar': 'إدغام المثلين',
+                        'type_en': 'Assimilation of identical radicals (idghām)',
+                        'ar': 'أصله «رَبْبَ»: أُدغمت الباء الأولى في الثانية فصارت باءً مشدّدة تجمع العين واللام.',
+                        'en': 'Originally rabb-ba: the 2nd and 3rd bāʾ radicals merged into one doubled letter.',
+                    },
+                    'family': [
+                        {'ar': 'إِنَّ ٱلْإِنسَٰنَ لِرَبِّهِۦ لَكَنُودٌ', 'en': 'Indeed mankind to his Lord is ungrateful', 'ref': '100:6'},
+                        {'ar': 'إِلَىٰ رَبِّكَ يَوْمَئِذٍ ٱلْمُسْتَقَرُّ', 'en': 'To your Lord, that Day, is the final settlement', 'ref': '75:12'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'ربَّ: اسم «إنّ» منصوب وعلامة نصبه الفتحة الظاهرة، وهو مضاف. وهم: ضمير متصل مبني على السكون في محل جر مضاف إليه.',
+                    'en': 'rabba: subject (ism) of inna, accusative marked by fatḥa, acting as Muḍāf. -hum: attached plural pronoun built on sukūn in the genitive position as Muḍāf Ilayhi.',
+                },
+                'insight': {
+                    'title_ar': 'من الإفراد (لربِّهِ) إلى الجمع (ربَّهُم)',
+                    'title_en': 'Why shift from singular "his Lord" (100:6) to plural "their Lord" (100:11)?',
+                    'en': 'Ayahs 6–8 spoke of the generic singular al-insān ("his Lord"); once the graves (al-qubūr) and chests (al-ṣudūr) are opened in Ayahs 9–10, the pronoun shifts to the plural rabbahum bihim ("their Lord, concerning all of them") as every generation is gathered together.',
+                },
+            },
+            {
+                'position': 3,
+                'text_uthmani': 'بِهِمْ',
+                'translation': 'about them',
+                'transliteration': 'bihim',
+                'primary_category': 'harf',
+                'role_ar': 'جار ومجرور متعلق بـ«خبير»',
+                'role_en': 'Prepositional phrase (linked to khabīr)',
+                'segments': [
+                    seg('بِ', 'harf', 'P', 'prefix', 'حرف جر', 'Preposition (bi-)',
+                        'متعلق بـ«خبير» قُدّم للاهتمام', 'Preposition "with / concerning", fronted before khabīr',
+                        subclass='preposition'),
+                    seg('هِمْ', 'ism', 'PRON', 'stem', 'ضمير الجمع المجرور', 'Attached pronoun "them"',
+                        'ضمير متصل مبني على السكون في محل جر بالباء', 'Attached 3rd person masculine plural pronoun in genitive case',
+                        subclass='pronoun'),
+                ],
+                'sarf': None,
+                'sarf_note_ar': 'مركّب من حرف الجر (الباء) وضمير الجمع (هم)، وكلاهما مبني.',
+                'sarf_note_en': 'Preposition bi- + attached plural pronoun -him (both mabnī).',
+                'irab': {
+                    'ar': 'الباء: حرف جر مبني على الكسر. وهم: ضمير متصل مبني على السكون في محل جر بالباء، والجار والمجرور متعلقان بخبر إنّ «لخبير».',
+                    'en': 'bi-: preposition. -him: attached pronoun in the genitive position, linked to the predicate la-khabīrun and fronted for emphasis.',
+                },
+                'insight': {
+                    'title_ar': 'تقديم «بهم» قبل «يومئذ» و«لخبير»',
+                    'title_en': 'Why is bihim ("about them") placed before yawma-idhin and la-khabīr?',
+                    'en': 'Placing bihim right next to rabbahum ("their Lord — about them — on that Day — is All-Aware") assures that not a single person or secret is overlooked.',
+                },
+            },
+            {
+                'position': 4,
+                'text_uthmani': 'يَوْمَئِذٍ',
+                'translation': 'that Day',
+                'transliteration': 'yawma-idhin',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'role_ar': 'ظرف زمان منصوب + تركيب إضافة (يومَ مضاف + إذٍ مضاف إليه)',
+                'role_en': 'Time adverbial + Compound Iḍāfa (yawma [Muḍāf] + idhin [Muḍāf Ilayhi])',
+                'idafa': {
+                    'type': 'compound',
+                    'pair_id': '100:11:yawma-idhin',
+                    'label_ar': 'ظرف مضاف + مضاف إليه',
+                    'label_en': 'Adverbial Muḍāf + Muḍāf Ilayhi',
+                    'mudaf_ar': 'يَوْمَ',
+                    'mudaf_en': 'Day of (accusative time adverbial / Muḍāf)',
+                    'mudaf_ilayhi_ar': 'إِذٍ',
+                    'mudaf_ilayhi_en': 'that [time] (Muḍāf Ilayhi in genitive place, with tanwīn al-ʿiwaḍ replacing the omitted clause)',
+                    'explanation_ar': 'إضافة ظرف الزمان «يَوْمَ» إلى الظرف «إِذْ»، والتنوين في «إِذٍ» هو تنوين العِوض عن جملة محذوفة، أي: يومَ إذْ بُعثر ما في القبور وحُصّل ما في الصدور.',
+                    'explanation_en': 'Compound adverbial Iḍāfa: yawma ("on the Day of") is the Muḍāf, and idhin ("that time") is the Muḍāf Ilayhi. The tanwīn on idhin is tanwīn al-ʿiwaḍ (tanwīn of compensation), standing in for the entire omitted clause: "on the Day when [what is in the graves is overturned and what is in the chests is extracted]".',
+                },
+                'segments': [
+                    seg('يَوْمَ', 'ism', 'T', 'stem', 'ظرف زمان منصوب وهو مضاف', 'Time adverbial (Muḍāf)',
+                        'ظرف زمان منصوب بالفتحة متعلق بـ«خبير» وهو مضاف', 'Accusative time noun ("Day of") in construct state',
+                        subclass='derived'),
+                    seg('ئِذٍ', 'ism', 'T', 'suffix', 'ظرف زمان مضاف إليه (بتنوين العوض)', 'Time particle (Muḍāf Ilayhi)',
+                        'ظرف مبني على السكون المقدّر في محل جر مضاف إليه، والتنوين عوض عن الجملة', 'Genitive time particle with tanwīn compensating for the omitted clause',
+                        subclass='pronoun'),
+                ],
+                'sarf': {
+                    'root': ['ي', 'و', 'م'],
+                    'root_meaning': 'day, a complete period or momentous time',
+                    'root_type_ar': 'أجوف واوي',
+                    'root_type_en': 'Hollow root (2nd radical is wāw)',
+                    'wazn': 'فَعْل',
+                    'stem_letters': letters('يَوْمَ', ['f', 'a', 'l']),
+                    'wazn_letters': letters('فَعْلَ', ['f', 'a', 'l']),
+                    'word_type_ar': 'اسم زمان ثلاثي (ظرف مضاف إلى «إذٍ»)',
+                    'word_type_en': 'Triliteral time noun in construct state (Muḍāf to idhin)',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'مضاف إلى «إذٍ»', 'definiteness_en': 'Construct (Muḍāf) to idhin',
+                        'case_ar': 'منصوب على الظرفية الزمانية', 'case_en': 'Accusative of time (ẓarf zamān)',
+                        'subclass_ar': 'ظرف زمان مضاف', 'subclass_en': 'Derived time adverbial (Muḍāf)',
+                    },
+                    'family': [
+                        {'ar': 'مَٰلِكِ يَوْمِ ٱلدِّينِ', 'en': 'Master of the Day of Judgment', 'ref': '1:4'},
+                        {'ar': 'يَوْمَئِذٍ تُحَدِّثُ أَخْبَارَهَا', 'en': 'That Day it will report its news', 'ref': '99:4'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'يومَ: ظرف زمان منصوب وعلامة نصبه الفتحة الظاهرة متعلق بـ«خبير»، وهو مضاف. إذٍ: ظرف زمان ماضٍ مبني على السكون المقدّر لاشتغال المحل بتنوين العوض في محل جر مضاف إليه.',
+                    'en': 'yawma: time adverbial in the accusative marked by fatḥa, acting as Muḍāf. idhin: time particle built on an implied sukūn in the genitive position as Muḍāf Ilayhi, with tanwīn al-ʿiwaḍ compensating for the omitted clause.',
+                },
+                'insight': {
+                    'title_ar': 'سرّ تنوين العِوض في «يومئذٍ»',
+                    'title_en': 'The beauty of tanwīn al-ʿiwaḍ in yawma-idhin',
+                    'en': 'Instead of repeating "on the Day when what is in the graves is overturned and what is in the chests is extracted", Arabic compresses the entire two-verse scene into the single double-kasra (-in) on yawma-idhin!',
+                },
+            },
+            {
+                'position': 5,
+                'text_uthmani': 'لَّخَبِيرٌۢ',
+                'translation': '(is) surely All-Aware',
+                'transliteration': 'lakhabīrun',
+                'primary_category': 'ism',
+                'subclass': 'derived',
+                'has_emphasis': True,
+                'role_ar': 'اللام المزحلقة + خبر إنّ مرفوع',
+                'role_en': 'Emphatic lām + predicate of inna (nominative)',
+                'segments': [
+                    LAM_TAWKID('لَّ'),
+                    seg('خَبِيرٌۢ', 'ism', 'N', 'stem', 'صفة مشبهة / مبالغة (خبر إنّ)', 'Intensive attribute (predicate of inna)',
+                        'العليم ببواطن الأمور ودقائق الأسرار', 'All-Aware of the subtlest inner secrets and intentions',
+                        subclass='derived'),
+                ],
+                'sarf': {
+                    'root': ['خ', 'ب', 'ر'],
+                    'root_meaning': 'to know the hidden inner reality of something by deep experience; news/report (khabar)',
+                    'root_type_ar': 'صحيح سالم',
+                    'root_type_en': 'Sound root (no weak letters)',
+                    'wazn': 'فَعِيل',
+                    'stem_letters': letters('خَبِيرٌۢ', ['f', 'a', '-', 'l']),
+                    'wazn_letters': letters('فَعِيلٌ', ['f', 'a', '-', 'l']),
+                    'word_type_ar': 'صفة مشبهة / صيغة مبالغة على وزن «فَعِيل»',
+                    'word_type_en': 'Intensive Divine Attribute on pattern faʿīl',
+                    'verb': None,
+                    'noun': {
+                        'gender_ar': 'مذكر', 'gender_en': 'Masculine',
+                        'number_ar': 'مفرد', 'number_en': 'Singular',
+                        'definiteness_ar': 'نكرة للتعظيم', 'definiteness_en': 'Indefinite for magnification',
+                        'case_ar': 'مرفوع (خبر إنّ)', 'case_en': 'Nominative (predicate of inna)',
+                        'subclass_ar': 'صفة مشبهة / صيغة مبالغة (فَعِيل)', 'subclass_en': 'Derived intensive attribute (faʿīl)',
+                    },
+                    'family': [
+                        {'ar': 'وَٱللَّهُ بِمَا تَعْمَلُونَ خَبِيرٌ', 'en': 'and Allah is All-Aware of what you do', 'ref': '2:234'},
+                        {'ar': 'ٱللَّطِيفُ ٱلْخَبِيرُ', 'en': 'the Subtle, the All-Aware', 'ref': '6:103'},
+                        {'ar': 'يَوْمَئِذٍ تُحَدِّثُ أَخْبَارَهَا', 'en': 'That Day it will report its news', 'ref': '99:4'},
+                    ],
+                },
+                'irab': {
+                    'ar': 'اللام: اللام المزحلقة للتوكيد، حرف مبني على الفتح (وشُدّدت في الرسم المصحفي لإدغام نون التنوين في «يومئذٍ» فيها إدغامًا بلا غنة). خبيرٌ: خبر «إنّ» مرفوع وعلامة رفعه الضمة الظاهرة (والميم الصغيرة علامة الإقلاب عند الوصل بالباء).',
+                    'en': 'la-: emphatic lām (written with a shadda in the Uthmani script due to tajwīd assimilation of the preceding tanwīn of yawma-idhin into lām). khabīrun: predicate (khabar) of inna, nominative marked by ḍammatān.',
+                },
+                'insight': {
+                    'title_ar': 'لماذا خُتمت السورة باسمه «خبير» بعد «عَلِم»؟',
+                    'title_en': 'Why end with Khabīr ("All-Aware of inner secrets") rather than ʿAlīm?',
+                    'en': 'In Arabic, ʿilm is general knowledge, whereas khibra (from which Khabīr comes) is intimate knowledge of what lies hidden beneath the surface — matching Ayah 10 ("and what is inside the chests is extracted") with breathtaking precision.',
+                },
+            },
+        ],
+    },
+}
+
+
+def validate(payload):
+    verses = json.load(open(VERSES_PATH, encoding='utf-8'))['100']['verses']
+    verse_text = {v['verse_number']: v['text_uthmani'] for v in verses}
+    assert len(payload['ayahs']) == 11, f"Expected 11 ayahs, got {len(payload['ayahs'])}"
+    for num, ayah in payload['ayahs'].items():
+        words = ayah['words']
+        joined = ' '.join(w['text_uthmani'] for w in words)
+        assert joined == verse_text[int(num)], f'Ayah {num} mismatch:\n{joined!r}\n{verse_text[int(num)]!r}'
+        for w in words:
+            seg_join = ''.join(s['text'] for s in w['segments'])
+            assert seg_join == w['text_uthmani'], f"{w['text_uthmani']}: segments join to {seg_join}"
+            sarf = w['sarf']
+            if sarf:
+                stem = next(s for s in w['segments'] if s['role'] == 'stem')
+                stem_join = ''.join(l['t'] for l in sarf['stem_letters'])
+                assert stem_join == stem['text'], f"{w['text_uthmani']}: {stem_join!r} != {stem['text']!r}"
+                assert len(sarf['root']) in (3, 4), f"Invalid root length for {w['text_uthmani']}"
+                labels = {l['r'] for l in sarf['stem_letters'] if l['r']}
+                base_slots = {'f', 'a', 'l'} if len(sarf['root']) == 3 else {'f', 'a', 'l', 'l2'}
+                expected = base_slots - set(sarf.get('deleted_radicals', []))
+                flat = set()
+                for lab in labels:
+                    if lab == 'l2':
+                        flat.add('l2')
+                    else:
+                        flat.update(list(lab))
+                assert flat == expected, f"{w['text_uthmani']}: radicals {flat} vs {expected}"
+                if w['primary_category'] == 'fil':
+                    assert sarf.get('verb') and sarf['verb'].get('conjugation_table'), (
+                        f"Verb {w['text_uthmani']} must have a full conjugation_table"
+                    )
+            else:
+                assert w.get('sarf_note_en'), f"{w['text_uthmani']} needs a sarf note"
+
+
+def main():
+    payload = {
+        'surah_number': 100,
+        'surah_name': 'Al-ʿĀdiyāt',
+        'surah_name_ar': 'العاديات',
+        'total_verses': 11,
+        'version': 3,
+        'enhanced': True,
+        'color_palette': 'surah_100',
+        'sources': [
+            'Quranic Arabic Corpus (corpus.quran.com) — morphology v0.4',
+            'Quran.com word-by-word translation',
+        ],
+        'ayahs': {str(k): {'verse_key': f'100:{k}', 'verse_number': k, **v} for k, v in AYAHS.items()},
+    }
+    for ayah in payload['ayahs'].values():
+        for w in ayah['words']:
+            s = w['sarf']
+            w['root'] = ' '.join(s['root']) if s else None
+            w['root_meaning'] = s['root_meaning'] if s else None
+            w['wazn'] = s['wazn'] if s else None
+            w['color_palette'] = 'surah_100'
+    payload = canon_all(payload)
+    validate(payload)
+    os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
+    with open(OUT_PATH, 'w', encoding='utf-8') as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    total = sum(len(a['words']) for a in payload['ayahs'].values())
+    print(f'Wrote {OUT_PATH} — {total} words across {len(payload["ayahs"])} ayahs, all checks passed.')
+
+
+if __name__ == '__main__':
+    main()

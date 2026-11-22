@@ -18,7 +18,9 @@ const GrammarToggle = ({ className = '', surahNumber = null }) => {
 
   const isDark = theme === 'dark';
   const resolvedSurah = surahNumber ? Number(surahNumber) : null;
-  const isEnhanced = Boolean(resolvedSurah && grammarData?.[resolvedSurah]?.enhanced);
+  const surahGrammar = resolvedSurah ? grammarData?.[resolvedSurah] : null;
+  const isEnhanced = Boolean(surahGrammar?.enhanced);
+  const isSurah100Palette = surahGrammar?.color_palette === 'surah_100';
   const cardsActive = Boolean(isEnhanced && showInterlinear && grammarMode !== 'off');
 
   const getButtonStyles = () => {
@@ -73,9 +75,9 @@ const GrammarToggle = ({ className = '', surahNumber = null }) => {
           aria-label="Toggle Arabic Grammar Colors"
         >
           <span className="flex items-center space-x-1" aria-hidden="true">
-            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span className={`w-2 h-2 rounded-full inline-block ${isSurah100Palette ? 'bg-red-600' : 'bg-blue-500'}`} />
+            <span className={`w-2 h-2 rounded-full inline-block ${isSurah100Palette ? 'bg-emerald-600' : 'bg-amber-500'}`} />
+            <span className={`w-2 h-2 rounded-full inline-block ${isSurah100Palette ? 'bg-blue-600' : 'bg-emerald-500'}`} />
           </span>
           <span className="font-bold">نحو</span>
           <span className="hidden sm:inline opacity-80">• {getBadgeText()}</span>

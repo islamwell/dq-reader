@@ -1,17 +1,46 @@
 import React, { memo } from 'react';
-import { CATEGORY_LABELS } from './sarfStyles';
+import {
+  CATEGORY_LABELS,
+  getSegmentBarClass,
+  resolveSurah100Shade
+} from './sarfStyles';
 
 /**
  * Returns the CSS styling classes for a sub-word segment based on its
- * grammatical category (fil, ism, harf), display mode, and theme.
+ * grammatical category (fil, ism, harf), display mode, theme, and optional
+ * v3 shaded palette ('surah_100').
  */
-export const getGrammarSegmentClass = (category, mode, theme = 'light') => {
+export const getGrammarSegmentClass = (
+  category,
+  mode,
+  theme = 'light',
+  segment = null,
+  palette = 'default',
+  pulsePaused = false
+) => {
   if (mode === 'off') {
     return '';
   }
 
   const isDark = theme === 'dark';
   const isGreen = theme === 'green';
+  const resolvedPalette = segment?.color_palette || palette;
+
+  if (resolvedPalette === 'surah_100') {
+    const shade = resolveSurah100Shade(category, segment || {});
+    const isEmphasisHarf =
+      category === 'harf' && Boolean(segment?.emphasis || segment?.subclass === 'emphasis');
+    const pulseClass = isEmphasisHarf
+      ? ` harf-emphasis-pulse${pulsePaused ? ' harf-emphasis-paused' : ''}`
+      : '';
+
+    if (mode === 'underline') {
+      const darkText = isDark ? ' text-slate-100' : '';
+      return `${shade.underline}${darkText}${pulseClass}`;
+    }
+
+    return `${isDark ? shade.darkText : shade.lightText}${pulseClass}`;
+  }
 
   if (mode === 'underline') {
     const darkText = isDark ? ' text-slate-100' : '';
@@ -27,7 +56,7 @@ export const getGrammarSegmentClass = (category, mode, theme = 'light') => {
     }
   }
 
-  // mode === 'colored' (Default)
+  // mode === 'colored' (Classic v1/v2 default)
   switch (category) {
     case 'fil':
       // Warm Amber / Burnt Orange
@@ -56,15 +85,19 @@ export const getGrammarSegmentClass = (category, mode, theme = 'light') => {
  * Renders the colour-coded segments of a word.
  * Notice: no whitespace between spans so Arabic letters join cursively.
  */
-const SegmentedText = ({ segments, grammarMode, theme }) => (
+const SegmentedText = ({ segments, grammarMode, theme, palette, pulsePaused }) => (
   <>
     {segments.map((seg, idx) => (
       <span
         key={idx}
+        data-emphasis={seg.emphasis ? 'true' : undefined}
         className={`grammar-seg transition-colors duration-200 ${getGrammarSegmentClass(
           seg.category,
           grammarMode,
-          theme
+          theme,
+          seg,
+          palette,
+          pulsePaused
         )}`}
       >{seg.text}</span>
     ))}
@@ -76,9 +109,10 @@ const SegmentedText = ({ segments, grammarMode, theme }) => (
  * Renders an Arabic word with sub-word morpheme coloring.
  * Tapping or clicking the word opens the slide-up grammar breakdown sheet.
  *
- * When `interlinear` is true (enhanced sarf data, e.g. Surah 103), the word is
- * rendered as a stacked study card: Arabic word, a segmented category bar,
- * its morphological pattern (wazn) and an English gloss.
+ * When `interlinear` is true (enhanced sarf data, e.g. Surah 100 & Surah 103),
+ * the word is rendered as a stacked study card: optional Iḍāfa chain badge,
+ * Arabic word, a segmented category bar, its morphological pattern (wazn)
+ * and an English gloss.
  */
 const GrammarWord = ({
   word,
@@ -86,9 +120,16 @@ const GrammarWord = ({
   theme,
   isSelected,
   onSelectWord,
-  interlinear = false
+  interlinear = false,
+  colorPalette = 'default',
+  pulsePaused = false,
+  isIdafaActive = false,
+  onHoverIdafaPair
 }) => {
   if (!word) return null;
+
+  const palette = word.color_palette || colorPalette;
+  const idafa = word.idafa || null;
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -110,6 +151,18 @@ const GrammarWord = ({
       e.preventDefault();
       e.stopPropagation();
       onSelectWord?.(word);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (idafa?.pair_id && onHoverIdafaPair) {
+      onHoverIdafaPair(idafa.pair_id);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (idafa?.pair_id && onHoverIdafaPair) {
+      onHoverIdafaPair(null);
     }
   };
 
@@ -143,6 +196,26 @@ const GrammarWord = ({
       ? word.sarf.wazn
       : (CATEGORY_LABELS[word.primary_category]?.ar || '');
 
+    const hasEmphasisSegment = Boolean(
+      word.has_emphasis || segments.some((s) => s.emphasis || s.subclass === 'emphasis')
+    );
+
+    const cardBorderState = isSelected
+      ? darkCard
+        ? 'ring-2 ring-amber-400 border-amber-500/70 bg-amber-950/60 shadow-md -translate-y-0.5'
+        : 'ring-2 ring-amber-400 border-amber-300 bg-amber-100/70 shadow-md -translate-y-0.5'
+      : isIdafaActive
+        ? darkCard
+          ? 'ring-2 ring-amber-400/80 border-amber-500/80 bg-amber-950/40 shadow-sm'
+          : 'ring-2 ring-amber-400 border-amber-400 bg-amber-50/90 shadow-sm'
+        : idafa
+          ? darkCard
+            ? 'border-amber-500/50 bg-amber-950/20 hover:border-amber-400 hover:bg-amber-950/35'
+            : 'border-amber-300/90 bg-amber-50/45 hover:border-amber-400 hover:bg-amber-50/80 hover:shadow-sm'
+          : darkCard
+            ? 'border-transparent hover:border-slate-600 hover:bg-slate-800/60'
+            : 'border-transparent hover:border-slate-200 hover:bg-white/75 hover:shadow-sm';
+
     return (
       <span
         role="button"
@@ -150,22 +223,69 @@ const GrammarWord = ({
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleMouseEnter}
+        onBlur={handleMouseLeave}
         aria-haspopup="dialog"
         aria-label={`${word.text_uthmani}: ${word.translation || ''}`}
         data-testid="interlinear-word"
-        className={`grammar-word-card group inline-flex flex-col items-center cursor-pointer select-none rounded-2xl px-2.5 pt-1 pb-2 transition-all duration-150 border [text-shadow:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
-          isSelected
-            ? darkCard
-              ? 'ring-2 ring-amber-400 border-amber-500/70 bg-amber-950/60 shadow-md -translate-y-0.5'
-              : 'ring-2 ring-amber-400 border-amber-300 bg-amber-100/70 shadow-md -translate-y-0.5'
-            : darkCard
-              ? 'border-transparent hover:border-slate-600 hover:bg-slate-800/60'
-              : 'border-transparent hover:border-slate-200 hover:bg-white/75 hover:shadow-sm'
-        }`}
+        data-idafa-pair={idafa?.pair_id || undefined}
+        className={`grammar-word-card group inline-flex flex-col items-center cursor-pointer select-none rounded-2xl px-2.5 pt-1 pb-2 transition-all duration-150 border [text-shadow:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${cardBorderState}`}
         title={word.translation ? `${word.translation} • Click for ṣarf & iʿrāb` : 'Click for grammar'}
       >
+        {/* Top badges for Iḍāfa (Muḍāf / Muḍāf Ilayhi), Passive Voice, or Emphasis */}
+        {(idafa || word.voice === 'passive' || (palette === 'surah_100' && hasEmphasisSegment)) && (
+          <span className="flex flex-wrap items-center justify-center gap-1 mb-0.5">
+            {idafa && (
+              <span
+                data-testid="idafa-word-badge"
+                dir="rtl"
+                className={`font-arabic text-[11px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                  darkCard
+                    ? 'bg-amber-900/70 text-amber-200 border-amber-500/70'
+                    : 'bg-amber-100 text-amber-900 border-amber-400'
+                }`}
+              >
+                🔗 {idafa.label_ar}
+              </span>
+            )}
+            {word.voice === 'passive' && (
+              <span
+                dir="rtl"
+                className={`font-arabic text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                  darkCard
+                    ? 'bg-emerald-950/80 text-emerald-200 border-emerald-600'
+                    : 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                }`}
+              >
+                مجهول · Passive
+              </span>
+            )}
+            {palette === 'surah_100' && hasEmphasisSegment && (
+              <span
+                dir="rtl"
+                data-testid="emphasis-word-badge"
+                className={`font-arabic text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                  darkCard
+                    ? 'bg-indigo-950/85 text-blue-200 border-indigo-500'
+                    : 'bg-indigo-100 text-indigo-900 border-indigo-300'
+                }`}
+              >
+                ✦ توكيد
+              </span>
+            )}
+          </span>
+        )}
+
         <span className={`leading-[1.9] ${darkCard ? 'text-slate-100' : 'text-slate-900'}`}>
-          <SegmentedText segments={segments} grammarMode={grammarMode} theme={theme} />
+          <SegmentedText
+            segments={segments}
+            grammarMode={grammarMode}
+            theme={theme}
+            palette={palette}
+            pulsePaused={pulsePaused}
+          />
         </span>
 
         {/* Segment category bar: one coloured pill per morpheme (RTL order) */}
@@ -173,7 +293,7 @@ const GrammarWord = ({
           {segments.map((seg, idx) => (
             <span
               key={idx}
-              className={`h-1 rounded-full ${CATEGORY_LABELS[seg.category]?.bar || 'bg-slate-300'} ${
+              className={`h-1 rounded-full ${getSegmentBarClass(seg, palette)} ${
                 seg.role === 'stem' ? 'flex-[3]' : 'flex-1 opacity-75'
               }`}
             />
@@ -212,6 +332,8 @@ const GrammarWord = ({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       aria-haspopup="dialog"
       aria-label={`${word.text_uthmani}: ${word.translation || ''}`}
       className={`grammar-word-pill inline-block cursor-pointer px-1 py-0.5 rounded-lg transition-all duration-150 mx-0.5 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
@@ -219,13 +341,23 @@ const GrammarWord = ({
           ? darkCard
             ? 'ring-2 ring-amber-400 bg-amber-950/60 shadow-sm scale-[1.02]'
             : 'ring-2 ring-amber-400 bg-amber-100/70 shadow-sm scale-[1.02]'
-          : darkCard
-            ? 'hover:bg-slate-800/70 hover:shadow-xs'
-            : 'hover:bg-slate-200/60 hover:shadow-xs'
+          : idafa
+            ? darkCard
+              ? 'border-b border-dashed border-amber-400/70 hover:bg-slate-800/70'
+              : 'border-b border-dashed border-amber-500/80 hover:bg-amber-50/70'
+            : darkCard
+              ? 'hover:bg-slate-800/70 hover:shadow-xs'
+              : 'hover:bg-slate-200/60 hover:shadow-xs'
       }`}
       title={word.translation ? `${word.translation} • Click for grammar` : 'Click for grammar'}
     >
-      <SegmentedText segments={segments} grammarMode={grammarMode} theme={theme} />
+      <SegmentedText
+        segments={segments}
+        grammarMode={grammarMode}
+        theme={theme}
+        palette={palette}
+        pulsePaused={pulsePaused}
+      />
     </span>
   );
 };

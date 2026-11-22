@@ -343,3 +343,52 @@ dialog::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
 }
+
+/* Slow, gentle compositor-friendly pulse for emphasis particles (harf tawkid / qasam) */
+@keyframes harfEmphasisPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.62;
+    transform: scale(1.03);
+  }
+}
+
+.harf-emphasis-pulse {
+  display: inline-block;
+  border-radius: 0.25rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .harf-emphasis-pulse:not(.harf-emphasis-paused) {
+    animation: harfEmphasisPulse 3.2s ease-in-out infinite;
+  }
+}
+
+/* Responsive verb conjugation table container & sticky headers */
+.conjugation-table-wrapper {
+  overflow: auto;
+  max-inline-size: 100%;
+  max-block-size: min(460px, 65vh);
+  container-type: inline-size;
+}
+
+.conjugation-table-wrapper table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.conjugation-table-wrapper thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+}
+
+.conjugation-table-wrapper tbody th {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+}

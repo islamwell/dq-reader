@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import {
-  CATEGORY_LABELS,
+  getCategoryMeta,
   getCategoryBadgeClass,
   getCategoryTextClass,
-  isDarkSurface
+  isDarkSurface,
+  resolveSurah100Shade
 } from './sarfStyles';
 import { MorphologyTab, SyntaxTab, InsightTab } from './SarfDetails';
 
@@ -17,7 +18,8 @@ const {
   FiBookOpen,
   FiLayers,
   FiCompass,
-  FiSun
+  FiSun,
+  FiLink
 } = FiIcons;
 
 const THEME_DRAWER_STYLES = {
@@ -85,6 +87,11 @@ const GrammarBottomSheet = ({
     if (!word) return;
 
     const handleKeyDown = (e) => {
+      // Do not intercept keys when a child top-layer <dialog> (such as VerbConjugationModal) is open
+      if (typeof document !== 'undefined' && document.querySelector('dialog[open]')) {
+        return;
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose?.();
@@ -117,10 +124,12 @@ const GrammarBottomSheet = ({
 
   if (!word) return null;
 
+  const palette = word.color_palette || 'default';
   const darkSurface = isDarkSurface(theme);
   const drawerStyle = THEME_DRAWER_STYLES[theme] || THEME_DRAWER_STYLES.light;
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
-  const catMeta = CATEGORY_LABELS[word.primary_category] || CATEGORY_LABELS.ism;
+  const catMeta = getCategoryMeta(word.primary_category, palette);
+  const wordShade = palette === 'surah_100' ? resolveSurah100Shade(word.primary_category, word) : null;
   const segments = word.segments || [];
 
   const navBtnStyle = darkSurface
@@ -252,13 +261,21 @@ const GrammarBottomSheet = ({
                 <span
                   className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border tracking-wider ${getCategoryBadgeClass(
                     word.primary_category,
-                    theme
+                    theme,
+                    word,
+                    palette
                   )}`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${catMeta.dot}`} />
+                  <span className={`w-2 h-2 rounded-full ${wordShade ? wordShade.dot : catMeta.dot}`} />
                   <span>{catMeta.ar}</span>
                   <span>•</span>
                   <span className="uppercase">{catMeta.en}</span>
+                  {wordShade && (
+                    <>
+                      <span className="opacity-50">•</span>
+                      <span>{wordShade.labelEn}</span>
+                    </>
+                  )}
                   {word.verb_type && (
                     <>
                       <span className="opacity-50">•</span>
@@ -266,6 +283,24 @@ const GrammarBottomSheet = ({
                     </>
                   )}
                 </span>
+
+                {/* Iḍāfa Construct Pill */}
+                {word.idafa && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                      darkSurface
+                        ? 'bg-amber-950/80 border-amber-500/70 text-amber-200'
+                        : 'bg-amber-100 border-amber-400 text-amber-950'
+                    }`}
+                  >
+                    <SafeIcon icon={FiLink} className="text-xs" />
+                    <span dir="rtl" className="font-arabic">
+                      {word.idafa.label_ar}
+                    </span>
+                    <span className="opacity-50">·</span>
+                    <span>{word.idafa.label_en}</span>
+                  </span>
+                )}
 
                 {/* Enhanced Grammatical Role Pill */}
                 {isEnhanced && (word.role_ar || word.role_en) && (
@@ -292,7 +327,7 @@ const GrammarBottomSheet = ({
                 {segments.map((seg, i) => (
                   <span
                     key={i}
-                    className={getCategoryTextClass(seg.category, theme)}
+                    className={getCategoryTextClass(seg.category, theme, seg, palette)}
                   >{seg.text}</span>
                 ))}
               </div>
@@ -310,7 +345,7 @@ const GrammarBottomSheet = ({
               </div>
             </div>
 
-            {/* Body: Enhanced Tabbed View (Surah 103) vs Classic View (Surah 32) */}
+            {/* Body: Enhanced Tabbed View (Surah 100 & 103) vs Classic View (Surah 32) */}
             {isEnhanced ? (
               <div className="mb-5">
                 <div
@@ -397,7 +432,7 @@ const GrammarBottomSheet = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {segments.map((seg, idx) => {
-                      const segMeta = CATEGORY_LABELS[seg.category] || CATEGORY_LABELS.harf;
+                      const segMeta = getCategoryMeta(seg.category, palette);
                       return (
                         <div
                           key={idx}
@@ -408,7 +443,9 @@ const GrammarBottomSheet = ({
                               <span
                                 className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${getCategoryBadgeClass(
                                   seg.category,
-                                  theme
+                                  theme,
+                                  seg,
+                                  palette
                                 )}`}
                               >
                                 {segMeta.ar} ({segMeta.en})
@@ -425,7 +462,7 @@ const GrammarBottomSheet = ({
                           </div>
 
                           <div className="quran-text-pak !text-2xl !leading-[1.6] [text-shadow:none] !text-inherit text-right shrink-0">
-                            <span className={getCategoryTextClass(seg.category, theme)}>
+                            <span className={getCategoryTextClass(seg.category, theme, seg, palette)}>
                               {seg.text}
                             </span>
                           </div>
@@ -520,15 +557,15 @@ const GrammarBottomSheet = ({
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-current/15 text-[11px] opacity-80">
               <div className="flex items-center space-x-3">
                 <span className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  <span className={`w-2 h-2 rounded-full inline-block ${palette === 'surah_100' ? 'bg-red-600' : 'bg-blue-500'}`} />
                   <span>اسم (Noun)</span>
                 </span>
                 <span className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                  <span className={`w-2 h-2 rounded-full inline-block ${palette === 'surah_100' ? 'bg-emerald-600' : 'bg-amber-500'}`} />
                   <span>فعل (Verb)</span>
                 </span>
                 <span className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span className={`w-2 h-2 rounded-full inline-block ${palette === 'surah_100' ? 'bg-blue-600' : 'bg-emerald-500'}`} />
                   <span>حرف (Particle)</span>
                 </span>
               </div>
