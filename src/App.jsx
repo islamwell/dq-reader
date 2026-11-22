@@ -8,6 +8,8 @@ import Home from './pages/Home';
 import Surah from './pages/Surah';
 import ProtectedRoute from './components/ProtectedRoute';
 import SettingsPanel from './components/SettingsPanel';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import { useGlobalKeyboardShortcuts } from './hooks/useGlobalKeyboardShortcuts';
 import { register as registerServiceWorker } from './utils/serviceWorkerRegistration';
 import './App.css';
 
@@ -23,6 +25,11 @@ const RouteLoading = () => (
     <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
   </div>
 );
+
+function GlobalShortcutsBridge() {
+  const { isShortcutsOpen, closeShortcuts } = useGlobalKeyboardShortcuts();
+  return <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={closeShortcuts} />;
+}
 
 function AppContent() {
   const { isSettingsOpen, closeSettings, openSettings } = useQuranData();
@@ -55,6 +62,7 @@ function AppContent() {
           </Routes>
         </Suspense>
         <SettingsPanel isOpen={isSettingsOpen} onClose={closeSettings} />
+        <GlobalShortcutsBridge />
         <Toaster 
           position="top-right"
           toastOptions={{

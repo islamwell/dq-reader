@@ -534,6 +534,31 @@ const SearchBar = ({ variant = 'global' }) => {
     setIsOpen(isNavVariant);
   }, [isNavVariant]);
 
+  // Listen for global keyboard shortcut ('/' or Ctrl/Cmd+K) to open search, and Esc to close it
+  useEffect(() => {
+    if (isNavVariant) {
+      return undefined;
+    }
+
+    const handleOpenSearchEvent = () => {
+      handleOpen();
+    };
+
+    const handleSearchEscape = (event) => {
+      if (event.key === 'Escape' && isExpanded) {
+        event.preventDefault();
+        closeSearchPanel();
+      }
+    };
+
+    window.addEventListener('nq:open-search', handleOpenSearchEvent);
+    window.addEventListener('keydown', handleSearchEscape);
+    return () => {
+      window.removeEventListener('nq:open-search', handleOpenSearchEvent);
+      window.removeEventListener('keydown', handleSearchEscape);
+    };
+  }, [closeSearchPanel, handleOpen, isExpanded, isNavVariant]);
+
   const handleNextSurah = useCallback(() => {
     navigate(`/surah/${nextSurahNumber}`);
     closeSearchPanel();
@@ -807,17 +832,8 @@ const SearchBar = ({ variant = 'global' }) => {
             if (juzStart) {
               navigate(`/surah/${juzStart.surahNumber}?ayah=${juzStart.ayahNumber}`);
             }
-          } else {
-            const surahEl = document.querySelector(`[data-surah="${finalTarget}"]`);
-            if (surahEl) {
-              if (typeof surahEl.scrollIntoView === 'function') {
-                surahEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-              surahEl.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2', 'transition-all');
-              window.setTimeout(() => {
-                surahEl.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
-              }, 2000);
-            }
+          } else if (finalTarget >= 1 && finalTarget <= TOTAL_SURAHS) {
+            navigate(`/surah/${finalTarget}`);
           }
         } else {
           const ayahEl = document.querySelector(`[data-ayah="${finalTarget}"]`);
@@ -863,6 +879,13 @@ const SearchBar = ({ variant = 'global' }) => {
     () => 'Rahman 22, 15:20, Juz 4, "our Lord", كدأب',
     []
   );
+
+  const scrubbedSurahName = useMemo(() => {
+    const info =
+      getSurahInfo(scrubAyah) ||
+      (Array.isArray(surahs) ? surahs.find((item) => item.id === scrubAyah) : null);
+    return info?.name_simple || `Surah ${scrubAyah}`;
+  }, [scrubAyah, surahs]);
 
   if (!searchQuran) {
     return null;
@@ -1238,13 +1261,13 @@ const SearchBar = ({ variant = 'global' }) => {
                 {isHomeScrubContext && (
                   <span
                     data-testid="scrub-mode-badge"
-                    className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                       homeScrubMode === 'juz'
-                        ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-                        : 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+                        ? 'uppercase tracking-wider border-amber-400/50 bg-amber-400/15 text-amber-300'
+                        : 'tracking-wide max-w-[170px] truncate border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
                     }`}
                   >
-                    {homeScrubMode === 'juz' ? 'Juz' : 'Surah'}
+                    {homeScrubMode === 'juz' ? 'Juz' : scrubbedSurahName}
                   </span>
                 )}
                 <span

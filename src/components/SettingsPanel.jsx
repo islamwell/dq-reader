@@ -25,7 +25,8 @@ const {
   FiHardDrive,
   FiClock,
   FiSliders,
-  FiHelpCircle
+  FiHelpCircle,
+  FiX
 } = FiIcons;
 
 // Round Flag Icon SVGs
@@ -286,16 +287,21 @@ const SettingsPanel = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
+      if (e.key !== 'Escape') return;
+      if (showAudioInfoModal || showCacheModal) {
         setShowAudioInfoModal(false);
         setShowCacheModal(false);
+        return;
+      }
+      if (isOpen) {
+        onClose?.();
       }
     };
-    if (showAudioInfoModal || showCacheModal) {
+    if (isOpen || showAudioInfoModal || showCacheModal) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAudioInfoModal, showCacheModal]);
+  }, [isOpen, onClose, showAudioInfoModal, showCacheModal]);
   const [cacheStats, setCacheStats] = useState({
     totalBytes: 0,
     formattedSize: '0 B',
@@ -435,9 +441,20 @@ const SettingsPanel = ({ isOpen, onClose }) => {
           >
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <SafeIcon icon={FiBookmark} className="text-islamic-gold" />
-                  <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Bookmarks</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <SafeIcon icon={FiBookmark} className="text-islamic-gold" />
+                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Bookmarks</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                    aria-label="Close settings"
+                    title="Close settings (Esc)"
+                  >
+                    <SafeIcon icon={FiX} className="w-5 h-5" />
+                  </button>
                 </div>
                 {topBookmarks.length === 0 ? (
                   <p className="text-sm text-slate-500">No bookmarks yet. Tap a verse number to bookmark it.</p>
@@ -561,19 +578,9 @@ const SettingsPanel = ({ isOpen, onClose }) => {
               </section>
 
               <section>
-                <div className="grid grid-cols-3 gap-3 mb-4 items-center">
-                  <div className="flex items-center gap-2 col-span-2">
-                    <SafeIcon icon={FaPalette} className="text-islamic-gold" />
-                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Theme</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 justify-self-end"
-                    aria-label="Close settings"
-                  >
-                    Close ✕
-                  </button>
+                <div className="flex items-center gap-2 mb-4">
+                  <SafeIcon icon={FaPalette} className="text-islamic-gold" />
+                  <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Theme</h3>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {themeOptions.map((option) => {
@@ -690,29 +697,21 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     const FlagComponent = option.flag;
 
                     return (
-                      <div key={option.code} className="flex flex-col items-center">
-                        <button
-                          type="button"
-                          onClick={() => setLanguagePreference(option.code)}
-                          className={`w-12 h-12 rounded-full overflow-hidden transition-all duration-200 flex items-center justify-center p-0 ${
-                            isActive
-                              ? 'ring-3 ring-emerald-500 ring-offset-2 scale-110 shadow-md border-2 border-white'
-                              : 'border-2 border-slate-200 hover:border-slate-400 hover:scale-105 opacity-80 hover:opacity-100 shadow-xs'
-                          }`}
-                          title={`${option.country} (${option.code})`}
-                          aria-label={`${option.country} (${option.code})`}
-                          aria-pressed={isActive}
-                        >
-                          <FlagComponent />
-                        </button>
-                        <span
-                          className={`text-xs mt-1.5 font-medium transition-colors ${
-                            isActive ? 'text-emerald-700 font-bold' : 'text-slate-600'
-                          }`}
-                        >
-                          {option.country}
-                        </span>
-                      </div>
+                      <button
+                        key={option.code}
+                        type="button"
+                        onClick={() => setLanguagePreference(option.code)}
+                        className={`w-12 h-12 rounded-full overflow-hidden transition-all duration-200 flex items-center justify-center p-0 ${
+                          isActive
+                            ? 'flag-active-glow scale-110 border-2 border-emerald-400'
+                            : 'border-2 border-slate-200 hover:border-slate-400 hover:scale-105 opacity-80 hover:opacity-100 shadow-xs'
+                        }`}
+                        title={`${option.country} (${option.code})`}
+                        aria-label={`${option.country} (${option.code})`}
+                        aria-pressed={isActive}
+                      >
+                        <FlagComponent />
+                      </button>
                     );
                   })}
                 </div>

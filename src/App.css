@@ -310,3 +310,36 @@
 .library-player::part(fullscreen-button) {
   display: inline-flex;
 }
+
+/* Pulsing emerald glow for the active language flag in Settings */
+@keyframes flagPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.5), 0 0 14px rgba(16, 185, 129, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.2), 0 0 24px rgba(16, 185, 129, 0.85);
+  }
+}
+
+.flag-active-glow {
+  animation: flagPulseGlow 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flag-active-glow {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.55), 0 0 14px rgba(16, 185, 129, 0.55);
+  }
+}
+
+/* Native modal dialog top-layer & scroll containment */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}

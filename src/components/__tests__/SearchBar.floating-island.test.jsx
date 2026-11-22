@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import SearchBar from '../SearchBar';
+import { getSurahInfo } from '../../data/quran-data.js';
 
 const LocationDisplay = () => {
   const location = useLocation();
@@ -206,12 +207,14 @@ describe('SearchBar floating island behaviour', () => {
     fireEvent.pointerDown(button, { clientY: 24, clientX: 200, pointerId: 1, button: 0 });
     fireEvent.pointerMove(button, { clientY: 358, clientX: 200, pointerId: 1 });
 
-    expect(screen.getByTestId('scrub-mode-badge').textContent).toBe('Surah');
     const numberEl = screen.getByTestId('scrub-ayah-number');
     expect(numberEl.className).toContain('text-emerald-400');
     const scrubbedNumber = Number(numberEl.textContent);
     expect(scrubbedNumber).toBeGreaterThan(40);
     expect(scrubbedNumber).toBeLessThan(80);
+    expect(screen.getByTestId('scrub-mode-badge').textContent).toBe(
+      getSurahInfo(scrubbedNumber)?.name_simple
+    );
 
     // First few Arabic words displayed on top line
     const arabicWordsEl = screen.getByTestId('scrub-arabic-words');
@@ -222,8 +225,8 @@ describe('SearchBar floating island behaviour', () => {
     expect(translationEl.textContent.trim().length).toBeGreaterThan(5);
 
     fireEvent.pointerUp(button, { clientY: 358, clientX: 200, pointerId: 1 });
-    // Stays on '/' (scrolls Surah card rather than navigating away)
-    expect(screen.getByTestId('current-location').textContent).toBe('/');
+    // Navigates directly to the scrubbed Surah
+    expect(screen.getByTestId('current-location').textContent).toBe(`/surah/${scrubbedNumber}`);
   });
 
   it('switches to Juz mode (1-30) on main page via horizontal slide and navigates to selected Juz start ayah on release', () => {
