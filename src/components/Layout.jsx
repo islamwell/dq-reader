@@ -155,8 +155,8 @@ const Layout = () => {
       const nextAyahNumber = nextWord.ayahNumber ?? selectedGrammarWord.ayahNumber;
       const nextAyahGrammar =
         grammarData?.[selectedGrammarWord.surahNumber]?.ayahs?.[String(nextAyahNumber)];
-      const nextAyahStructure = nextAyahGrammar?.structure_ar
-        ? { ar: nextAyahGrammar.structure_ar, en: nextAyahGrammar.structure_en }
+      const nextAyahStructure = nextAyahGrammar?.structure_en
+        ? { en: nextAyahGrammar.structure_en }
         : selectedGrammarWord.ayahStructure ?? null;
 
       setSelectedGrammarWord({
@@ -255,7 +255,7 @@ const Layout = () => {
             <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
           </div>
           <div className="text-xs opacity-75 font-mono">
-            v1.1.22 (updated 2026-11-22 21:21)
+            v1.1.23 (updated 2026-11-22 21:36)
           </div>
         </div>
       </footer>

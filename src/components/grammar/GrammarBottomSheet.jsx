@@ -6,9 +6,9 @@ import {
   getCategoryMeta,
   getCategoryBadgeClass,
   getCategoryTextClass,
-  isDarkSurface,
-  resolveSurah100Shade
+  isDarkSurface
 } from './sarfStyles';
+import { getSimplePartOfSpeech } from './GrammarWord';
 import { MorphologyTab, SyntaxTab, InsightTab } from './SarfDetails';
 
 const {
@@ -41,9 +41,9 @@ const THEME_CARD_BG = {
 };
 
 const TABS = [
-  { id: 'morphology', labelEn: 'Ṣarf', labelAr: 'الصرف', keyHint: '1', icon: FiLayers },
-  { id: 'syntax', labelEn: 'Iʿrāb', labelAr: 'الإعراب', keyHint: '2', icon: FiCompass },
-  { id: 'insight', labelEn: 'Insight', labelAr: 'التدبر', keyHint: '3', icon: FiSun }
+  { id: 'morphology', labelEn: 'Word & Ṣarf', keyHint: '1', icon: FiLayers },
+  { id: 'syntax', labelEn: 'Grammar · Iʿrāb', keyHint: '2', icon: FiCompass },
+  { id: 'insight', labelEn: 'Insight', keyHint: '3', icon: FiSun }
 ];
 
 const GrammarBottomSheet = ({
@@ -62,7 +62,7 @@ const GrammarBottomSheet = ({
   const wasOpenRef = useRef(false);
 
   const isEnhanced = Boolean(
-    word && (word.sarf || word.sarf_note_en || word.irab?.ar || word.insight)
+    word && (word.sarf || word.sarf_note_en || word.irab?.en || word.insight)
   );
 
   // Move focus into drawer when opened, restore focus & reset tab when closed
@@ -128,9 +128,10 @@ const GrammarBottomSheet = ({
   const darkSurface = isDarkSurface(theme);
   const drawerStyle = THEME_DRAWER_STYLES[theme] || THEME_DRAWER_STYLES.light;
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
-  const catMeta = getCategoryMeta(word.primary_category, palette);
-  const wordShade = palette === 'surah_100' ? resolveSurah100Shade(word.primary_category, word) : null;
   const segments = word.segments || [];
+  const partOfSpeechLabel = getSimplePartOfSpeech(word);
+  const singularAr = word.sarf?.noun?.singular_ar;
+  const singularEn = word.sarf?.noun?.singular_en;
 
   const navBtnStyle = darkSurface
     ? 'border-white/20 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400'
@@ -212,12 +213,11 @@ const GrammarBottomSheet = ({
                     : `Ayah ${word.ayahNumber || '32'}:${word.position}`}
                 </span>
                 <span className="text-xs opacity-75 hidden sm:inline">
-                  {isEnhanced ? 'Ṣarf · Iʿrāb · Tadabbur' : 'Arabic Morphology & Iʿrāb'}
+                  Word Study
                 </span>
               </div>
 
               <div className="flex items-center space-x-2">
-                {/* Previous Word Button */}
                 <button
                   type="button"
                   onClick={() => onNavigateWord?.(-1)}
@@ -229,7 +229,6 @@ const GrammarBottomSheet = ({
                   <SafeIcon icon={FiChevronLeft} className="text-base" />
                 </button>
 
-                {/* Next Word Button */}
                 <button
                   type="button"
                   onClick={() => onNavigateWord?.(1)}
@@ -241,7 +240,6 @@ const GrammarBottomSheet = ({
                   <SafeIcon icon={FiChevronRight} className="text-base" />
                 </button>
 
-                {/* Close Button */}
                 <button
                   type="button"
                   onClick={onClose}
@@ -254,76 +252,10 @@ const GrammarBottomSheet = ({
               </div>
             </div>
 
-            {/* Hero Word Presentation */}
+            {/* Clean Hero Word Card: Arabic Word → Part of Speech (Ism / Verb / Harf) → Meaning → Singular (if plural) */}
             <div className={`p-4 rounded-2xl border text-center mb-5 ${cardBg}`}>
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                {/* Primary Category Pill */}
-                <span
-                  className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border tracking-wider ${getCategoryBadgeClass(
-                    word.primary_category,
-                    theme,
-                    word,
-                    palette
-                  )}`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${wordShade ? wordShade.dot : catMeta.dot}`} />
-                  <span>{catMeta.ar}</span>
-                  <span>•</span>
-                  <span className="uppercase">{catMeta.en}</span>
-                  {wordShade && (
-                    <>
-                      <span className="opacity-50">•</span>
-                      <span>{wordShade.labelEn}</span>
-                    </>
-                  )}
-                  {word.verb_type && (
-                    <>
-                      <span className="opacity-50">•</span>
-                      <span className="opacity-90">{word.verb_type}</span>
-                    </>
-                  )}
-                </span>
-
-                {/* Iḍāfa Construct Pill */}
-                {word.idafa && (
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                      darkSurface
-                        ? 'bg-amber-950/80 border-amber-500/70 text-amber-200'
-                        : 'bg-amber-100 border-amber-400 text-amber-950'
-                    }`}
-                  >
-                    <SafeIcon icon={FiLink} className="text-xs" />
-                    <span dir="rtl" className="font-arabic">
-                      {word.idafa.label_ar}
-                    </span>
-                    <span className="opacity-50">·</span>
-                    <span>{word.idafa.label_en}</span>
-                  </span>
-                )}
-
-                {/* Enhanced Grammatical Role Pill */}
-                {isEnhanced && (word.role_ar || word.role_en) && (
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border ${
-                      darkSurface
-                        ? 'bg-white/5 border-white/15 text-slate-200'
-                        : 'bg-white border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {word.role_ar && (
-                      <span dir="rtl" className="font-arabic font-bold">
-                        {word.role_ar}
-                      </span>
-                    )}
-                    {word.role_ar && word.role_en && <span className="opacity-50">·</span>}
-                    {word.role_en && <span>{word.role_en}</span>}
-                  </span>
-                )}
-              </div>
-
               {/* Large Arabic Calligraphy */}
-              <div className="quran-text-pak !text-4xl sm:!text-5xl !leading-[1.7] [text-shadow:none] !text-inherit my-2">
+              <div className="quran-text-pak !text-4xl sm:!text-5xl !leading-[1.7] [text-shadow:none] !text-inherit my-1">
                 {segments.map((seg, i) => (
                   <span
                     key={i}
@@ -332,20 +264,75 @@ const GrammarBottomSheet = ({
                 ))}
               </div>
 
-              {/* Transliteration & Meaning */}
-              <div className="mt-2 space-y-1">
-                {word.transliteration && (
-                  <p className="text-sm italic opacity-80 font-medium">
-                    {word.transliteration}
-                  </p>
-                )}
+              {/* Part of Speech (replaces transliteration) + English Meaning */}
+              <div className="mt-2 space-y-1.5">
+                <div>
+                  <span
+                    data-testid="word-pos-label"
+                    className={`inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold border ${getCategoryBadgeClass(
+                      word.primary_category,
+                      theme,
+                      word,
+                      palette
+                    )}`}
+                  >
+                    {partOfSpeechLabel}
+                  </span>
+                </div>
+
                 <p className="text-base sm:text-lg font-semibold">
                   &ldquo;{word.translation}&rdquo;
                 </p>
+
+                {/* If plural, show Singular form clearly */}
+                {singularAr && (
+                  <div
+                    data-testid="plural-singular-badge"
+                    className={`inline-flex flex-wrap items-center justify-center gap-2 mt-1 px-3 py-1 rounded-xl border text-xs ${
+                      darkSurface
+                        ? 'bg-rose-950/60 border-rose-700/70 text-rose-100'
+                        : 'bg-rose-50 border-rose-200 text-rose-950'
+                    }`}
+                  >
+                    <span className="font-bold uppercase tracking-wider text-[10px] opacity-75">
+                      Singular:
+                    </span>
+                    <span
+                      dir="rtl"
+                      className={`quran-text-pak !text-2xl !leading-[1.4] [text-shadow:none] font-bold ${
+                        darkSurface ? '!text-rose-200' : '!text-rose-800'
+                      }`}
+                    >
+                      {singularAr}
+                    </span>
+                    {singularEn && (
+                      <span className="opacity-85">({singularEn})</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Compact Possessive Link summary if part of an Iḍāfa */}
+                {word.idafa && (
+                  <div className="pt-1">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        darkSurface
+                          ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
+                          : 'bg-amber-100/80 border-amber-300 text-amber-950'
+                      }`}
+                    >
+                      <SafeIcon icon={FiLink} className="text-xs" />
+                      <span>{word.idafa.label_en}:</span>
+                      <span dir="rtl" className="font-arabic text-sm font-bold">
+                        {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
+                      </span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Body: Enhanced Tabbed View (Surah 100 & 103) vs Classic View (Surah 32) */}
+            {/* Body: Enhanced Tabbed View vs Classic View */}
             {isEnhanced ? (
               <div className="mb-5">
                 <div
@@ -370,7 +357,6 @@ const GrammarBottomSheet = ({
                         type="button"
                         role="tab"
                         aria-selected={selected}
-                        aria-controls={`panel-${tab.id}`}
                         tabIndex={selected ? 0 : -1}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
@@ -390,9 +376,6 @@ const GrammarBottomSheet = ({
                           }`}
                         />
                         <span>{tab.labelEn}</span>
-                        <span dir="rtl" className="font-arabic text-sm hidden sm:inline">
-                          {tab.labelAr}
-                        </span>
                       </button>
                     );
                   })}
@@ -421,7 +404,7 @@ const GrammarBottomSheet = ({
               </div>
             ) : (
               <>
-                {/* Sub-word Morpheme Breakdown */}
+                {/* Classic v1 view (Surah 32) */}
                 <div className="mb-5">
                   <h4 className="text-xs font-bold uppercase tracking-wider opacity-75 mb-2.5 flex items-center space-x-2">
                     <SafeIcon icon={FiBookOpen} className={darkSurface ? 'text-islamic-gold' : 'text-amber-700'} />
@@ -448,11 +431,11 @@ const GrammarBottomSheet = ({
                                   palette
                                 )}`}
                               >
-                                {segMeta.ar} ({segMeta.en})
+                                {segMeta.en}
                               </span>
                             </div>
                             <p className="text-xs font-medium opacity-90 mt-1">
-                              {seg.pos_name_ar} {seg.pos_name_en ? `• ${seg.pos_name_en}` : ''}
+                              {seg.pos_name_en || seg.pos_name_ar}
                             </p>
                             {seg.case && (
                               <p className="text-[11px] opacity-75 font-mono">
@@ -474,10 +457,9 @@ const GrammarBottomSheet = ({
 
                 {/* Core Linguistic Properties: Root, Wazn, Irab */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                  {/* Root (الجذر) */}
                   <div className={`p-3.5 rounded-xl border ${cardBg}`}>
                     <span className="text-[11px] font-bold uppercase tracking-wider opacity-70 block mb-1">
-                      الجذر (Root)
+                      Root
                     </span>
                     {word.root ? (
                       <div>
@@ -495,14 +477,13 @@ const GrammarBottomSheet = ({
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs opacity-60 italic">Non-root / Particle</span>
+                      <span className="text-xs opacity-60 italic">Fixed Word / Particle</span>
                     )}
                   </div>
 
-                  {/* Pattern / Wazn (الوزن والصيغة) */}
                   <div className={`p-3.5 rounded-xl border ${cardBg}`}>
                     <span className="text-[11px] font-bold uppercase tracking-wider opacity-70 block mb-1">
-                      الوزن والصيغة (Pattern)
+                      Pattern
                     </span>
                     {word.wazn || word.lemma ? (
                       <div>
@@ -526,14 +507,13 @@ const GrammarBottomSheet = ({
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs opacity-60 italic">Base Lemma</span>
+                      <span className="text-xs opacity-60 italic">Base Word</span>
                     )}
                   </div>
 
-                  {/* Irab / Grammatical State (الإعراب) */}
                   <div className={`p-3.5 rounded-xl border ${cardBg}`}>
                     <span className="text-[11px] font-bold uppercase tracking-wider opacity-70 block mb-1">
-                      الإعراب والحالة (State)
+                      Grammar State
                     </span>
                     {word.irab ? (
                       <span
@@ -545,7 +525,7 @@ const GrammarBottomSheet = ({
                       </span>
                     ) : (
                       <span className="text-xs opacity-60 italic">
-                        {word.primary_category === 'harf' ? 'مبني لا محل له من الإعراب' : 'مبني (Fixed)'}
+                        Fixed (unchanging)
                       </span>
                     )}
                   </div>
@@ -553,27 +533,27 @@ const GrammarBottomSheet = ({
               </>
             )}
 
-            {/* Bottom Keyboard Shortcuts & Legend Hint */}
+            {/* Bottom Keyboard Shortcuts & Compact Color Key */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-current/15 text-[11px] opacity-80">
               <div className="flex items-center space-x-3">
                 <span className="flex items-center space-x-1">
                   <span className={`w-2 h-2 rounded-full inline-block ${palette === 'surah_100' ? 'bg-red-600' : 'bg-blue-500'}`} />
-                  <span>اسم (Noun)</span>
+                  <span>Ism</span>
                 </span>
                 <span className="flex items-center space-x-1">
                   <span className={`w-2 h-2 rounded-full inline-block ${palette === 'surah_100' ? 'bg-emerald-600' : 'bg-amber-500'}`} />
-                  <span>فعل (Verb)</span>
+                  <span>Verb</span>
                 </span>
                 <span className="flex items-center space-x-1">
                   <span className={`w-2 h-2 rounded-full inline-block ${palette === 'surah_100' ? 'bg-blue-600' : 'bg-emerald-500'}`} />
-                  <span>حرف (Particle)</span>
+                  <span>Harf</span>
                 </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 font-mono">
                 <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbdStyle}`}>← / [</kbd>
                 <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbdStyle}`}>→ / ]</kbd>
-                <span>Navigate</span>
+                <span>Next/Prev</span>
                 {isEnhanced && (
                   <>
                     <span className="opacity-40">•</span>
@@ -582,8 +562,8 @@ const GrammarBottomSheet = ({
                   </>
                 )}
                 <span className="opacity-40">•</span>
-                <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbdStyle}`}>Esc</kbd>
-                <span>Close</span>
+                <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbdStyle}`}>?</kbd>
+                <span>Color Guide</span>
               </div>
             </div>
           </motion.div>

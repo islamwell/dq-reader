@@ -8,6 +8,7 @@ import GrammarBottomSheet from '../grammar/GrammarBottomSheet';
 import { MizanCard, IdafaCard } from '../grammar/SarfDetails';
 import AyahGrammarText from '../grammar/AyahGrammarText';
 import GrammarToggle from '../grammar/GrammarToggle';
+import KeyboardShortcutsModal from '../KeyboardShortcutsModal';
 
 const mockContextState = {
   grammarMode: 'colored',
@@ -40,11 +41,11 @@ const allWords100 = Object.values(surah100.ayahs)
     ayah.words.map((w) => ({
       ...w,
       ayahNumber: ayah.verse_number,
-      ayahStructure: { ar: ayah.structure_ar, en: ayah.structure_en }
+      ayahStructure: { en: ayah.structure_en }
     }))
   );
 
-describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Modal & Iḍāfa', () => {
+describe('Surah 100 (Al-ʿĀdiyāt) Clean Grammar UX, Color Guide in ? Modal, Conjugation & Singulars', () => {
   beforeEach(() => {
     mockContextState.grammarMode = 'colored';
     mockContextState.theme = 'light';
@@ -58,7 +59,7 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
   });
 
   describe('surah_100.json data integrity', () => {
-    it('matches all 11 Uthmani verses and 40 words with valid segments, radicals, verbs, and idafa chains', () => {
+    it('matches all 11 Uthmani verses and 40 words with singulars for all plurals, verbs, and idafa chains', () => {
       expect(surah100.surah_number).toBe(100);
       expect(surah100.version).toBe(3);
       expect(surah100.enhanced).toBe(true);
@@ -71,6 +72,7 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
       for (const expectedVerse of expectedVerses) {
         const ayahData = surah100.ayahs[String(expectedVerse.verse_number)];
         expect(ayahData).toBeDefined();
+        expect(ayahData.structure_ar).toBeUndefined();
         const joined = ayahData.words.map((w) => w.text_uthmani).join(' ');
         expect(joined).toBe(expectedVerse.text_uthmani);
       }
@@ -85,8 +87,15 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
         expect(table.imperative.length).toBeGreaterThanOrEqual(3);
       }
 
+      const plurals = allWords100.filter((w) => w.subclass === 'plural');
+      expect(plurals).toHaveLength(5);
+      for (const p of plurals) {
+        expect(p.sarf?.noun?.singular_ar).toBeTruthy();
+        expect(p.sarf?.noun?.singular_en).toBeTruthy();
+      }
+
       const idafaWords = allWords100.filter((w) => w.idafa);
-      expect(idafaWords).toHaveLength(5); // لربه، لحب، الخير، ربهم، يومئذ
+      expect(idafaWords).toHaveLength(5);
     });
   });
 
@@ -144,6 +153,86 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
     });
   });
 
+  describe('Clean Detail Modal: Part of Speech replacing transliteration, no cluttered top pill, Singular for plurals', () => {
+    it('replaces ḍabḥan with Part of Speech (Ism) and removes cluttered top pills', () => {
+      const dabhan = { ...surah100.ayahs['1'].words[1], ayahNumber: 1, surahNumber: 100 };
+
+      render(
+        <GrammarBottomSheet
+          word={dabhan}
+          theme="light"
+          onClose={vi.fn()}
+          onNavigateWord={vi.fn()}
+          hasPreviousWord={true}
+          hasNextWord={true}
+        />
+      );
+
+      // Transliteration ḍabḥan is replaced by Part of Speech (Ism)
+      expect(screen.queryByText('ḍabḥan')).not.toBeInTheDocument();
+      expect(screen.getByTestId('word-pos-label')).toHaveTextContent('Ism');
+      expect(screen.getByText('“panting”')).toBeInTheDocument();
+
+      // Cluttered top line and Arabic grammar explanations are absent
+      expect(screen.queryByText(/Cognate accusative/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/مفعول مطلق/)).not.toBeInTheDocument();
+    });
+
+    it('shows the singular form prominently when inspecting a plural word like ٱلْقُبُورِ', () => {
+      const qubur = { ...surah100.ayahs['9'].words[6], ayahNumber: 9, surahNumber: 100 };
+
+      render(
+        <GrammarBottomSheet
+          word={qubur}
+          theme="light"
+          onClose={vi.fn()}
+          onNavigateWord={vi.fn()}
+          hasPreviousWord={true}
+          hasNextWord={true}
+        />
+      );
+
+      expect(screen.getByTestId('word-pos-label')).toHaveTextContent('Ism · Plural');
+      const singularBadge = screen.getByTestId('plural-singular-badge');
+      expect(singularBadge).toHaveTextContent('Singular:');
+      expect(singularBadge).toHaveTextContent('قَبْر');
+      expect(singularBadge).toHaveTextContent('a grave');
+    });
+  });
+
+  describe('Second Help Screen inside ? Shortcut Modal (Grammar Color Guide + Pause Pulse)', () => {
+    it('switches to screen 2 (Grammar Color Guide) and toggles Emphasis Pulse', () => {
+      const onTogglePulse = vi.fn();
+
+      render(
+        <KeyboardShortcutsModal
+          isOpen={true}
+          onClose={vi.fn()}
+          emphasisPulsePaused={false}
+          onToggleEmphasisPulse={onTogglePulse}
+        />
+      );
+
+      // Screen 1 active by default
+      expect(screen.getByRole('heading', { name: 'Keyboard Shortcuts' })).toBeInTheDocument();
+
+      // Switch to Screen 2 (Grammar Color Guide)
+      fireEvent.click(screen.getByRole('tab', { name: /Grammar Guide/i }));
+      expect(screen.getByRole('heading', { name: 'Grammar Color Guide' })).toBeInTheDocument();
+
+      const helpScreen = screen.getByTestId('grammar-help-screen');
+      expect(helpScreen).toHaveTextContent('Ism · Noun (Red Shades)');
+      expect(helpScreen).toHaveTextContent('Verb · Fiʿl (Green Shades)');
+      expect(helpScreen).toHaveTextContent('Harf · Particle (Royal Blue)');
+      expect(helpScreen).toHaveTextContent('Muḍāf & Muḍāf Ilayhi (Iḍāfa)');
+
+      const pauseBtn = screen.getByTestId('toggle-emphasis-pulse');
+      expect(pauseBtn).toHaveTextContent('Pause Emphasis Pulse');
+      fireEvent.click(pauseBtn);
+      expect(onTogglePulse).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Verb Conjugation Sub-Modal', () => {
     it('opens the conjugation sub-modal from a verb detail page showing she/we/passive/command forms', () => {
       const atharna = { ...surah100.ayahs['4'].words[0], ayahNumber: 4, surahNumber: 100 };
@@ -161,22 +250,17 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
 
       expect(screen.queryByTestId('verb-conjugation-modal')).not.toBeInTheDocument();
 
-      const openModalBtn = screen.getByTestId('open-conjugation-modal');
-      fireEvent.click(openModalBtn);
+      fireEvent.click(screen.getByTestId('open-conjugation-modal'));
 
       const modal = screen.getByTestId('verb-conjugation-modal');
       expect(modal).toBeInTheDocument();
 
-      // Verifies active persons (She, We, They [f.] highlighted in ayah)
       expect(screen.getByText('she stirred up')).toBeInTheDocument();
       expect(screen.getByText('we stirred up')).toBeInTheDocument();
       expect(screen.getByTestId('conjugation-ayah-row')).toHaveTextContent('they (f.) stirred up');
-
-      // Verifies Passive voice ("it was stirred up") & Imperative ("Stir up!")
       expect(screen.getByTestId('conjugation-passive-section')).toHaveTextContent('it was stirred up');
       expect(screen.getByTestId('conjugation-imperative-section')).toHaveTextContent('Stir up!');
 
-      // Close sub-modal
       fireEvent.click(screen.getByLabelText('Close verb conjugation sub-modal'));
       expect(screen.queryByTestId('verb-conjugation-modal')).not.toBeInTheDocument();
     });
@@ -193,8 +277,8 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
     });
   });
 
-  describe('Muḍāf / Muḍāf Ilayhi (Iḍāfa) visual badges and IdafaCard', () => {
-    it('renders Iḍāfa badges and structure banner summary for لِحُبِّ ٱلْخَيْرِ in Ayah 8', () => {
+  describe('Clean Reading Page & Muḍāf / Muḍāf Ilayhi (Iḍāfa)', () => {
+    it('removes Arabic التركيب explanation banner under ayahs while keeping Iḍāfa word badges', () => {
       render(
         <AyahGrammarText
           words={surah100.ayahs['8'].words}
@@ -203,23 +287,22 @@ describe('Surah 100 (Al-ʿĀdiyāt) Grammar, Shaded Colors, Conjugation Sub-Moda
         />
       );
 
+      expect(screen.queryByTestId('ayah-structure-banner')).not.toBeInTheDocument();
+      expect(screen.queryByText(/التركيب/)).not.toBeInTheDocument();
+
       const idafaBadges = screen.getAllByTestId('idafa-word-badge');
       expect(idafaBadges).toHaveLength(2);
-      expect(idafaBadges[0]).toHaveTextContent(surah100.ayahs['8'].words[1].idafa.label_ar);
-      expect(idafaBadges[1]).toHaveTextContent(surah100.ayahs['8'].words[2].idafa.label_ar);
-
-      const idafaBanner = screen.getByTestId('ayah-idafa-banner');
-      expect(idafaBanner).toHaveTextContent(`المضاف: ${surah100.ayahs['8'].words[1].idafa.mudaf_ar}`);
-      expect(idafaBanner).toHaveTextContent(`المضاف إليه: ${surah100.ayahs['8'].words[1].idafa.mudaf_ilayhi_ar}`);
+      expect(idafaBadges[0]).toHaveTextContent('Muḍāf (of…)');
+      expect(idafaBadges[1]).toHaveTextContent('Muḍāf Ilayhi');
     });
 
-    it('renders IdafaCard with Muḍāf and Muḍāf Ilayhi breakdown', () => {
+    it('renders clean English IdafaCard with Muḍāf and Muḍāf Ilayhi words', () => {
       const lihubbi = surah100.ayahs['8'].words[1];
-      render(<IdafaCard idafa={lihubbi.idafa} theme="light" cardBg="bg-slate-50 border-slate-200" />);
+      render(<IdafaCard idafa={lihubbi.idafa} theme="light" />);
 
       const card = screen.getByTestId('idafa-card');
-      expect(card).toHaveTextContent('1. Muḍāf (Construct)');
-      expect(card).toHaveTextContent('2. Muḍāf Ilayhi (Genitive)');
+      expect(card).toHaveTextContent('1. Muḍāf');
+      expect(card).toHaveTextContent('2. Muḍāf Ilayhi');
       expect(card).toHaveTextContent(lihubbi.idafa.mudaf_ar);
       expect(card).toHaveTextContent(lihubbi.idafa.mudaf_ilayhi_ar);
     });

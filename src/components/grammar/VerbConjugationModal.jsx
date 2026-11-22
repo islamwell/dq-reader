@@ -23,10 +23,10 @@ const buildFallbackConjugationTable = (word) => {
 
   return {
     verb_lemma_ar: pastBase,
-    verb_lemma_en: `${word.transliteration || ''} — ${word.translation || ''}`,
+    verb_lemma_en: word.translation || '',
     root: word.sarf?.root || [],
-    form: verb.form ? `Form ${verb.form}` : verb.pattern || '',
-    active_occurrence_pronoun: verb.person_ar || '',
+    form: verb.form ? `Form ${verb.form}` : '',
+    active_occurrence_pronoun: '',
     active_occurrence_tense: 'past',
     rows: [
       {
@@ -40,7 +40,7 @@ const buildFallbackConjugationTable = (word) => {
         future_en: 'he will'
       },
       {
-        pronoun_ar: 'ارد / الآية',
+        pronoun_ar: '',
         pronoun_en: 'In this Ayah',
         past_ar: word.text_uthmani,
         past_en: word.translation,
@@ -173,7 +173,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
                 }`}
               >
                 <SafeIcon icon={FiLayers} className="text-xs" />
-                <span>جدول التصريف الكامل · Full Verb Conjugation</span>
+                <span>Full Verb Conjugation</span>
               </span>
               {tableData.form && (
                 <span
@@ -216,19 +216,19 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
 
         {/* Green Tense Shade Key */}
         <div className={`flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl border text-xs ${cardBg}`}>
-          <span className="font-semibold opacity-80">Verb Tense Shades (درجات الأخضر للأفعال):</span>
+          <span className="font-semibold opacity-80">Tense Colors:</span>
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-700 inline-block" aria-hidden="true" />
-              <span className={dark ? 'text-emerald-300' : 'text-emerald-800'}>ماضٍ · Past (Deep Emerald)</span>
+              <span className={dark ? 'text-emerald-300' : 'text-emerald-800'}>Past</span>
             </span>
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" aria-hidden="true" />
-              <span className={dark ? 'text-green-400' : 'text-green-700'}>مضارع · Present (Leaf Green)</span>
+              <span className={dark ? 'text-green-400' : 'text-green-700'}>Present</span>
             </span>
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block" aria-hidden="true" />
-              <span className={dark ? 'text-teal-300' : 'text-teal-700'}>مستقبل / أمر · Future &amp; Amr (Teal)</span>
+              <span className={dark ? 'text-teal-300' : 'text-teal-700'}>Future &amp; Command</span>
             </span>
           </div>
         </div>
@@ -249,21 +249,21 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
             <thead className={stickyHeaderBg}>
               <tr>
                 <th scope="col" className="text-left px-3 py-2.5 font-bold">
-                  Pronoun · الضمير
+                  Pronoun
                 </th>
                 <th scope="col" className="text-center px-3 py-2.5 font-bold">
                   <span className={dark ? 'text-emerald-300' : 'text-emerald-800'}>
-                    الماضي · Past Active
+                    Past
                   </span>
                 </th>
                 <th scope="col" className="text-center px-3 py-2.5 font-bold">
                   <span className={dark ? 'text-green-400' : 'text-green-700'}>
-                    المضارع · Present Active
+                    Present
                   </span>
                 </th>
                 <th scope="col" className="text-center px-3 py-2.5 font-bold">
                   <span className={dark ? 'text-teal-300' : 'text-teal-700'}>
-                    المستقبل · Future
+                    Future
                   </span>
                 </th>
               </tr>
@@ -297,9 +297,11 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span>{row.pronoun_en}</span>
-                        <span dir="rtl" className="font-arabic text-base font-bold">
-                          {row.pronoun_ar}
-                        </span>
+                        {row.pronoun_ar && (
+                          <span dir="rtl" className="font-arabic text-base font-bold">
+                            {row.pronoun_ar}
+                          </span>
+                        )}
                       </div>
                       {highlightRow && (
                         <span
@@ -307,12 +309,12 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
                             dark ? 'bg-emerald-500/30 text-emerald-200' : 'bg-emerald-700 text-white'
                           }`}
                         >
-                          في الآية · In Ayah
+                          In this Ayah
                         </span>
                       )}
                     </th>
 
-                    {/* Past Active Cell (Deep Forest Emerald) */}
+                    {/* Past Cell */}
                     <td className="text-center px-3 py-2">
                       <div
                         dir="rtl"
@@ -325,7 +327,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
                       <div className="text-[11px] opacity-85">{row.past_en}</div>
                     </td>
 
-                    {/* Present Active Cell (Vibrant Leaf Green) */}
+                    {/* Present Cell */}
                     <td className="text-center px-3 py-2">
                       <div
                         dir="rtl"
@@ -338,7 +340,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
                       <div className="text-[11px] opacity-85">{row.present_en}</div>
                     </td>
 
-                    {/* Future Cell (Teal-Green) */}
+                    {/* Future Cell */}
                     <td className="text-center px-3 py-2">
                       <div
                         dir="rtl"
@@ -357,18 +359,13 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
           </table>
         </div>
 
-        {/* Passive Voice Section ("It was created / overturned / extracted") & Imperative ("Create! / Amr") */}
+        {/* Passive Voice ("It was…") & Imperative ("Command / Amr!") */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {tableData.passive?.length > 0 && (
             <div className={`p-4 rounded-2xl border ${cardBg}`} data-testid="conjugation-passive-section">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-                  <SafeIcon icon={FiShield} className={dark ? 'text-emerald-300' : 'text-emerald-700'} />
-                  <span>Passive Voice (&ldquo;It was…&rdquo;)</span>
-                </span>
-                <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-emerald-300' : 'text-emerald-800'}`}>
-                  المبني للمجهول
-                </span>
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider mb-3">
+                <SafeIcon icon={FiShield} className={dark ? 'text-emerald-300' : 'text-emerald-700'} />
+                <span>Passive Voice (&ldquo;It was…&rdquo;)</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {tableData.passive.map((p) => (
@@ -384,8 +381,8 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
                           : 'bg-white border-slate-200'
                     }`}
                   >
-                    <div dir="rtl" className="font-arabic text-xs opacity-75">
-                      {p.label_ar}
+                    <div className="text-[10px] font-semibold uppercase tracking-wide opacity-75">
+                      {p.label_en}
                     </div>
                     <div
                       dir="rtl"
@@ -404,14 +401,9 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light' }) => {
 
           {tableData.imperative?.length > 0 && (
             <div className={`p-4 rounded-2xl border ${cardBg}`} data-testid="conjugation-imperative-section">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-                  <SafeIcon icon={FiCommand} className={dark ? 'text-teal-300' : 'text-teal-700'} />
-                  <span>Imperative / Command (Amr)</span>
-                </span>
-                <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-teal-300' : 'text-teal-800'}`}>
-                  فعل الأمر والنهي
-                </span>
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider mb-3">
+                <SafeIcon icon={FiCommand} className={dark ? 'text-teal-300' : 'text-teal-700'} />
+                <span>Command (Amr!) &amp; Do Not</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {tableData.imperative.map((cmd) => (

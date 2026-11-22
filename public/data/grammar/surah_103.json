@@ -981,6 +981,8 @@
               "gender_en": "Feminine",
               "number_ar": "جمع مؤنث سالم",
               "number_en": "Sound feminine plural",
+              "singular_ar": "صَالِحَة",
+              "singular_en": "a righteous deed",
               "definiteness_ar": "معرفة بأل",
               "definiteness_en": "Definite (al-)",
               "case_ar": "منصوب (بالكسرة)",

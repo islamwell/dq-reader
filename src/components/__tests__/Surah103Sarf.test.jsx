@@ -192,7 +192,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
         <MizanCard sarf={haqq.sarf} theme="light" cardBg="bg-slate-50 border-slate-200" />
       );
       expect(screen.getByTestId('mizan-card')).toBeInTheDocument();
-      expect(screen.getByText(/two radicals/i)).toBeInTheDocument();
+      expect(screen.getByText(/two identical root letters/i)).toBeInTheDocument();
 
       const tawasaw = surah103.ayahs['3'].words.find((w) => w.position === 6);
       rerender(<MizanCard sarf={tawasaw.sarf} theme="green" cardBg="bg-emerald-900/60 border-emerald-800" />);
@@ -222,7 +222,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
         <MorphologyTab word={inna} theme="light" cardBg="bg-slate-50 border-slate-200" />
       );
       expect(screen.getByTestId('sarf-note')).toBeInTheDocument();
-      expect(screen.getByText(/مبنيّ — لا ميزان صرفي/)).toBeInTheDocument();
+      expect(screen.getByText(/Fixed Word — No Root Pattern/i)).toBeInTheDocument();
     });
 
     it('renders SyntaxTab and InsightTab accurately', () => {
@@ -230,7 +230,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       const { rerender } = render(
         <SyntaxTab word={word} theme="light" cardBg="bg-slate-50 border-slate-200" />
       );
-      expect(screen.getByText('Full iʿrāb')).toBeInTheDocument();
+      expect(screen.getByText('How It Works (Grammar)')).toBeInTheDocument();
       expect(screen.getByText(word.ayahStructure.en)).toBeInTheDocument();
 
       rerender(<InsightTab word={word} theme="light" cardBg="bg-slate-50 border-slate-200" />);
@@ -313,14 +313,13 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       );
 
       expect(screen.getByTestId('interlinear-word')).toBeInTheDocument();
-      expect(screen.getByTestId('ayah-structure-banner')).toBeInTheDocument();
+      expect(screen.queryByTestId('ayah-structure-banner')).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByTestId('interlinear-word'));
       expect(mockContextState.setSelectedGrammarWord).toHaveBeenCalledTimes(1);
       const passed = mockContextState.setSelectedGrammarWord.mock.calls[0][0];
       expect(passed.wordsInAyah).toHaveLength(14);
       expect(passed.ayahStructure).toEqual({
-        ar: surah103.ayahs['1'].structure_ar,
         en: surah103.ayahs['1'].structure_en
       });
     });
@@ -409,7 +408,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(secondCall.ayahNumber).toBe(2);
       expect(secondCall.position).toBe(1);
       expect(secondCall.text_uthmani).toBe('إِنَّ');
-      expect(secondCall.ayahStructure.ar).toBe(surah103.ayahs['2'].structure_ar);
+      expect(secondCall.ayahStructure.en).toBe(surah103.ayahs['2'].structure_en);
 
       // Re-render at Ayah 2 position 1 and verify Next advances to 2:2 (not stuck on 1:1 -> 1:2)
       mockContextState.selectedGrammarWord = secondCall;

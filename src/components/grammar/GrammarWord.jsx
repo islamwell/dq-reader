@@ -59,17 +59,14 @@ export const getGrammarSegmentClass = (
   // mode === 'colored' (Classic v1/v2 default)
   switch (category) {
     case 'fil':
-      // Warm Amber / Burnt Orange
       return isDark
         ? 'text-amber-300 font-semibold'
         : 'text-amber-700 font-semibold';
     case 'ism':
-      // Sapphire / Royal Blue
       return isDark
         ? 'text-sky-300 font-semibold'
         : 'text-blue-700 font-semibold';
     case 'harf':
-      // Forest / Emerald Green (or Teal in green theme)
       if (isGreen) {
         return 'text-teal-700 font-semibold';
       }
@@ -79,6 +76,28 @@ export const getGrammarSegmentClass = (
     default:
       return '';
   }
+};
+
+/**
+ * Simple, easy-to-read part-of-speech label for Surah 100 cards & detail modals.
+ */
+export const getSimplePartOfSpeech = (word) => {
+  if (!word) return '';
+  if (word.primary_category === 'ism') {
+    if (word.subclass === 'plural' || word.sarf?.noun?.singular_ar) return 'Ism · Plural';
+    if (word.subclass === 'pronoun') return 'Ism · Pronoun';
+    return 'Ism';
+  }
+  if (word.primary_category === 'fil') {
+    if (word.tense === 'present') return 'Verb · Present';
+    if (word.tense === 'future') return 'Verb · Future';
+    if (word.voice === 'passive') return 'Verb · Past Passive';
+    return 'Verb · Past';
+  }
+  if (word.has_emphasis || word.subclass === 'emphasis') {
+    return 'Harf · Emphasis';
+  }
+  return 'Harf';
 };
 
 /**
@@ -108,11 +127,6 @@ const SegmentedText = ({ segments, grammarMode, theme, palette, pulsePaused }) =
  * GrammarWord component
  * Renders an Arabic word with sub-word morpheme coloring.
  * Tapping or clicking the word opens the slide-up grammar breakdown sheet.
- *
- * When `interlinear` is true (enhanced sarf data, e.g. Surah 100 & Surah 103),
- * the word is rendered as a stacked study card: optional Iḍāfa chain badge,
- * Arabic word, a segmented category bar, its morphological pattern (wazn)
- * and an English gloss.
  */
 const GrammarWord = ({
   word,
@@ -192,9 +206,10 @@ const GrammarWord = ({
     : [{ text: word.text_uthmani, category: word.primary_category || 'ism' }];
 
   if (interlinear) {
-    const subLabel = word.sarf?.wazn
-      ? word.sarf.wazn
-      : (CATEGORY_LABELS[word.primary_category]?.ar || '');
+    const isSurah100 = palette === 'surah_100';
+    const subLabel = isSurah100
+      ? getSimplePartOfSpeech(word)
+      : (word.sarf?.wazn || CATEGORY_LABELS[word.primary_category]?.ar || '');
 
     const hasEmphasisSegment = Boolean(
       word.has_emphasis || segments.some((s) => s.emphasis || s.subclass === 'emphasis')
@@ -232,47 +247,44 @@ const GrammarWord = ({
         data-testid="interlinear-word"
         data-idafa-pair={idafa?.pair_id || undefined}
         className={`grammar-word-card group inline-flex flex-col items-center cursor-pointer select-none rounded-2xl px-2.5 pt-1 pb-2 transition-all duration-150 border [text-shadow:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${cardBorderState}`}
-        title={word.translation ? `${word.translation} • Click for ṣarf & iʿrāb` : 'Click for grammar'}
+        title={word.translation ? `${word.translation} • Click for grammar details` : 'Click for grammar'}
       >
-        {/* Top badges for Iḍāfa (Muḍāf / Muḍāf Ilayhi), Passive Voice, or Emphasis */}
-        {(idafa || word.voice === 'passive' || (palette === 'surah_100' && hasEmphasisSegment)) && (
-          <span className="flex flex-wrap items-center justify-center gap-1 mb-0.5">
+        {/* Clean English badges for Iḍāfa, Passive Voice, or Emphasis */}
+        {(idafa || word.voice === 'passive' || (isSurah100 && hasEmphasisSegment)) && (
+          <span dir="ltr" className="flex flex-wrap items-center justify-center gap-1 mb-0.5">
             {idafa && (
               <span
                 data-testid="idafa-word-badge"
-                dir="rtl"
-                className={`font-arabic text-[11px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                className={`english-text text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
                   darkCard
                     ? 'bg-amber-900/70 text-amber-200 border-amber-500/70'
                     : 'bg-amber-100 text-amber-900 border-amber-400'
                 }`}
               >
-                🔗 {idafa.label_ar}
+                🔗 {idafa.label_en}
               </span>
             )}
             {word.voice === 'passive' && (
               <span
-                dir="rtl"
-                className={`font-arabic text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                className={`english-text text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
                   darkCard
                     ? 'bg-emerald-950/80 text-emerald-200 border-emerald-600'
                     : 'bg-emerald-100 text-emerald-900 border-emerald-400'
                 }`}
               >
-                مجهول · Passive
+                Passive
               </span>
             )}
-            {palette === 'surah_100' && hasEmphasisSegment && (
+            {isSurah100 && hasEmphasisSegment && (
               <span
-                dir="rtl"
                 data-testid="emphasis-word-badge"
-                className={`font-arabic text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                className={`english-text text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
                   darkCard
                     ? 'bg-indigo-950/85 text-blue-200 border-indigo-500'
                     : 'bg-indigo-100 text-indigo-900 border-indigo-300'
                 }`}
               >
-                ✦ توكيد
+                ✦ Emphasis
               </span>
             )}
           </span>
@@ -300,14 +312,20 @@ const GrammarWord = ({
           ))}
         </span>
 
-        {/* Wazn (pattern) or category label */}
+        {/* Part of speech (Surah 100) or Wazn (Surah 103) */}
         <span
-          dir="rtl"
-          className={`font-arabic text-base font-semibold leading-tight mt-1.5 ${
-            word.sarf
-              ? (darkCard ? 'text-amber-300' : 'text-amber-800')
-              : (darkCard ? 'text-slate-400' : 'text-slate-600')
-          }`}
+          dir={isSurah100 ? 'ltr' : 'rtl'}
+          className={
+            isSurah100
+              ? `english-text text-[10px] font-semibold uppercase tracking-wide leading-tight mt-1.5 ${
+                  darkCard ? 'text-slate-300' : 'text-slate-500'
+                }`
+              : `font-arabic text-base font-semibold leading-tight mt-1.5 ${
+                  word.sarf
+                    ? (darkCard ? 'text-amber-300' : 'text-amber-800')
+                    : (darkCard ? 'text-slate-400' : 'text-slate-600')
+                }`
+          }
         >
           {subLabel}
         </span>

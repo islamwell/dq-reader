@@ -19,30 +19,23 @@ const { FiArrowUpRight, FiLink, FiMaximize2 } = FiIcons;
 /* Small building blocks                                                     */
 /* ------------------------------------------------------------------------ */
 
-const SectionTitle = ({ ar, en, theme }) => {
-  const dark = isDarkSurface(theme);
-  return (
-    <h4 className="flex items-baseline justify-between gap-2 mb-2.5">
-      <span className="text-[11px] font-bold uppercase tracking-wider opacity-75">{en}</span>
-      <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-islamic-gold' : 'text-amber-800'}`}>
-        {ar}
-      </span>
-    </h4>
-  );
-};
+const SectionTitle = ({ en }) => (
+  <h4 className="mb-2.5">
+    <span className="text-[11px] font-bold uppercase tracking-wider opacity-75">{en}</span>
+  </h4>
+);
 
-const Fact = ({ labelAr, labelEn, valueAr, valueEn, cardBg }) => {
-  if (!valueAr && !valueEn) return null;
+const Fact = ({ labelEn, valueArabicWord, valueEn, cardBg }) => {
+  if (!valueArabicWord && !valueEn) return null;
   return (
     <div className={`p-3 rounded-xl border ${cardBg}`}>
-      <div className="flex items-baseline justify-between gap-2 mb-1">
+      <div className="mb-1">
         <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{labelEn}</span>
-        <span dir="rtl" className="font-arabic text-xs opacity-70">{labelAr}</span>
       </div>
-      {valueAr && (
-        <p dir="rtl" className="font-arabic text-base font-bold leading-snug">{valueAr}</p>
+      {valueArabicWord && (
+        <p dir="rtl" className="font-arabic text-lg font-bold leading-snug">{valueArabicWord}</p>
       )}
-      {valueEn && <p className="text-xs opacity-80 leading-snug mt-0.5">{valueEn}</p>}
+      {valueEn && <p className="text-xs opacity-90 leading-snug mt-0.5">{valueEn}</p>}
     </div>
   );
 };
@@ -60,7 +53,7 @@ const RadicalWord = ({ letters, theme, className = '' }) => (
 /* Iḍāfa Construct Chain Card: Muḍāf & Muḍāf Ilayhi                         */
 /* ------------------------------------------------------------------------ */
 
-export const IdafaCard = ({ idafa, theme, cardBg }) => {
+export const IdafaCard = ({ idafa, theme }) => {
   if (!idafa) return null;
   const dark = isDarkSurface(theme);
 
@@ -76,14 +69,11 @@ export const IdafaCard = ({ idafa, theme, cardBg }) => {
       <div className="flex items-center justify-between gap-2 mb-3">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
           <SafeIcon icon={FiLink} className={dark ? 'text-amber-300' : 'text-amber-700'} />
-          <span>Iḍāfa Construct · {idafa.label_en}</span>
-        </span>
-        <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-amber-300' : 'text-amber-900'}`}>
-          تركيب الإضافة ({idafa.label_ar})
+          <span>Possessive Pair (Iḍāfa) · {idafa.label_en}</span>
         </span>
       </div>
 
-      {/* Visual RTL Chain: Muḍāf ⟵ Muḍāf Ilayhi */}
+      {/* Visual RTL Chain: 1. Muḍāf ("of…") → 2. Muḍāf Ilayhi */}
       <div dir="rtl" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-stretch mb-3">
         <div
           className={`p-3 rounded-xl border ${
@@ -96,9 +86,8 @@ export const IdafaCard = ({ idafa, theme, cardBg }) => {
                 : 'bg-white/80 border-slate-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[11px] font-bold mb-1">
-            <span className={dark ? 'text-amber-300' : 'text-amber-800'}>١. المضاف</span>
-            <span dir="ltr" className="uppercase opacity-75">1. Muḍāf (Construct)</span>
+          <div dir="ltr" className="text-[11px] font-bold uppercase opacity-75 mb-1">
+            1. Muḍāf (First word — &ldquo;of…&rdquo;)
           </div>
           <div
             className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] font-bold ${
@@ -123,9 +112,8 @@ export const IdafaCard = ({ idafa, theme, cardBg }) => {
                 : 'bg-white/80 border-slate-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[11px] font-bold mb-1">
-            <span className={dark ? 'text-amber-300' : 'text-amber-800'}>٢. المضاف إليه</span>
-            <span dir="ltr" className="uppercase opacity-75">2. Muḍāf Ilayhi (Genitive)</span>
+          <div dir="ltr" className="text-[11px] font-bold uppercase opacity-75 mb-1">
+            2. Muḍāf Ilayhi (Second word — ends in -i)
           </div>
           <div
             className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] font-bold ${
@@ -140,13 +128,8 @@ export const IdafaCard = ({ idafa, theme, cardBg }) => {
         </div>
       </div>
 
-      {idafa.explanation_ar && (
-        <p dir="rtl" className="font-arabic text-sm leading-relaxed">
-          {idafa.explanation_ar}
-        </p>
-      )}
       {idafa.explanation_en && (
-        <p className="text-xs opacity-90 mt-1 leading-relaxed">
+        <p className="text-xs opacity-90 leading-relaxed">
           {idafa.explanation_en}
         </p>
       )}
@@ -155,7 +138,7 @@ export const IdafaCard = ({ idafa, theme, cardBg }) => {
 };
 
 /* ------------------------------------------------------------------------ */
-/* Al-Mīzān al-Ṣarfī: word ↔ pattern mapping                                 */
+/* Root & Pattern Card (Al-Mīzān al-Ṣarfī)                                   */
 /* ------------------------------------------------------------------------ */
 
 export const MizanCard = ({ sarf, theme, cardBg }) => {
@@ -168,9 +151,9 @@ export const MizanCard = ({ sarf, theme, cardBg }) => {
 
   return (
     <div className={`p-4 rounded-2xl border ${cardBg}`} data-testid="mizan-card">
-      <SectionTitle ar="الميزان الصرفي" en="Morphological scale" theme={theme} />
+      <SectionTitle en="Root Letters & Word Pattern" />
 
-      {/* Root slots ف ع ل (and ل٢ for quadriliteral roots) */}
+      {/* Root slots ف ع ل (and ل٢ for 4-letter roots) */}
       <div dir="rtl" className="flex flex-wrap items-stretch justify-center gap-2 mb-4">
         {radicalSlots.map((slot, idx) => {
           const r = RADICALS[slot];
@@ -194,40 +177,40 @@ export const MizanCard = ({ sarf, theme, cardBg }) => {
         })}
       </div>
 
-      {/* Word stem ↔ Wazn */}
+      {/* Word stem ↔ Pattern */}
       <div className="grid grid-cols-2 gap-3 items-center">
         <div className={`rounded-xl text-center py-2 px-1 ${dark ? 'bg-black/25' : 'bg-white border border-slate-200/80'}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-75">Pattern · الوزن</div>
+          <div className="text-[10px] uppercase tracking-wider opacity-75">Pattern</div>
           <RadicalWord letters={sarf.wazn_letters} theme={theme} className="quran-text-pak !text-4xl !leading-[1.8] [text-shadow:none]" />
         </div>
         <div className={`rounded-xl text-center py-2 px-1 ${dark ? 'bg-black/25' : 'bg-white border border-slate-200/80'}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-75">Stem · الكلمة</div>
+          <div className="text-[10px] uppercase tracking-wider opacity-75">Word Stem</div>
           <RadicalWord letters={sarf.stem_letters} theme={theme} className="quran-text-pak !text-4xl !leading-[1.8] [text-shadow:none]" />
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
         <span>
-          <span className="opacity-70">Full pattern: </span>
+          <span className="opacity-70">Pattern: </span>
           <span dir="rtl" className="font-arabic text-base font-bold">{sarf.wazn}</span>
         </span>
         {sarf.wazn_original && (
           <span>
-            <span className="opacity-70">Underlying: </span>
+            <span className="opacity-70">Base pattern: </span>
             <span dir="rtl" className="font-arabic text-base">{sarf.wazn_original}</span>
           </span>
         )}
         {hasAugment && (
           <span className="flex items-center gap-1 opacity-80">
             <span className={`w-2 h-2 rounded-full ${dark ? 'bg-slate-400' : 'bg-slate-500'}`} />
-            grey = added letters (زوائد)
+            grey = extra letters
           </span>
         )}
       </div>
 
       {merged && (
         <p className="mt-2 text-xs text-center opacity-85">
-          The shadda carries <b>two radicals</b> (ع + ل) merged into one letter.
+          The shadda (ّ) holds <b>two identical root letters</b> merged into one doubled sound.
         </p>
       )}
     </div>
@@ -247,9 +230,9 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
 
   return (
     <div className="space-y-4">
-      {/* Morphemes */}
+      {/* Word Parts (Morphemes) */}
       <div>
-        <SectionTitle ar="أجزاء الكلمة" en={`Morphemes (${segments.length})`} theme={theme} />
+        <SectionTitle en={`Word Parts (${segments.length})`} />
         <div dir="rtl" className="flex flex-wrap gap-2">
           {segments.map((seg, idx) => {
             const meta = getCategoryMeta(seg.category, palette);
@@ -284,16 +267,12 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 mt-1">
+                <div dir="ltr" className="flex items-center gap-1.5 mt-1.5">
                   <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
-                  <span className="font-arabic text-sm font-bold">{seg.pos_name_ar}</span>
+                  <span className="text-xs font-bold">{seg.pos_name_en}</span>
                 </div>
-                <p dir="ltr" className="text-xs opacity-85 text-left font-medium">{seg.pos_name_en}</p>
-                {seg.desc_ar && (
-                  <p dir="rtl" className="font-arabic text-xs opacity-75 mt-1 leading-snug">{seg.desc_ar}</p>
-                )}
                 {seg.desc_en && (
-                  <p dir="ltr" className="text-[11px] opacity-75 text-left mt-0.5 leading-snug">{seg.desc_en}</p>
+                  <p dir="ltr" className="text-[11px] opacity-80 text-left mt-1 leading-snug">{seg.desc_en}</p>
                 )}
               </div>
             );
@@ -302,47 +281,46 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
       </div>
 
       {/* Show Iḍāfa card right in MorphologyTab when present */}
-      {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} cardBg={cardBg} />}
+      {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} />}
 
       {!sarf ? (
         <div className={`p-4 rounded-2xl border text-center ${cardBg}`} data-testid="sarf-note">
-          <p dir="rtl" className="font-arabic text-lg font-bold mb-1">مبنيّ — لا ميزان صرفي</p>
-          {word.sarf_note_ar && <p dir="rtl" className="font-arabic text-sm opacity-90">{word.sarf_note_ar}</p>}
-          {word.sarf_note_en && <p className="text-xs opacity-85 mt-1">{word.sarf_note_en}</p>}
+          <p className="text-sm font-bold mb-1">Fixed Word — No Root Pattern</p>
+          {word.sarf_note_en && <p className="text-xs opacity-85">{word.sarf_note_en}</p>}
         </div>
       ) : (
         <>
           <MizanCard sarf={sarf} theme={theme} cardBg={cardBg} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <Fact cardBg={cardBg} labelAr="الجذر" labelEn="Root meaning" valueAr={sarf.root.join(' – ')} valueEn={sarf.root_meaning} />
-            <Fact cardBg={cardBg} labelAr="نوع الجذر" labelEn="Root type" valueAr={sarf.root_type_ar} valueEn={sarf.root_type_en} />
-            <Fact cardBg={cardBg} labelAr="نوع الكلمة" labelEn="Word type" valueAr={sarf.word_type_ar} valueEn={sarf.word_type_en} />
+            <Fact cardBg={cardBg} labelEn="Root & Core Meaning" valueArabicWord={sarf.root.join(' – ')} valueEn={sarf.root_meaning} />
+            {sarf.noun?.singular_ar && (
+              <Fact
+                cardBg={cardBg}
+                labelEn="Singular Form"
+                valueArabicWord={sarf.noun.singular_ar}
+                valueEn={sarf.noun.singular_en}
+              />
+            )}
+            <Fact cardBg={cardBg} labelEn="Root Type" valueEn={sarf.root_type_en} />
+            <Fact cardBg={cardBg} labelEn="Word Type" valueEn={sarf.word_type_en} />
             {sarf.verb && (
               <>
                 <Fact
                   cardBg={cardBg}
-                  labelAr="الباب / الصيغة"
-                  labelEn={`Verb form ${sarf.verb.form}`}
-                  valueAr={
-                    sarf.verb.meaning_of_form_ar
-                      ? `${sarf.verb.pattern} · ${sarf.verb.meaning_of_form_ar}`
-                      : sarf.verb.pattern
-                  }
+                  labelEn={`Verb Form ${sarf.verb.form}`}
+                  valueArabicWord={sarf.verb.pattern}
                   valueEn={sarf.verb.meaning_of_form_en}
                 />
-                <Fact cardBg={cardBg} labelAr="الزمن" labelEn="Tense" valueAr={sarf.verb.tense_ar} valueEn={sarf.verb.tense_en} />
-                <Fact cardBg={cardBg} labelAr="الإسناد" labelEn="Person · Gender · Number" valueAr={sarf.verb.person_ar} valueEn={sarf.verb.person_en} />
-                <Fact cardBg={cardBg} labelAr="البناء" labelEn="Voice" valueAr={sarf.verb.voice_ar} valueEn={sarf.verb.voice_en} />
+                <Fact cardBg={cardBg} labelEn="Tense" valueEn={sarf.verb.tense_en} />
+                <Fact cardBg={cardBg} labelEn="Who Does the Action" valueEn={sarf.verb.person_en} />
+                <Fact cardBg={cardBg} labelEn="Voice" valueEn={sarf.verb.voice_en} />
               </>
             )}
             {sarf.noun && (
               <>
-                <Fact cardBg={cardBg} labelAr="الجنس والعدد" labelEn="Gender · Number" valueAr={`${sarf.noun.gender_ar} · ${sarf.noun.number_ar}`} valueEn={`${sarf.noun.gender_en} · ${sarf.noun.number_en}`} />
-                <Fact cardBg={cardBg} labelAr="التعريف والحالة" labelEn="Definiteness · Case" valueAr={`${sarf.noun.definiteness_ar} · ${sarf.noun.case_ar}`} valueEn={`${sarf.noun.definiteness_en} · ${sarf.noun.case_en}`} />
-                {sarf.noun.subclass_en && (
-                  <Fact cardBg={cardBg} labelAr="القسم الفرعي للاسم" labelEn="Noun Subclass" valueAr={sarf.noun.subclass_ar} valueEn={sarf.noun.subclass_en} />
-                )}
+                <Fact cardBg={cardBg} labelEn="Gender & Number" valueEn={`${sarf.noun.gender_en} · ${sarf.noun.number_en}`} />
+                <Fact cardBg={cardBg} labelEn="Definiteness & Ending" valueEn={`${sarf.noun.definiteness_en} · ${sarf.noun.case_en}`} />
               </>
             )}
           </div>
@@ -351,11 +329,8 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
           {sarf.verb?.conjugation && (
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                <h4 className="flex items-baseline gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider opacity-75">Conjugation</span>
-                  <span dir="rtl" className={`font-arabic text-base font-bold ${dark ? 'text-islamic-gold' : 'text-amber-800'}`}>
-                    التصريف
-                  </span>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider opacity-75">
+                  Verb Forms
                 </h4>
 
                 <button
@@ -369,18 +344,17 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                   }`}
                 >
                   <SafeIcon icon={FiMaximize2} className="text-xs" />
-                  <span>Full Conjugation Table · جدول التصريف</span>
+                  <span>Open Full Conjugation Table</span>
                 </button>
               </div>
 
               <div dir="rtl" className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {sarf.verb.conjugation.map((c) => (
                   <div key={c.label_en} className={`p-2 rounded-xl border text-center ${cardBg}`}>
-                    <div className="font-arabic text-xs opacity-75">{c.label_ar}</div>
                     <div className={`quran-text-pak !text-2xl !leading-[1.7] [text-shadow:none] ${dark ? '!text-slate-100' : '!text-slate-900'}`}>
                       {c.ar}
                     </div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-70" dir="ltr">{c.label_en}</div>
+                    <div className="text-[10px] uppercase tracking-wider opacity-75" dir="ltr">{c.label_en}</div>
                   </div>
                 ))}
               </div>
@@ -394,27 +368,25 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
             </div>
           )}
 
-          {/* Phonological transformation (i'lal / ibdal / idgham) */}
-          {sarf.transformation && (
+          {/* Phonological transformation (sound change) — English only */}
+          {sarf.transformation?.en && (
             <div className={`p-4 rounded-2xl border-l-4 border-l-violet-500 border ${cardBg}`}>
-              <SectionTitle ar={sarf.transformation.type_ar} en={sarf.transformation.type_en} theme={theme} />
-              <p dir="rtl" className="font-arabic text-base leading-relaxed">{sarf.transformation.ar}</p>
-              <p className="text-xs opacity-85 mt-1.5 leading-relaxed">{sarf.transformation.en}</p>
+              <SectionTitle en={sarf.transformation.type_en || 'Sound Change'} />
+              <p className="text-xs sm:text-sm opacity-90 leading-relaxed">{sarf.transformation.en}</p>
             </div>
           )}
 
           {sarf.scholarly_note_en && (
             <div className={`p-4 rounded-2xl border-l-4 border-l-amber-500 border ${cardBg}`}>
-              <SectionTitle ar="خلاف العلماء" en="Scholarly note" theme={theme} />
-              <p dir="rtl" className="font-arabic text-base leading-relaxed">{sarf.scholarly_note_ar}</p>
-              <p className="text-xs opacity-85 mt-1.5 leading-relaxed">{sarf.scholarly_note_en}</p>
+              <SectionTitle en="Language Note" />
+              <p className="text-xs sm:text-sm opacity-90 leading-relaxed">{sarf.scholarly_note_en}</p>
             </div>
           )}
 
           {/* Root family across the Qur'an */}
           {sarf.family?.length > 0 && (
             <div>
-              <SectionTitle ar={`أسرة الجذر (${sarf.root.join(' ')}) في القرآن`} en="Same root in the Qur'an" theme={theme} />
+              <SectionTitle en={`Same Root (${sarf.root.join(' – ')}) in the Qur'an`} />
               <div dir="rtl" className="flex flex-wrap gap-2">
                 {sarf.family.map((f) => {
                   const parsedRef = parseQuranRef(f.ref);
@@ -468,38 +440,32 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
 
 export const SyntaxTab = ({ word, theme, cardBg }) => (
   <div className="space-y-4">
-    {(word.role_ar || word.role_en) && (
-      <Fact cardBg={cardBg} labelAr="الموقع الإعرابي" labelEn="Grammatical role" valueAr={word.role_ar} valueEn={word.role_en} />
+    {word.role_en && (
+      <Fact cardBg={cardBg} labelEn="Role in the Sentence" valueEn={word.role_en} />
     )}
-    {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} cardBg={cardBg} />}
-    {word.irab && (
+    {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} />}
+    {word.irab?.en && (
       <div className={`p-4 rounded-2xl border-l-4 border-l-blue-500 border ${cardBg}`}>
-        <SectionTitle ar="الإعراب" en="Full iʿrāb" theme={theme} />
-        <p dir="rtl" className="font-arabic text-lg leading-loose">{word.irab.ar}</p>
-        <p className="text-sm opacity-90 mt-2 leading-relaxed">{word.irab.en}</p>
+        <SectionTitle en="How It Works (Grammar)" />
+        <p className="text-sm opacity-90 leading-relaxed">{word.irab.en}</p>
       </div>
     )}
-    {word.ayahStructure?.ar && (
+    {word.ayahStructure?.en && (
       <div className={`p-4 rounded-2xl border ${cardBg}`}>
-        <SectionTitle ar={`تركيب الآية ${word.ayahNumber}`} en="Sentence structure" theme={theme} />
-        <p dir="rtl" className="font-arabic text-base leading-relaxed">{word.ayahStructure.ar}</p>
-        <p className="text-xs opacity-85 mt-1.5 leading-relaxed">{word.ayahStructure.en}</p>
+        <SectionTitle en={`Ayah ${word.ayahNumber} Flow`} />
+        <p className="text-xs sm:text-sm opacity-90 leading-relaxed">{word.ayahStructure.en}</p>
       </div>
     )}
   </div>
 );
 
-export const InsightTab = ({ word, theme, cardBg }) => {
+export const InsightTab = ({ word, cardBg }) => {
   if (!word.insight) {
     return <p className="text-sm opacity-75 text-center py-6">No reflection recorded for this word.</p>;
   }
-  const dark = isDarkSurface(theme);
   return (
     <div className={`p-5 rounded-2xl border ${cardBg}`}>
-      <p dir="rtl" className={`font-arabic text-2xl font-bold mb-1 ${dark ? 'text-islamic-gold' : 'text-amber-800'}`}>
-        {word.insight.title_ar}
-      </p>
-      <p className="text-base font-bold mb-3">{word.insight.title_en}</p>
+      <p className="text-base font-bold mb-2.5">{word.insight.title_en}</p>
       <p className="text-sm sm:text-base leading-relaxed opacity-95">{word.insight.en}</p>
     </div>
   );

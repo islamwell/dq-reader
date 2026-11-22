@@ -392,3 +392,11 @@ dialog::backdrop {
   inset-inline-start: 0;
   z-index: 1;
 }
+
+/* Shape-backed active tab underline (remains visible in Forced Colors Mode) */
+.help-modal-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  border-block-end: 3px solid currentColor;
+}

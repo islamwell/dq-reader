@@ -28,7 +28,15 @@ const RouteLoading = () => (
 
 function GlobalShortcutsBridge() {
   const { isShortcutsOpen, closeShortcuts } = useGlobalKeyboardShortcuts();
-  return <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={closeShortcuts} />;
+  const { emphasisPulsePaused, setEmphasisPulsePaused } = useQuranData();
+  return (
+    <KeyboardShortcutsModal
+      isOpen={isShortcutsOpen}
+      onClose={closeShortcuts}
+      emphasisPulsePaused={emphasisPulsePaused}
+      onToggleEmphasisPulse={() => setEmphasisPulsePaused?.((prev) => !prev)}
+    />
+  );
 }
 
 function AppContent() {

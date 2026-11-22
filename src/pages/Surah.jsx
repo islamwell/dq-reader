@@ -58,12 +58,7 @@ const Surah = () => {
     fetchSurahGrammar,
     setCurrentSurah,
     theme,
-    addVisitedAyah,
-    grammarData,
-    grammarMode,
-    showInterlinear,
-    emphasisPulsePaused = false,
-    setEmphasisPulsePaused
+    addVisitedAyah
   } = useQuranData();
   const { playingAyah } = useQuranAudio();
   const [verses, setVerses] = useState([]);
@@ -271,10 +266,6 @@ const Surah = () => {
   }
 
   const showBismillah = surah.id !== 1 && surah.id !== 9;
-  const surahGrammar = grammarData?.[surah.id];
-  const isEnhancedGrammar = Boolean(surahGrammar?.enhanced);
-  const isSurah100Palette = surahGrammar?.color_palette === 'surah_100';
-  const isDarkTheme = theme === 'dark';
 
   return (
     <div className="space-y-8">
@@ -340,145 +331,6 @@ const Surah = () => {
               </div>
             </div>
           </div>
-
-          {isEnhancedGrammar && grammarMode !== 'off' && (
-            <div
-              data-testid="enhanced-sarf-legend"
-              className={`mt-5 pt-4 border-t text-xs space-y-2.5 ${
-                isDarkTheme
-                  ? 'border-slate-700 text-slate-300'
-                  : 'border-slate-200/80 text-slate-600'
-              }`}
-            >
-              {isSurah100Palette ? (
-                <>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                      {/* Ism Red Shades */}
-                      <span className="inline-flex flex-wrap items-center gap-1.5 font-semibold">
-                        <span className={`font-bold ${isDarkTheme ? 'text-red-300' : 'text-red-800'}`}>
-                          اسم Noun (Red):
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" aria-hidden="true" />
-                          <span>مفرد Singular</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-rose-800 inline-block" aria-hidden="true" />
-                          <span>جمع Plural</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" aria-hidden="true" />
-                          <span>ضمير Pronoun</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" aria-hidden="true" />
-                          <span>مشتق/مصدر Derived</span>
-                        </span>
-                      </span>
-                    </div>
-
-                    <p className="opacity-85">
-                      Tap any word for <span className="font-semibold">Ṣarf, Conjugation Modal, Iḍāfa &amp; Iʿrāb</span>
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1.5 border-t border-current/10">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                      {/* Verb Green Shades */}
-                      <span className="inline-flex flex-wrap items-center gap-1.5 font-semibold">
-                        <span className={`font-bold ${isDarkTheme ? 'text-emerald-300' : 'text-emerald-800'}`}>
-                          فعل Verb (Green):
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-700 inline-block" aria-hidden="true" />
-                          <span>ماضٍ Past</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" aria-hidden="true" />
-                          <span>مضارع Present</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block" aria-hidden="true" />
-                          <span>مستقبل/أمر Future &amp; Amr</span>
-                        </span>
-                      </span>
-
-                      {/* Harf Royal Blue & Pulsing Emphasis */}
-                      <span className="inline-flex flex-wrap items-center gap-1.5 font-semibold">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" aria-hidden="true" />
-                        <span className={`font-bold ${isDarkTheme ? 'text-blue-300' : 'text-blue-800'}`}>
-                          حرف Harf (Royal Blue)
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[11px] harf-emphasis-pulse ${
-                            emphasisPulsePaused ? 'harf-emphasis-paused' : ''
-                          } ${
-                            isDarkTheme
-                              ? 'bg-indigo-950/80 text-blue-200 border-indigo-500'
-                              : 'bg-indigo-100 text-indigo-900 border-indigo-300'
-                          }`}
-                        >
-                          <span>✦ توكيد Emphasis Pulse</span>
-                        </span>
-                      </span>
-
-                      {/* Iḍāfa Construct Chain */}
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border font-semibold ${
-                          isDarkTheme
-                            ? 'bg-amber-950/70 text-amber-200 border-amber-500/70'
-                            : 'bg-amber-100 text-amber-900 border-amber-400'
-                        }`}
-                      >
-                        <span>🔗 مضاف ومضاف إليه (Iḍāfa)</span>
-                      </span>
-                    </div>
-
-                    {/* Accessible Pause/Play control for continuous emphasis pulse (WCAG 2.2.2) */}
-                    <button
-                      type="button"
-                      data-testid="toggle-emphasis-pulse"
-                      onClick={() => setEmphasisPulsePaused?.((prev) => !prev)}
-                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
-                        isDarkTheme
-                          ? 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'
-                          : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      {emphasisPulsePaused ? 'Play Emphasis Pulse' : 'Pause Emphasis Pulse'}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" aria-hidden="true" />
-                      <span>اسم Noun</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" aria-hidden="true" />
-                      <span>فعل Verb</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" aria-hidden="true" />
-                      <span>حرف Particle</span>
-                    </span>
-                    {showInterlinear && (
-                      <span className={`font-medium ${isDarkTheme ? 'text-amber-300' : 'text-amber-800'}`}>
-                        • <span className="font-arabic">الوزن (ف–ع–ل)</span> shown under words
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="opacity-85">
-                    Tap any word for <span className="font-semibold">Ṣarf, Iʿrāb &amp; Reflection</span>
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </motion.div>
 
       {showBismillah && (

@@ -516,6 +516,7 @@ AYAHS = {
                     'word_type_en': 'Active participle of ṣalaḥa — feminine sound plural',
                     'verb': None,
                     'noun': {'gender_ar': 'مؤنث', 'gender_en': 'Feminine', 'number_ar': 'جمع مؤنث سالم', 'number_en': 'Sound feminine plural',
+                             'singular_ar': 'صَالِحَة', 'singular_en': 'a righteous deed',
                              'definiteness_ar': 'معرفة بأل', 'definiteness_en': 'Definite (al-)', 'case_ar': 'منصوب (بالكسرة)', 'case_en': 'Accusative (marked by kasra)'},
                     'family': [
                         {'ar': 'صَٰلِحًا', 'en': 'righteous', 'ref': '18:110'},
