@@ -104,7 +104,7 @@ const Layout = () => {
   const activeSurahMatch = location.pathname.match(/^\/surah\/(\d+)/);
   const activeSurahNumber = activeSurahMatch ? Number(activeSurahMatch[1]) : null;
   const interlinearAvailable = Boolean(
-    activeSurahNumber && grammarData?.[activeSurahNumber]?.enhanced
+    activeSurahNumber && activeSurahNumber !== 103 && grammarData?.[activeSurahNumber]?.enhanced
   );
 
   // Register global G shortcut and enhanced-surah I shortcut
@@ -255,7 +255,7 @@ const Layout = () => {
             <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
           </div>
           <div className="text-xs opacity-75 font-mono">
-            v1.1.26 (updated 2026-11-26 09:53)
+            v1.1.27 (updated 2026-11-26 12:04)
           </div>
         </div>
       </footer>

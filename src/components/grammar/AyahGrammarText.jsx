@@ -22,9 +22,10 @@ const AyahGrammarText = ({
 
   const surahGrammar = grammarData?.[surahNumber];
   const isEnhanced = Boolean(surahGrammar?.enhanced);
+  const supportsInterlinearCards = Boolean(isEnhanced && Number(surahNumber) !== 103);
   const colorPalette = surahGrammar?.color_palette || 'default';
   const ayahGrammar = surahGrammar?.ayahs?.[String(ayahNumber)];
-  const interlinear = isEnhanced && showInterlinear;
+  const interlinear = supportsInterlinearCards && showInterlinear;
 
   // Enhanced surahs navigate word-by-word across the whole surah
   const surahWordList = useMemo(() => {

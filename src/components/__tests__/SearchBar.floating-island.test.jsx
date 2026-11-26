@@ -126,13 +126,16 @@ describe('SearchBar floating island behaviour', () => {
       expect(screen.queryByText('Al-Baqarah')).not.toBeInTheDocument();
       expect(screen.queryByText('البقرة')).not.toBeInTheDocument();
 
-      // 3. The top line must display the Arabic words of the ayah
+      // 3. The top line must display the first 5 Arabic words of the ayah
       const arabicWordsEl = screen.getByTestId('scrub-arabic-words');
       expect(arabicWordsEl).toBeInTheDocument();
-      expect(arabicWordsEl.textContent).toContain('وَقَالُوا كُونُوا هُودًا أَوْ نَصَارَىٰ تَهْتَدُوا');
+      expect(arabicWordsEl.textContent).toBe('وَقَالُوا كُونُوا هُودًا أَوْ نَصَارَىٰ …');
 
-      // 4. Translation snippet is rendered in the HUD (in addition to the source ayah node)
+      // 4. Single-line translation snippet is rendered in the HUD (in addition to the source ayah node)
       expect(screen.getAllByText(/Be Jews or Christians/i)).toHaveLength(2);
+      const translationEl = screen.getByTestId('scrub-translation');
+      expect(translationEl.className).toContain('truncate');
+      expect(translationEl.className).not.toContain('line-clamp-2');
 
       fireEvent.pointerUp(button, { clientY: 338, pointerId: 1 });
     } finally {
@@ -260,14 +263,29 @@ describe('SearchBar floating island behaviour', () => {
     expect(screen.getByTestId('current-location').textContent).toBe('/surah/3?ayah=93');
   });
 
-  it('truncates long Arabic ayahs to only the first few words during Surah scrubbing', () => {
+  it('truncates long Arabic ayahs to only the first 5 words, ignores grammar text, and enforces single-line translation', () => {
     Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true, writable: true });
 
     const mockAyahEl = document.createElement('div');
     mockAyahEl.setAttribute('data-ayah', '135');
+    mockAyahEl.setAttribute('data-ayah-translation', 'Sample translation at the bottom that stays on a single line even when long');
     mockAyahEl.innerHTML = `
-      <div class="quran-text-pak">كلمة١ كلمة٢ كلمة٣ كلمة٤ كلمة٥ كلمة٦ كلمة٧ كلمة٨ كلمة٩</div>
-      <p>Sample translation at the bottom</p>
+      <div class="quran-text-pak">
+        <span class="grammar-word-card">
+          <span class="english-text" data-testid="emphasis-word-badge">✦ Emphasis</span>
+          <span data-arabic-word="true">كلمة١</span>
+          <span class="english-text">ISM</span>
+          <span class="english-text">word1</span>
+        </span>
+        <span class="grammar-word-card"><span data-arabic-word="true">كلمة٢</span><span class="english-text">VERB</span></span>
+        <span class="grammar-word-card"><span data-arabic-word="true">كلمة٣</span></span>
+        <span class="grammar-word-card"><span data-arabic-word="true">كلمة٤</span></span>
+        <span class="grammar-word-card"><span data-arabic-word="true">كلمة٥</span></span>
+        <span class="grammar-word-card"><span data-arabic-word="true">كلمة٦</span></span>
+        <span class="grammar-word-card"><span data-arabic-word="true">كلمة٧</span></span>
+      </div>
+      <p>Sample translation at the bottom that stays on a single line even when long</p>
+      <p>Tafseer should never be chosen over translation</p>
     `;
     document.body.appendChild(mockAyahEl);
 
@@ -283,11 +301,33 @@ describe('SearchBar floating island behaviour', () => {
       fireEvent.pointerMove(button, { clientY: 338, pointerId: 1 });
 
       const arabicWordsEl = screen.getByTestId('scrub-arabic-words');
-      expect(arabicWordsEl.textContent).toBe('كلمة١ كلمة٢ كلمة٣ كلمة٤ كلمة٥ كلمة٦ …');
-      expect(arabicWordsEl.textContent).not.toContain('كلمة٧');
-      expect(screen.getByTestId('scrub-translation').textContent).toContain('Sample translation at the bottom');
+      expect(arabicWordsEl.textContent).toBe('كلمة١ كلمة٢ كلمة٣ كلمة٤ كلمة٥ …');
+      expect(arabicWordsEl.textContent).not.toContain('كلمة٦');
+      expect(arabicWordsEl.textContent).not.toContain('ISM');
+      expect(arabicWordsEl.textContent).not.toContain('Emphasis');
 
-      fireEvent.pointerUp(button, { clientY: 338, pointerId: 1 });
+      const translationEl = screen.getByTestId('scrub-translation');
+      expect(translationEl.textContent).toBe('Sample translation at the bottom that stays on a single line even when long');
+      expect(translationEl.className).toContain('truncate');
+
+      // Window blur / lost capture / Escape unfreezes the HUD immediately without hanging
+      fireEvent(window, new Event('blur'));
+      const hudOverlay = screen.getByTestId('scrub-hud-overlay');
+      expect(hudOverlay.className).toContain('opacity-0');
+      expect(hudOverlay.className).toContain('invisible');
+
+      // Re-open scrub via Escape test and verify data-ayah-arabic canonical attribute takes precedence
+      mockAyahEl.setAttribute('data-ayah-arabic', 'وَٱلْعَصْرِ إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ إِلَّا');
+      fireEvent.pointerDown(button, { clientY: 24, pointerId: 2, button: 0 });
+      fireEvent.pointerMove(button, { clientY: 338, pointerId: 2 });
+      expect(screen.getByTestId('scrub-arabic-words').textContent).toBe(
+        'وَٱلْعَصْرِ إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ …'
+      );
+      expect(screen.getByTestId('scrub-arabic-words').textContent).not.toContain('إِلَّا');
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(screen.getByTestId('scrub-hud-overlay').className).toContain('opacity-0');
+      expect(screen.getByTestId('scrub-hud-overlay').className).toContain('invisible');
     } finally {
       mockAyahEl.remove();
     }

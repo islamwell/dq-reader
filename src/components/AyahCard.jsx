@@ -240,6 +240,8 @@ const AyahCard = ({ verse, surahNumber }) => {
       transition={{ duration: 0.2 }}
       className={`ayah-card rounded-xl p-6 shadow-md ${isPlaying ? playingStyle : cardStyle}`}
       data-ayah={verse.verse_number}
+      data-ayah-arabic={verse.text_uthmani || ''}
+      data-ayah-translation={translationMeta?.text || ''}
       onClick={() => addVisitedAyah?.(surahNumber, verse.verse_number)}
     >
       <div className="flex items-start justify-between mb-4 relative">
@@ -319,7 +321,7 @@ const AyahCard = ({ verse, surahNumber }) => {
 
         {translationMeta && (
           <div className={`${isUrduTranslation ? 'urdu-text' : 'english-text'} p-4 rounded-lg ${accentBgStyle}`}>
-            <p className={textStyle}>{translationMeta.text}</p>
+            <p data-ayah-translation-text="true" className={textStyle}>{translationMeta.text}</p>
           </div>
         )}
 

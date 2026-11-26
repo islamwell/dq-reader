@@ -294,11 +294,12 @@ const GrammarWord = ({
         )}
 
         <span
+          data-arabic-word="true"
           className={`leading-[1.9] transition-all duration-300 ${
             darkCard ? 'text-slate-100' : 'text-slate-900'
           } ${
             isSelected
-              ? '[text-shadow:0_0_22px_currentColor] underline decoration-2 underline-offset-[10px] decoration-current'
+              ? '[text-shadow:0_0_22px_currentColor]'
               : ''
           }`}
         >
@@ -359,10 +360,11 @@ const GrammarWord = ({
       onMouseLeave={handleMouseLeave}
       aria-haspopup="dialog"
       aria-label={`${word.text_uthmani}: ${word.translation || ''}`}
+      data-arabic-word="true"
       data-active-word={isSelected ? 'true' : undefined}
       className={`grammar-word-pill inline-block cursor-pointer px-1 py-0.5 rounded-lg transition-all duration-300 ease-out mx-0.5 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
         isSelected
-          ? `scale-110 -translate-y-0.5 [text-shadow:0_0_22px_currentColor] underline decoration-2 underline-offset-[10px] decoration-current ${
+          ? `scale-110 -translate-y-0.5 [text-shadow:0_0_22px_currentColor] ${
               darkCard ? 'ring-2 ring-amber-400 bg-amber-950/60 shadow-sm' : 'ring-2 ring-amber-400 bg-amber-100/70 shadow-sm'
             }`
           : hasActiveWord

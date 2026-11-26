@@ -19,9 +19,9 @@ const GrammarToggle = ({ className = '', surahNumber = null }) => {
   const isDark = theme === 'dark';
   const resolvedSurah = surahNumber ? Number(surahNumber) : null;
   const surahGrammar = resolvedSurah ? grammarData?.[resolvedSurah] : null;
-  const isEnhanced = Boolean(surahGrammar?.enhanced);
+  const supportsInterlinearCards = Boolean(surahGrammar?.enhanced && resolvedSurah !== 103);
   const isSurah100Palette = surahGrammar?.color_palette === 'surah_100';
-  const cardsActive = Boolean(isEnhanced && showInterlinear && grammarMode !== 'off');
+  const cardsActive = Boolean(supportsInterlinearCards && showInterlinear && grammarMode !== 'off');
 
   const getButtonStyles = () => {
     switch (grammarMode) {
@@ -102,7 +102,7 @@ const GrammarToggle = ({ className = '', surahNumber = null }) => {
         </button>
       </div>
 
-      {isEnhanced && (
+      {supportsInterlinearCards && (
         <button
           type="button"
           onClick={handleToggleCards}

@@ -24,7 +24,7 @@ export const getAyahWordClass = ({ isActive, hasActive }) =>
   [
     'inline-block cursor-pointer transition-all duration-300 ease-out',
     isActive
-      ? 'scale-110 -translate-y-0.5 [text-shadow:0_0_22px_currentColor] underline decoration-2 underline-offset-[10px] decoration-current'
+      ? 'scale-110 -translate-y-0.5 [text-shadow:0_0_22px_currentColor]'
       : hasActive
         ? 'opacity-40 hover:opacity-80'
         : 'hover:opacity-80'

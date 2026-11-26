@@ -51,6 +51,9 @@ vi.mock('../FloatingVideoViewport', () => ({
 const surah103 = JSON.parse(
   fs.readFileSync(path.resolve(process.cwd(), 'public/data/grammar/surah_103.json'), 'utf-8')
 );
+const surah100 = JSON.parse(
+  fs.readFileSync(path.resolve(process.cwd(), 'public/data/grammar/surah_100.json'), 'utf-8')
+);
 const surah32 = JSON.parse(
   fs.readFileSync(path.resolve(process.cwd(), 'public/data/grammar/surah_32.json'), 'utf-8')
 );
@@ -76,6 +79,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
     mockContextState.setSelectedGrammarWord = vi.fn();
     mockContextState.grammarData = {
       103: surah103,
+      100: surah100,
       32: surah32
     };
     mockContextState.showInterlinear = true;
@@ -343,8 +347,8 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
     });
   });
 
-  describe('Surah 103 isolation: AyahGrammarText, GrammarToggle, and I shortcut', () => {
-    it('renders interlinear cards and structure banner for Surah 103, and builds 14-word surah list', () => {
+  describe('Surah 103 clean Arabic flow (no underline or sub-word label below Surah 103 words)', () => {
+    it('renders clean colored Arabic words without underline bars or sub-word text for Surah 103, while building 14-word surah list', () => {
       render(
         <AyahGrammarText
           words={surah103.ayahs['1'].words}
@@ -353,10 +357,16 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
         />
       );
 
-      expect(screen.getByTestId('interlinear-word')).toBeInTheDocument();
+      expect(screen.queryByTestId('interlinear-word')).not.toBeInTheDocument();
       expect(screen.queryByTestId('ayah-structure-banner')).not.toBeInTheDocument();
+      expect(screen.queryByText('Ism')).not.toBeInTheDocument();
+      expect(screen.queryByText('By the time')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('interlinear-word'));
+      const wordButton = screen.getByRole('button', { name: /وَٱلْعَصْرِ/ });
+      expect(wordButton).toHaveAttribute('data-arabic-word', 'true');
+      expect(wordButton.className).not.toContain('underline');
+
+      fireEvent.click(wordButton);
       expect(mockContextState.setSelectedGrammarWord).toHaveBeenCalledTimes(1);
       const passed = mockContextState.setSelectedGrammarWord.mock.calls[0][0];
       expect(passed.wordsInAyah).toHaveLength(14);
@@ -378,16 +388,19 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(screen.queryByTestId('ayah-structure-banner')).not.toBeInTheDocument();
     });
 
-    it('renders Ṣarf Cards toggle button ONLY on Surah 103', () => {
+    it('omits Ṣarf Cards toggle button on Surah 103 and Surah 32, showing it only on Surah 100', () => {
       const { rerender } = render(<GrammarToggle surahNumber={103} />);
+      expect(screen.queryByTestId('interlinear-toggle')).not.toBeInTheDocument();
+
+      rerender(<GrammarToggle surahNumber={32} />);
+      expect(screen.queryByTestId('interlinear-toggle')).not.toBeInTheDocument();
+
+      rerender(<GrammarToggle surahNumber={100} />);
       const toggleBtn = screen.getByTestId('interlinear-toggle');
       expect(toggleBtn).toHaveAttribute('aria-pressed', 'true');
 
       fireEvent.click(toggleBtn);
       expect(mockContextState.setShowInterlinear).toHaveBeenCalled();
-
-      rerender(<GrammarToggle surahNumber={32} />);
-      expect(screen.queryByTestId('interlinear-toggle')).not.toBeInTheDocument();
     });
 
     it('handles keyboard shortcut I only when interlinearAvailable is true and skips inputs', () => {
