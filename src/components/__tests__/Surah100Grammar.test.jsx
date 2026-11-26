@@ -4,7 +4,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import GrammarWord, { getGrammarSegmentClass } from '../grammar/GrammarWord';
-import GrammarBottomSheet from '../grammar/GrammarBottomSheet';
+import GrammarBottomSheet, { buildTraits, getAyahWordClass } from '../grammar/GrammarBottomSheet';
 import { RootSummaryCard, IdafaCard } from '../grammar/SarfDetails';
 import AyahGrammarText from '../grammar/AyahGrammarText';
 import GrammarToggle from '../grammar/GrammarToggle';
@@ -194,9 +194,30 @@ describe('Surah 100 (Al-ʿĀdiyāt) Clean Grammar UX, Color Guide in ? Modal, Co
 
       expect(screen.getByTestId('word-pos-label')).toHaveTextContent('Ism · Plural');
       const singularBadge = screen.getByTestId('plural-singular-badge');
-      expect(singularBadge).toHaveTextContent('Singular:');
+      expect(singularBadge).toHaveTextContent('One of them:');
       expect(singularBadge).toHaveTextContent('قَبْر');
       expect(singularBadge).toHaveTextContent('a grave');
+
+      // Plain-English facts derived from surah_100.json fields
+      expect(buildTraits(qubur).map((t) => `${t.label}:${t.value}`)).toEqual([
+        'Gender:Male',
+        'How many:Many',
+        'Kind:Specific',
+        'Role:Linked'
+      ]);
+      expect(buildTraits(surah100.ayahs['4'].words[0]).map((t) => `${t.label}:${t.value}`)).toEqual([
+        'Time:Past',
+        'Doing:Does it',
+        'Who:Someone else',
+        'Gender:Female',
+        'How many:Many'
+      ]);
+      expect(buildTraits(surah100.ayahs['9'].words[3]).map((t) => `${t.label}:${t.value}`)).toEqual([
+        'Time:Certain future',
+        'Doing:Is done to',
+        'Who:Someone else',
+        'How many:One'
+      ]);
     });
   });
 
@@ -314,6 +335,31 @@ describe('Surah 100 (Al-ʿĀdiyāt) Clean Grammar UX, Color Guide in ? Modal, Co
       expect(container.querySelector('.bg-red-600')).toBeTruthy();
       expect(container.querySelector('.bg-emerald-600')).toBeTruthy();
       expect(container.querySelector('.bg-blue-600')).toBeTruthy();
+    });
+
+    it('glows the active tapped word and dims inactive words in the same ayah', () => {
+      mockContextState.selectedGrammarWord = {
+        ...surah100.ayahs['4'].words[0],
+        surahNumber: 100,
+        ayahNumber: 4
+      };
+
+      render(
+        <AyahGrammarText
+          words={surah100.ayahs['4'].words}
+          surahNumber={100}
+          ayahNumber={4}
+        />
+      );
+
+      const cards = screen.getAllByTestId('interlinear-word');
+      expect(cards[0]).toHaveAttribute('data-active-word', 'true');
+      expect(cards[0].className).toContain('scale-105');
+      expect(cards[1]).not.toHaveAttribute('data-active-word');
+      expect(cards[1].className).toContain('opacity-40');
+
+      expect(getAyahWordClass({ isActive: true, hasActive: true })).toContain('[text-shadow:0_0_22px_currentColor]');
+      expect(getAyahWordClass({ isActive: false, hasActive: true })).toContain('opacity-40');
     });
   });
 });

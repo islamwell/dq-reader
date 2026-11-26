@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Layout from '../Layout';
 import GrammarWord from '../grammar/GrammarWord';
-import GrammarBottomSheet from '../grammar/GrammarBottomSheet';
+import GrammarBottomSheet, { buildTraits } from '../grammar/GrammarBottomSheet';
 import { RootSummaryCard, MorphologyTab, SyntaxTab, InsightTab } from '../grammar/SarfDetails';
 import AyahGrammarText from '../grammar/AyahGrammarText';
 import GrammarToggle from '../grammar/GrammarToggle';
@@ -253,7 +253,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
         />
       );
 
-      expect(screen.getByText('Surah 103 · 1:1')).toBeInTheDocument();
+      expect(screen.getByText('Surah 103, ayah 1, word 1')).toBeInTheDocument();
       expect(screen.getByRole('tablist')).toBeInTheDocument();
 
       const sarfTab = screen.getByRole('tab', { name: /Ṣarf/i });
@@ -261,6 +261,12 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       const insightTab = screen.getByRole('tab', { name: /Insight/i });
 
       expect(sarfTab).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('facts-panel')).toBeInTheDocument();
+      expect(screen.getByText('Specific')).toBeInTheDocument();
+      expect(screen.getByText('Linked')).toBeInTheDocument();
+
+      // Expanding "More details" reveals the full root summary & quick facts
+      fireEvent.click(screen.getByTestId('toggle-more-details'));
       expect(screen.getByTestId('root-summary-card')).toBeInTheDocument();
       expect(screen.getByTestId('quick-facts-grid')).toBeInTheDocument();
 
@@ -281,6 +287,37 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
 
       fireEvent.keyDown(window, { key: ']' });
       expect(handleNavigate).toHaveBeenCalledWith(1);
+    });
+
+    it('renders plain-English visual traits and 1-click conjugation button for ءَامَنُوا۟', () => {
+      const amanu = { ...surah103.ayahs['3'].words[2], ayahNumber: 3, surahNumber: 103 };
+      const traits = buildTraits(amanu);
+      expect(traits.map((t) => `${t.label}:${t.value}`)).toEqual([
+        'Time:Past',
+        'Doing:Does it',
+        'Who:Someone else',
+        'Gender:Male',
+        'How many:Many'
+      ]);
+
+      render(
+        <GrammarBottomSheet
+          word={amanu}
+          theme="light"
+          onClose={vi.fn()}
+          onNavigateWord={vi.fn()}
+          hasPreviousWord={true}
+          hasNextWord={true}
+        />
+      );
+
+      expect(screen.getByTestId('facts-panel')).toBeInTheDocument();
+      expect(screen.getByText('Past')).toBeInTheDocument();
+      expect(screen.getByText('Does it')).toBeInTheDocument();
+      expect(screen.getByText('Someone else')).toBeInTheDocument();
+      expect(screen.getByText('Male')).toBeInTheDocument();
+      expect(screen.getByText('Many')).toBeInTheDocument();
+      expect(screen.getByTestId('open-conjugation-modal')).toBeInTheDocument();
     });
 
     it('preserves v1 layout when opening a Surah 32 word without enhanced fields', () => {
@@ -399,7 +436,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Surah 103 · 1:1')).toBeInTheDocument();
+      expect(screen.getByText('Surah 103, ayah 1, word 1')).toBeInTheDocument();
 
       // Advance from Ayah 1 position 1 -> Ayah 2 position 1
       fireEvent.click(screen.getByLabelText('Next word'));
@@ -417,7 +454,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
           <Layout />
         </MemoryRouter>
       );
-      expect(screen.getByText('Surah 103 · 2:1')).toBeInTheDocument();
+      expect(screen.getByText('Surah 103, ayah 2, word 1')).toBeInTheDocument();
 
       fireEvent.click(screen.getByLabelText('Next word'));
       const thirdCall = mockContextState.setSelectedGrammarWord.mock.calls[1][0];

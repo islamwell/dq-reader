@@ -59,6 +59,11 @@ const AyahGrammarText = ({
 
   const activeIdafaPair =
     hoveredIdafaPair || selectedGrammarWord?.idafa?.pair_id || null;
+  const hasSelectedWordInAyah = Boolean(
+    selectedGrammarWord &&
+      selectedGrammarWord.surahNumber === surahNumber &&
+      selectedGrammarWord.ayahNumber === ayahNumber
+  );
 
   return (
     <div
@@ -69,9 +74,7 @@ const AyahGrammarText = ({
     >
       {words.map((word) => {
         const isSelected =
-          selectedGrammarWord &&
-          selectedGrammarWord.surahNumber === surahNumber &&
-          selectedGrammarWord.ayahNumber === ayahNumber &&
+          hasSelectedWordInAyah &&
           selectedGrammarWord.position === word.position;
 
         const isIdafaActive = Boolean(
@@ -85,6 +88,7 @@ const AyahGrammarText = ({
             grammarMode={grammarMode}
             theme={theme}
             isSelected={Boolean(isSelected)}
+            hasActiveWord={hasSelectedWordInAyah}
             onSelectWord={handleSelectWord}
             interlinear={interlinear}
             colorPalette={colorPalette}

@@ -132,6 +132,7 @@ const GrammarWord = ({
   grammarMode,
   theme,
   isSelected,
+  hasActiveWord = false,
   onSelectWord,
   interlinear = false,
   colorPalette = 'default',
@@ -214,8 +215,8 @@ const GrammarWord = ({
 
     const cardBorderState = isSelected
       ? darkCard
-        ? 'ring-2 ring-amber-400 border-amber-500/70 bg-amber-950/60 shadow-md -translate-y-0.5'
-        : 'ring-2 ring-amber-400 border-amber-300 bg-amber-100/70 shadow-md -translate-y-0.5'
+        ? 'scale-105 -translate-y-0.5 ring-2 ring-amber-400 border-amber-500/70 bg-amber-950/60 shadow-md'
+        : 'scale-105 -translate-y-0.5 ring-2 ring-amber-400 border-amber-300 bg-amber-100/70 shadow-md'
       : isIdafaActive
         ? darkCard
           ? 'ring-2 ring-amber-400/80 border-amber-500/80 bg-amber-950/40 shadow-sm'
@@ -227,6 +228,10 @@ const GrammarWord = ({
           : darkCard
             ? 'border-transparent hover:border-slate-600 hover:bg-slate-800/60'
             : 'border-transparent hover:border-slate-200 hover:bg-white/75 hover:shadow-sm';
+
+    const cardDimState = !isSelected && !isIdafaActive && hasActiveWord
+      ? 'opacity-40 hover:opacity-85'
+      : '';
 
     return (
       <span
@@ -242,8 +247,9 @@ const GrammarWord = ({
         aria-haspopup="dialog"
         aria-label={`${word.text_uthmani}: ${word.translation || ''}`}
         data-testid="interlinear-word"
+        data-active-word={isSelected ? 'true' : undefined}
         data-idafa-pair={idafa?.pair_id || undefined}
-        className={`grammar-word-card group inline-flex flex-col items-center cursor-pointer select-none rounded-2xl px-2.5 pt-1 pb-2 transition-all duration-150 border [text-shadow:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${cardBorderState}`}
+        className={`grammar-word-card group inline-flex flex-col items-center cursor-pointer select-none rounded-2xl px-2.5 pt-1 pb-2 transition-all duration-300 ease-out border [text-shadow:none] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${cardBorderState} ${cardDimState}`}
         title={word.translation ? `${word.translation} • Click for grammar details` : 'Click for grammar'}
       >
         {/* Clean English badges for Iḍāfa, Passive Voice, or Emphasis */}
@@ -287,7 +293,15 @@ const GrammarWord = ({
           </span>
         )}
 
-        <span className={`leading-[1.9] ${darkCard ? 'text-slate-100' : 'text-slate-900'}`}>
+        <span
+          className={`leading-[1.9] transition-all duration-300 ${
+            darkCard ? 'text-slate-100' : 'text-slate-900'
+          } ${
+            isSelected
+              ? '[text-shadow:0_0_22px_currentColor] underline decoration-2 underline-offset-[10px] decoration-current'
+              : ''
+          }`}
+        >
           <SegmentedText
             segments={segments}
             grammarMode={grammarMode}
@@ -345,18 +359,21 @@ const GrammarWord = ({
       onMouseLeave={handleMouseLeave}
       aria-haspopup="dialog"
       aria-label={`${word.text_uthmani}: ${word.translation || ''}`}
-      className={`grammar-word-pill inline-block cursor-pointer px-1 py-0.5 rounded-lg transition-all duration-150 mx-0.5 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+      data-active-word={isSelected ? 'true' : undefined}
+      className={`grammar-word-pill inline-block cursor-pointer px-1 py-0.5 rounded-lg transition-all duration-300 ease-out mx-0.5 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
         isSelected
-          ? darkCard
-            ? 'ring-2 ring-amber-400 bg-amber-950/60 shadow-sm scale-[1.02]'
-            : 'ring-2 ring-amber-400 bg-amber-100/70 shadow-sm scale-[1.02]'
-          : idafa
-            ? darkCard
-              ? 'border-b border-dashed border-amber-400/70 hover:bg-slate-800/70'
-              : 'border-b border-dashed border-amber-500/80 hover:bg-amber-50/70'
-            : darkCard
-              ? 'hover:bg-slate-800/70 hover:shadow-xs'
-              : 'hover:bg-slate-200/60 hover:shadow-xs'
+          ? `scale-110 -translate-y-0.5 [text-shadow:0_0_22px_currentColor] underline decoration-2 underline-offset-[10px] decoration-current ${
+              darkCard ? 'ring-2 ring-amber-400 bg-amber-950/60 shadow-sm' : 'ring-2 ring-amber-400 bg-amber-100/70 shadow-sm'
+            }`
+          : hasActiveWord
+            ? 'opacity-40 hover:opacity-80'
+            : idafa
+              ? darkCard
+                ? 'border-b border-dashed border-amber-400/70 hover:bg-slate-800/70'
+                : 'border-b border-dashed border-amber-500/80 hover:bg-amber-50/70'
+              : darkCard
+                ? 'hover:bg-slate-800/70 hover:shadow-xs'
+                : 'hover:bg-slate-200/60 hover:shadow-xs'
       }`}
       title={word.translation ? `${word.translation} • Click for grammar` : 'Click for grammar'}
     >
