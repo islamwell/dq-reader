@@ -312,6 +312,10 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       );
 
       expect(screen.getByTestId('facts-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('grammar-floating-wrapper').className).toContain('bottom-8');
+      expect(screen.getByTestId('grammar-hero-stage')).toBeInTheDocument();
+      expect(screen.getByTestId('hero-root-pill')).toHaveTextContent('أ · م · ن');
+      expect(screen.getAllByTestId('bento-trait-card')).toHaveLength(5);
       expect(screen.getByText('Past')).toBeInTheDocument();
       expect(screen.getByText('Does it')).toBeInTheDocument();
       expect(screen.getByText('Someone else')).toBeInTheDocument();
