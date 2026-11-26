@@ -16,10 +16,13 @@ const {
   FiChevronLeft,
   FiChevronRight,
   FiBookOpen,
-  FiLayers,
   FiCompass,
   FiSun,
-  FiLink
+  FiLink,
+  FiLink2,
+  FiTag,
+  FiZap,
+  FiUser
 } = FiIcons;
 
 const THEME_DRAWER_STYLES = {
@@ -41,10 +44,16 @@ const THEME_CARD_BG = {
 };
 
 const TABS = [
-  { id: 'morphology', labelEn: 'Word & Ṣarf', keyHint: '1', icon: FiLayers },
-  { id: 'syntax', labelEn: 'Grammar · Iʿrāb', keyHint: '2', icon: FiCompass },
-  { id: 'insight', labelEn: 'Insight', keyHint: '3', icon: FiSun }
+  { id: 'morphology', labelEn: 'Quick Breakdown', srSuffix: 'Ṣarf', keyHint: '1', icon: FiZap },
+  { id: 'syntax', labelEn: 'How It Works', srSuffix: 'Iʿrāb', keyHint: '2', icon: FiCompass },
+  { id: 'insight', labelEn: 'Insight', srSuffix: '', keyHint: '3', icon: FiSun }
 ];
+
+const getPosIcon = (category) => {
+  if (category === 'fil') return FiZap;
+  if (category === 'harf') return FiLink2;
+  return FiTag;
+};
 
 const GrammarBottomSheet = ({
   word,
@@ -130,6 +139,7 @@ const GrammarBottomSheet = ({
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
   const segments = word.segments || [];
   const partOfSpeechLabel = getSimplePartOfSpeech(word);
+  const posIcon = getPosIcon(word.primary_category);
   const singularAr = word.sarf?.noun?.singular_ar;
   const singularEn = word.sarf?.noun?.singular_en;
 
@@ -202,18 +212,21 @@ const GrammarBottomSheet = ({
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-current/15">
               <div className="flex items-center space-x-2">
                 <span
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
                     darkSurface
                       ? 'bg-islamic-gold/20 text-amber-300 border-islamic-gold/40'
                       : 'bg-amber-100/80 text-amber-900 border-amber-300'
                   }`}
                 >
-                  {isEnhanced && word.surahNumber
-                    ? `Surah ${word.surahNumber} · ${word.ayahNumber}:${word.position}`
-                    : `Ayah ${word.ayahNumber || '32'}:${word.position}`}
+                  <SafeIcon icon={FiBookOpen} className="text-xs" aria-hidden="true" />
+                  <span>
+                    {isEnhanced && word.surahNumber
+                      ? `Surah ${word.surahNumber} · ${word.ayahNumber}:${word.position}`
+                      : `Ayah ${word.ayahNumber || '32'}:${word.position}`}
+                  </span>
                 </span>
                 <span className="text-xs opacity-75 hidden sm:inline">
-                  Word Study
+                  Quick Word Guide
                 </span>
               </div>
 
@@ -226,7 +239,7 @@ const GrammarBottomSheet = ({
                   title="Previous word (Press [ or ←)"
                   aria-label="Previous word"
                 >
-                  <SafeIcon icon={FiChevronLeft} className="text-base" />
+                  <SafeIcon icon={FiChevronLeft} className="text-base" aria-hidden="true" />
                 </button>
 
                 <button
@@ -237,7 +250,7 @@ const GrammarBottomSheet = ({
                   title="Next word (Press ] or →)"
                   aria-label="Next word"
                 >
-                  <SafeIcon icon={FiChevronRight} className="text-base" />
+                  <SafeIcon icon={FiChevronRight} className="text-base" aria-hidden="true" />
                 </button>
 
                 <button
@@ -247,14 +260,13 @@ const GrammarBottomSheet = ({
                   title="Close (Esc)"
                   aria-label="Close grammar panel"
                 >
-                  <SafeIcon icon={FiX} className="text-base" />
+                  <SafeIcon icon={FiX} className="text-base" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            {/* Clean Hero Word Card: Arabic Word → Part of Speech (Ism / Verb / Harf) → Meaning → Singular (if plural) */}
+            {/* Clean Hero Word Card: Arabic Word → Icon Part of Speech → Meaning → Singular (if plural) */}
             <div className={`p-4 rounded-2xl border text-center mb-5 ${cardBg}`}>
-              {/* Large Arabic Calligraphy */}
               <div className="quran-text-pak !text-4xl sm:!text-5xl !leading-[1.7] [text-shadow:none] !text-inherit my-1">
                 {segments.map((seg, i) => (
                   <span
@@ -264,37 +276,58 @@ const GrammarBottomSheet = ({
                 ))}
               </div>
 
-              {/* Part of Speech (replaces transliteration) + English Meaning */}
-              <div className="mt-2 space-y-1.5">
-                <div>
+              <div className="mt-2 space-y-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <span
                     data-testid="word-pos-label"
-                    className={`inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold border ${getCategoryBadgeClass(
+                    className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold border ${getCategoryBadgeClass(
                       word.primary_category,
                       theme,
                       word,
                       palette
                     )}`}
                   >
-                    {partOfSpeechLabel}
+                    <SafeIcon icon={posIcon} className="text-xs shrink-0" aria-hidden="true" />
+                    <span>{partOfSpeechLabel}</span>
                   </span>
+
+                  {word.idafa && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        darkSurface
+                          ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
+                          : 'bg-amber-100/80 border-amber-300 text-amber-950'
+                      }`}
+                    >
+                      <SafeIcon icon={FiLink} className="text-xs shrink-0" aria-hidden="true" />
+                      <span>{word.idafa.label_en}:</span>
+                      <span dir="rtl" className="font-arabic text-sm font-bold">
+                        {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-base sm:text-lg font-semibold">
                   &ldquo;{word.translation}&rdquo;
                 </p>
 
-                {/* If plural, show Singular form clearly */}
+                {/* If plural, show Singular form prominently */}
                 {singularAr && (
                   <div
                     data-testid="plural-singular-badge"
-                    className={`inline-flex flex-wrap items-center justify-center gap-2 mt-1 px-3 py-1 rounded-xl border text-xs ${
+                    className={`inline-flex flex-wrap items-center justify-center gap-2 px-3 py-1 rounded-xl border text-xs ${
                       darkSurface
                         ? 'bg-rose-950/60 border-rose-700/70 text-rose-100'
                         : 'bg-rose-50 border-rose-200 text-rose-950'
                     }`}
                   >
-                    <span className="font-bold uppercase tracking-wider text-[10px] opacity-75">
+                    <SafeIcon
+                      icon={FiUser}
+                      className={`text-xs shrink-0 ${darkSurface ? 'text-rose-300' : 'text-rose-700'}`}
+                      aria-hidden="true"
+                    />
+                    <span className="font-bold uppercase tracking-wider text-[10px] opacity-80">
                       Singular:
                     </span>
                     <span
@@ -308,25 +341,6 @@ const GrammarBottomSheet = ({
                     {singularEn && (
                       <span className="opacity-85">({singularEn})</span>
                     )}
-                  </div>
-                )}
-
-                {/* Compact Possessive Link summary if part of an Iḍāfa */}
-                {word.idafa && (
-                  <div className="pt-1">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                        darkSurface
-                          ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
-                          : 'bg-amber-100/80 border-amber-300 text-amber-950'
-                      }`}
-                    >
-                      <SafeIcon icon={FiLink} className="text-xs" />
-                      <span>{word.idafa.label_en}:</span>
-                      <span dir="rtl" className="font-arabic text-sm font-bold">
-                        {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
-                      </span>
-                    </span>
                   </div>
                 )}
               </div>
@@ -371,11 +385,13 @@ const GrammarBottomSheet = ({
                       >
                         <SafeIcon
                           icon={tab.icon}
+                          aria-hidden="true"
                           className={`text-sm shrink-0 ${
                             selected ? (darkSurface ? 'text-amber-300' : 'text-amber-700') : 'opacity-70'
                           }`}
                         />
                         <span>{tab.labelEn}</span>
+                        {tab.srSuffix && <span className="sr-only"> ({tab.srSuffix})</span>}
                       </button>
                     );
                   })}
@@ -407,7 +423,11 @@ const GrammarBottomSheet = ({
                 {/* Classic v1 view (Surah 32) */}
                 <div className="mb-5">
                   <h4 className="text-xs font-bold uppercase tracking-wider opacity-75 mb-2.5 flex items-center space-x-2">
-                    <SafeIcon icon={FiBookOpen} className={darkSurface ? 'text-islamic-gold' : 'text-amber-700'} />
+                    <SafeIcon
+                      icon={FiBookOpen}
+                      aria-hidden="true"
+                      className={darkSurface ? 'text-islamic-gold' : 'text-amber-700'}
+                    />
                     <span>
                       Sub-word Morpheme Breakdown ({segments.length} segment{segments.length > 1 ? 's' : ''})
                     </span>
@@ -455,7 +475,7 @@ const GrammarBottomSheet = ({
                   </div>
                 </div>
 
-                {/* Core Linguistic Properties: Root, Wazn, Irab */}
+                {/* Core Linguistic Properties: Root, Pattern, Grammar State */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                   <div className={`p-3.5 rounded-xl border ${cardBg}`}>
                     <span className="text-[11px] font-bold uppercase tracking-wider opacity-70 block mb-1">

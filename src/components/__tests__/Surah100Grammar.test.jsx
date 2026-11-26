@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import GrammarWord, { getGrammarSegmentClass } from '../grammar/GrammarWord';
 import GrammarBottomSheet from '../grammar/GrammarBottomSheet';
-import { MizanCard, IdafaCard } from '../grammar/SarfDetails';
+import { RootSummaryCard, IdafaCard } from '../grammar/SarfDetails';
 import AyahGrammarText from '../grammar/AyahGrammarText';
 import GrammarToggle from '../grammar/GrammarToggle';
 import KeyboardShortcutsModal from '../KeyboardShortcutsModal';
@@ -266,14 +266,16 @@ describe('Surah 100 (Al-ʿĀdiyāt) Clean Grammar UX, Color Guide in ? Modal, Co
     });
   });
 
-  describe('Quadriliteral MizanCard (4 radicals: ب ع ث ر)', () => {
-    it('renders all 4 radical slots (ف ع ل ل٢) for بُعْثِرَ in Ayah 9', () => {
+  describe('4-Letter Root Summary Card (ب ع ث ر)', () => {
+    it('renders all 4 root letters cleanly for بُعْثِرَ in Ayah 9 without فَعْلِ pattern jargon', () => {
       const buthira = surah100.ayahs['9'].words[3];
-      render(<MizanCard sarf={buthira.sarf} theme="light" cardBg="bg-slate-50 border-slate-200" />);
+      render(<RootSummaryCard sarf={buthira.sarf} theme="light" cardBg="bg-slate-50 border-slate-200" />);
 
-      expect(screen.getByTestId('mizan-card')).toBeInTheDocument();
-      expect(screen.getByText('ل٢')).toBeInTheDocument();
-      expect(screen.getByText('4th radical')).toBeInTheDocument();
+      expect(screen.getByTestId('root-summary-card')).toBeInTheDocument();
+      expect(screen.getByText('4-Letter Root & Core Meaning')).toBeInTheDocument();
+      expect(screen.getByText('ب')).toBeInTheDocument();
+      expect(screen.getByText('ر')).toBeInTheDocument();
+      expect(screen.queryByText('فُعْلِلَ')).not.toBeInTheDocument();
     });
   });
 

@@ -2,55 +2,97 @@ import React, { useState } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import {
-  RADICALS,
-  getRadicalOrder,
   getCategoryMeta,
   getCategoryTextClass,
-  getRadicalTextClass,
   isDarkSurface,
   parseQuranRef,
   resolveSurah100Shade
 } from './sarfStyles';
 import VerbConjugationModal from './VerbConjugationModal';
 
-const { FiArrowUpRight, FiLink, FiMaximize2 } = FiIcons;
+const {
+  FiArrowUpRight,
+  FiLink,
+  FiMaximize2,
+  FiGitBranch,
+  FiLayers,
+  FiBox,
+  FiCornerDownLeft,
+  FiCornerUpRight,
+  FiClock,
+  FiUsers,
+  FiShield,
+  FiHash,
+  FiCheckCircle,
+  FiUser,
+  FiVolume2,
+  FiInfo,
+  FiBookOpen,
+  FiTarget,
+  FiNavigation,
+  FiSun,
+  FiAnchor,
+  FiSliders
+} = FiIcons;
 
 /* ------------------------------------------------------------------------ */
-/* Small building blocks                                                     */
+/* Reusable Icon-Led Quick Building Blocks                                  */
 /* ------------------------------------------------------------------------ */
 
-const SectionTitle = ({ en }) => (
-  <h4 className="mb-2.5">
-    <span className="text-[11px] font-bold uppercase tracking-wider opacity-75">{en}</span>
-  </h4>
-);
-
-const Fact = ({ labelEn, valueArabicWord, valueEn, cardBg }) => {
-  if (!valueArabicWord && !valueEn) return null;
+const SectionHeading = ({ icon, title, subtitle, theme, accentClass = '' }) => {
+  const dark = isDarkSurface(theme);
+  const iconTone = accentClass || (dark ? 'text-amber-300' : 'text-amber-700');
   return (
-    <div className={`p-3 rounded-xl border ${cardBg}`}>
-      <div className="mb-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{labelEn}</span>
-      </div>
-      {valueArabicWord && (
-        <p dir="rtl" className="font-arabic text-lg font-bold leading-snug">{valueArabicWord}</p>
-      )}
-      {valueEn && <p className="text-xs opacity-90 leading-snug mt-0.5">{valueEn}</p>}
+    <div className="flex items-center justify-between gap-2 mb-2.5">
+      <h4 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-85">
+        <SafeIcon icon={icon} className={`text-sm shrink-0 ${iconTone}`} aria-hidden="true" />
+        <span>{title}</span>
+      </h4>
+      {subtitle && <span className="text-[11px] opacity-65">{subtitle}</span>}
     </div>
   );
 };
 
-/** Renders letter clusters coloured by radical slot, joined as one word. */
-const RadicalWord = ({ letters, theme, className = '' }) => (
-  <span dir="rtl" className={className}>
-    {letters.map((l, i) => (
-      <span key={i} className={`${getRadicalTextClass(l.r, theme)} ${l.r ? 'font-bold' : ''}`}>{l.t}</span>
-    ))}
-  </span>
-);
+const QuickFactCard = ({ icon, label, valueArabic, valueEn, theme, cardBg, accent = 'amber' }) => {
+  if (!valueArabic && !valueEn) return null;
+  const dark = isDarkSurface(theme);
+  const badgePalette = {
+    amber: dark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700',
+    emerald: dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700',
+    blue: dark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700',
+    rose: dark ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-700',
+    violet: dark ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
+  }[accent] || (dark ? 'bg-white/10 text-slate-200' : 'bg-slate-200 text-slate-700');
+
+  return (
+    <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${cardBg}`}>
+      <span
+        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${badgePalette}`}
+        aria-hidden="true"
+      >
+        <SafeIcon icon={icon} className="text-sm" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-bold uppercase tracking-wider opacity-65">{label}</div>
+        {valueArabic && (
+          <p dir="rtl" className="font-arabic text-lg font-bold leading-snug text-right">
+            {valueArabic}
+          </p>
+        )}
+        {valueEn && <p className="text-xs font-medium opacity-90 leading-snug mt-0.5">{valueEn}</p>}
+      </div>
+    </div>
+  );
+};
+
+const getSegmentRoleMeta = (role) => {
+  if (role === 'prefix') return { icon: FiCornerDownLeft, label: 'Prefix' };
+  if (role === 'suffix') return { icon: FiCornerUpRight, label: 'Ending' };
+  return { icon: FiBox, label: 'Main Word' };
+};
 
 /* ------------------------------------------------------------------------ */
-/* Iḍāfa Construct Chain Card: Muḍāf & Muḍāf Ilayhi                         */
+/* Iḍāfa Possessive Pair Card: 1. Muḍāf ("of…") → 2. Muḍāf Ilayhi           */
 /* ------------------------------------------------------------------------ */
 
 export const IdafaCard = ({ idafa, theme }) => {
@@ -66,10 +108,17 @@ export const IdafaCard = ({ idafa, theme }) => {
           : 'bg-amber-50/80 border-amber-400/90 text-slate-900'
       }`}
     >
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-          <SafeIcon icon={FiLink} className={dark ? 'text-amber-300' : 'text-amber-700'} />
-          <span>Possessive Pair (Iḍāfa) · {idafa.label_en}</span>
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+            dark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-200/80 text-amber-800'
+          }`}
+          aria-hidden="true"
+        >
+          <SafeIcon icon={FiLink} className="text-sm" />
+        </span>
+        <span className="text-xs font-bold uppercase tracking-wider">
+          Possessive Pair (Iḍāfa) · {idafa.label_en}
         </span>
       </div>
 
@@ -87,7 +136,7 @@ export const IdafaCard = ({ idafa, theme }) => {
           }`}
         >
           <div dir="ltr" className="text-[11px] font-bold uppercase opacity-75 mb-1">
-            1. Muḍāf (First word — &ldquo;of…&rdquo;)
+            1. Muḍāf (&ldquo;of…&rdquo;)
           </div>
           <div
             className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] font-bold ${
@@ -113,7 +162,7 @@ export const IdafaCard = ({ idafa, theme }) => {
           }`}
         >
           <div dir="ltr" className="text-[11px] font-bold uppercase opacity-75 mb-1">
-            2. Muḍāf Ilayhi (Second word — ends in -i)
+            2. Muḍāf Ilayhi (ends in -i)
           </div>
           <div
             className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] font-bold ${
@@ -138,81 +187,58 @@ export const IdafaCard = ({ idafa, theme }) => {
 };
 
 /* ------------------------------------------------------------------------ */
-/* Root & Pattern Card (Al-Mīzān al-Ṣarfī)                                   */
+/* Clean Root & Core Idea Card (replaces confusing ف ع ل / فَعْلِ grid)      */
 /* ------------------------------------------------------------------------ */
 
-export const MizanCard = ({ sarf, theme, cardBg }) => {
+export const RootSummaryCard = ({ sarf, theme, cardBg }) => {
+  if (!sarf?.root?.length) return null;
   const dark = isDarkSurface(theme);
   const deleted = sarf.deleted_radicals || [];
-  const merged = sarf.stem_letters.some((l) => l.r && l.r.length > 1 && l.r !== 'l2');
-  const hasAugment =
-    sarf.stem_letters.some((l) => !l.r) || sarf.wazn_letters.some((l) => !l.r);
-  const radicalSlots = getRadicalOrder(sarf.root?.length || 3);
+  const slotKeys = sarf.root.length === 4 ? ['f', 'a', 'l', 'l2'] : ['f', 'a', 'l'];
 
   return (
-    <div className={`p-4 rounded-2xl border ${cardBg}`} data-testid="mizan-card">
-      <SectionTitle en="Root Letters & Word Pattern" />
+    <div className={`p-4 rounded-2xl border ${cardBg}`} data-testid="root-summary-card">
+      <SectionHeading
+        icon={FiGitBranch}
+        title={`${sarf.root.length}-Letter Root & Core Meaning`}
+        theme={theme}
+      />
 
-      {/* Root slots ف ع ل (and ل٢ for 4-letter roots) */}
-      <div dir="rtl" className="flex flex-wrap items-stretch justify-center gap-2 mb-4">
-        {radicalSlots.map((slot, idx) => {
-          const r = RADICALS[slot];
-          const isDeleted = deleted.includes(slot);
-          return (
-            <div
-              key={slot}
-              className={`w-20 rounded-xl border-2 text-center py-2 ${
-                isDeleted ? 'border-dashed opacity-75' : ''
-              } ${dark ? 'border-white/15 bg-white/5' : 'border-slate-200 bg-white'}`}
-            >
-              <div className={`font-arabic text-lg font-bold ${dark ? r.dark : r.light}`}>{r.slot}</div>
-              <div className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] ${dark ? r.dark : r.light} ${isDeleted ? 'line-through' : ''}`}>
-                {sarf.root[idx]}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div dir="rtl" className="flex items-center justify-center gap-2 shrink-0">
+          {sarf.root.map((letter, idx) => {
+            const isDropped = deleted.includes(slotKeys[idx]);
+            return (
+              <div
+                key={`${letter}-${idx}`}
+                className={`w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center ${
+                  isDropped ? 'border-dashed opacity-70' : ''
+                } ${
+                  dark
+                    ? 'border-amber-500/40 bg-amber-950/40 text-amber-200'
+                    : 'border-amber-300 bg-white text-amber-900'
+                }`}
+                title={isDropped ? 'Dropped in this spelling for smoother pronunciation' : undefined}
+              >
+                <span
+                  className={`quran-text-pak !text-2xl !leading-none [text-shadow:none] font-bold ${
+                    dark ? '!text-amber-200' : '!text-amber-800'
+                  } ${isDropped ? 'line-through' : ''}`}
+                >
+                  {letter}
+                </span>
               </div>
-              <div className="text-[10px] uppercase tracking-wider opacity-75">
-                {isDeleted ? 'deleted' : r.name_en}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Word stem ↔ Pattern */}
-      <div className="grid grid-cols-2 gap-3 items-center">
-        <div className={`rounded-xl text-center py-2 px-1 ${dark ? 'bg-black/25' : 'bg-white border border-slate-200/80'}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-75">Pattern</div>
-          <RadicalWord letters={sarf.wazn_letters} theme={theme} className="quran-text-pak !text-4xl !leading-[1.8] [text-shadow:none]" />
+            );
+          })}
         </div>
-        <div className={`rounded-xl text-center py-2 px-1 ${dark ? 'bg-black/25' : 'bg-white border border-slate-200/80'}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-75">Word Stem</div>
-          <RadicalWord letters={sarf.stem_letters} theme={theme} className="quran-text-pak !text-4xl !leading-[1.8] [text-shadow:none]" />
+
+        <div className="text-center sm:text-left flex-1 min-w-0">
+          <p className="text-sm font-semibold leading-snug">{sarf.root_meaning}</p>
+          {sarf.word_type_en && (
+            <p className="text-xs opacity-75 mt-1 leading-snug">{sarf.word_type_en}</p>
+          )}
         </div>
       </div>
-
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
-        <span>
-          <span className="opacity-70">Pattern: </span>
-          <span dir="rtl" className="font-arabic text-base font-bold">{sarf.wazn}</span>
-        </span>
-        {sarf.wazn_original && (
-          <span>
-            <span className="opacity-70">Base pattern: </span>
-            <span dir="rtl" className="font-arabic text-base">{sarf.wazn_original}</span>
-          </span>
-        )}
-        {hasAugment && (
-          <span className="flex items-center gap-1 opacity-80">
-            <span className={`w-2 h-2 rounded-full ${dark ? 'bg-slate-400' : 'bg-slate-500'}`} />
-            grey = extra letters
-          </span>
-        )}
-      </div>
-
-      {merged && (
-        <p className="mt-2 text-xs text-center opacity-85">
-          The shadda (ّ) holds <b>two identical root letters</b> merged into one doubled sound.
-        </p>
-      )}
     </div>
   );
 };
@@ -230,14 +256,20 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
 
   return (
     <div className="space-y-4">
-      {/* Word Parts (Morphemes) */}
+      {/* 1. Word Pieces (Visual Building Blocks) */}
       <div>
-        <SectionTitle en={`Word Parts (${segments.length})`} />
+        <SectionHeading
+          icon={FiLayers}
+          title={segments.length > 1 ? `Word Pieces (${segments.length} parts)` : 'Word Piece'}
+          theme={theme}
+          accentClass={dark ? 'text-sky-300' : 'text-blue-700'}
+        />
         <div dir="rtl" className="flex flex-wrap gap-2">
           {segments.map((seg, idx) => {
             const meta = getCategoryMeta(seg.category, palette);
             const shade = palette === 'surah_100' ? resolveSurah100Shade(seg.category, seg) : null;
             const dotClass = shade ? shade.dot : meta.dot;
+            const roleMeta = getSegmentRoleMeta(seg.role);
 
             return (
               <div key={idx} className={`flex-1 min-w-[9rem] p-3 rounded-xl border ${cardBg}`}>
@@ -253,8 +285,9 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                     {seg.text}
                   </span>
                   <div className="flex flex-col items-end gap-1" dir="ltr">
-                    <span className="text-[10px] uppercase tracking-wider opacity-70">
-                      {seg.role}
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                      <SafeIcon icon={roleMeta.icon} className="text-[11px]" aria-hidden="true" />
+                      <span>{roleMeta.label}</span>
                     </span>
                     {shade && (
                       <span
@@ -268,11 +301,13 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                   </div>
                 </div>
                 <div dir="ltr" className="flex items-center gap-1.5 mt-1.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} aria-hidden="true" />
                   <span className="text-xs font-bold">{seg.pos_name_en}</span>
                 </div>
                 {seg.desc_en && (
-                  <p dir="ltr" className="text-[11px] opacity-80 text-left mt-1 leading-snug">{seg.desc_en}</p>
+                  <p dir="ltr" className="text-[11px] opacity-80 text-left mt-1 leading-snug">
+                    {seg.desc_en}
+                  </p>
                 )}
               </div>
             );
@@ -280,57 +315,117 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
         </div>
       </div>
 
-      {/* Show Iḍāfa card right in MorphologyTab when present */}
+      {/* 2. Possessive Pair (Iḍāfa) when present */}
       {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} />}
 
+      {/* 3. Root & Quick Icon Facts */}
       {!sarf ? (
-        <div className={`p-4 rounded-2xl border text-center ${cardBg}`} data-testid="sarf-note">
-          <p className="text-sm font-bold mb-1">Fixed Word — No Root Pattern</p>
-          {word.sarf_note_en && <p className="text-xs opacity-85">{word.sarf_note_en}</p>}
+        <div
+          className={`p-4 rounded-2xl border flex items-start gap-3 ${cardBg}`}
+          data-testid="sarf-note"
+        >
+          <span
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+              dark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
+            }`}
+            aria-hidden="true"
+          >
+            <SafeIcon icon={FiAnchor} className="text-base" />
+          </span>
+          <div>
+            <p className="text-sm font-bold">Fixed Word — Never Changes Form</p>
+            {word.sarf_note_en && (
+              <p className="text-xs opacity-85 mt-0.5 leading-relaxed">{word.sarf_note_en}</p>
+            )}
+          </div>
         </div>
       ) : (
         <>
-          <MizanCard sarf={sarf} theme={theme} cardBg={cardBg} />
+          <RootSummaryCard sarf={sarf} theme={theme} cardBg={cardBg} />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <Fact cardBg={cardBg} labelEn="Root & Core Meaning" valueArabicWord={sarf.root.join(' – ')} valueEn={sarf.root_meaning} />
+          {/* At-a-glance Icon Fact Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" data-testid="quick-facts-grid">
             {sarf.noun?.singular_ar && (
-              <Fact
-                cardBg={cardBg}
-                labelEn="Singular Form"
-                valueArabicWord={sarf.noun.singular_ar}
+              <QuickFactCard
+                icon={FiUser}
+                label="Singular Form"
+                valueArabic={sarf.noun.singular_ar}
                 valueEn={sarf.noun.singular_en}
+                theme={theme}
+                cardBg={cardBg}
+                accent="rose"
               />
             )}
-            <Fact cardBg={cardBg} labelEn="Root Type" valueEn={sarf.root_type_en} />
-            <Fact cardBg={cardBg} labelEn="Word Type" valueEn={sarf.word_type_en} />
             {sarf.verb && (
               <>
-                <Fact
+                <QuickFactCard
+                  icon={FiClock}
+                  label="Tense (When)"
+                  valueEn={sarf.verb.tense_en}
+                  theme={theme}
                   cardBg={cardBg}
-                  labelEn={`Verb Form ${sarf.verb.form}`}
-                  valueArabicWord={sarf.verb.pattern}
-                  valueEn={sarf.verb.meaning_of_form_en}
+                  accent="emerald"
                 />
-                <Fact cardBg={cardBg} labelEn="Tense" valueEn={sarf.verb.tense_en} />
-                <Fact cardBg={cardBg} labelEn="Who Does the Action" valueEn={sarf.verb.person_en} />
-                <Fact cardBg={cardBg} labelEn="Voice" valueEn={sarf.verb.voice_en} />
+                <QuickFactCard
+                  icon={FiUsers}
+                  label="Who Does the Action"
+                  valueEn={sarf.verb.person_en}
+                  theme={theme}
+                  cardBg={cardBg}
+                  accent="blue"
+                />
+                <QuickFactCard
+                  icon={FiShield}
+                  label="Voice (Active / Passive)"
+                  valueEn={sarf.verb.voice_en}
+                  theme={theme}
+                  cardBg={cardBg}
+                  accent="violet"
+                />
+                <QuickFactCard
+                  icon={FiSliders}
+                  label={`Verb Form ${sarf.verb.form}`}
+                  valueArabic={sarf.verb.pattern}
+                  valueEn={sarf.verb.meaning_of_form_en}
+                  theme={theme}
+                  cardBg={cardBg}
+                  accent="emerald"
+                />
               </>
             )}
             {sarf.noun && (
               <>
-                <Fact cardBg={cardBg} labelEn="Gender & Number" valueEn={`${sarf.noun.gender_en} · ${sarf.noun.number_en}`} />
-                <Fact cardBg={cardBg} labelEn="Definiteness & Ending" valueEn={`${sarf.noun.definiteness_en} · ${sarf.noun.case_en}`} />
+                <QuickFactCard
+                  icon={FiHash}
+                  label="Count & Gender"
+                  valueEn={`${sarf.noun.number_en} · ${sarf.noun.gender_en}`}
+                  theme={theme}
+                  cardBg={cardBg}
+                  accent="rose"
+                />
+                <QuickFactCard
+                  icon={FiCheckCircle}
+                  label="Specificity & Ending"
+                  valueEn={`${sarf.noun.definiteness_en} · ${sarf.noun.case_en}`}
+                  theme={theme}
+                  cardBg={cardBg}
+                  accent="blue"
+                />
               </>
             )}
           </div>
 
-          {/* Conjugation strip + Full Conjugation Sub-Modal Trigger */}
+          {/* 4. Verb Conjugation Strip + Full Sub-Modal Trigger */}
           {sarf.verb?.conjugation && (
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider opacity-75">
-                  Verb Forms
+                <h4 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-85">
+                  <SafeIcon
+                    icon={FiSliders}
+                    className={`text-sm ${dark ? 'text-emerald-300' : 'text-emerald-700'}`}
+                    aria-hidden="true"
+                  />
+                  <span>Quick Verb Forms</span>
                 </h4>
 
                 <button
@@ -343,7 +438,7 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                       : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
                   }`}
                 >
-                  <SafeIcon icon={FiMaximize2} className="text-xs" />
+                  <SafeIcon icon={FiMaximize2} className="text-xs" aria-hidden="true" />
                   <span>Open Full Conjugation Table</span>
                 </button>
               </div>
@@ -354,7 +449,9 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                     <div className={`quran-text-pak !text-2xl !leading-[1.7] [text-shadow:none] ${dark ? '!text-slate-100' : '!text-slate-900'}`}>
                       {c.ar}
                     </div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-75" dir="ltr">{c.label_en}</div>
+                    <div className="text-[10px] uppercase tracking-wider opacity-75" dir="ltr">
+                      {c.label_en}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -368,25 +465,54 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
             </div>
           )}
 
-          {/* Phonological transformation (sound change) — English only */}
+          {/* 5. Quick Sound Tip (only when letters merged/changed/dropped) */}
           {sarf.transformation?.en && (
-            <div className={`p-4 rounded-2xl border-l-4 border-l-violet-500 border ${cardBg}`}>
-              <SectionTitle en={sarf.transformation.type_en || 'Sound Change'} />
-              <p className="text-xs sm:text-sm opacity-90 leading-relaxed">{sarf.transformation.en}</p>
+            <div className={`p-3.5 rounded-2xl border-l-4 border-l-violet-500 border flex items-start gap-3 ${cardBg}`}>
+              <span
+                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                  dark ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
+                }`}
+                aria-hidden="true"
+              >
+                <SafeIcon icon={FiVolume2} className="text-sm" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">
+                  Sound Tip · {sarf.transformation.type_en || 'Pronunciation'}
+                </div>
+                <p className="text-xs opacity-90 mt-1 leading-relaxed">{sarf.transformation.en}</p>
+              </div>
             </div>
           )}
 
           {sarf.scholarly_note_en && (
-            <div className={`p-4 rounded-2xl border-l-4 border-l-amber-500 border ${cardBg}`}>
-              <SectionTitle en="Language Note" />
-              <p className="text-xs sm:text-sm opacity-90 leading-relaxed">{sarf.scholarly_note_en}</p>
+            <div className={`p-3.5 rounded-2xl border-l-4 border-l-amber-500 border flex items-start gap-3 ${cardBg}`}>
+              <span
+                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                  dark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+                }`}
+                aria-hidden="true"
+              >
+                <SafeIcon icon={FiInfo} className="text-sm" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">
+                  Good to Know
+                </div>
+                <p className="text-xs opacity-90 mt-1 leading-relaxed">{sarf.scholarly_note_en}</p>
+              </div>
             </div>
           )}
 
-          {/* Root family across the Qur'an */}
+          {/* 6. Same Root Across the Qur'an */}
           {sarf.family?.length > 0 && (
             <div>
-              <SectionTitle en={`Same Root (${sarf.root.join(' – ')}) in the Qur'an`} />
+              <SectionHeading
+                icon={FiBookOpen}
+                title={`Same Root (${sarf.root.join(' – ')}) in the Qur'an`}
+                subtitle="Tap to jump"
+                theme={theme}
+              />
               <div dir="rtl" className="flex flex-wrap gap-2">
                 {sarf.family.map((f) => {
                   const parsedRef = parseQuranRef(f.ref);
@@ -400,7 +526,11 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                         <span>{f.en}</span>
                         <span className="font-mono font-semibold text-islamic-gold">{f.ref}</span>
                         {canNavigate && (
-                          <SafeIcon icon={FiArrowUpRight} className="text-[11px] text-islamic-gold shrink-0" />
+                          <SafeIcon
+                            icon={FiArrowUpRight}
+                            aria-hidden="true"
+                            className="text-[11px] text-islamic-gold shrink-0"
+                          />
                         )}
                       </span>
                     </>
@@ -438,35 +568,82 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
   );
 };
 
-export const SyntaxTab = ({ word, theme, cardBg }) => (
-  <div className="space-y-4">
-    {word.role_en && (
-      <Fact cardBg={cardBg} labelEn="Role in the Sentence" valueEn={word.role_en} />
-    )}
-    {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} />}
-    {word.irab?.en && (
-      <div className={`p-4 rounded-2xl border-l-4 border-l-blue-500 border ${cardBg}`}>
-        <SectionTitle en="How It Works (Grammar)" />
-        <p className="text-sm opacity-90 leading-relaxed">{word.irab.en}</p>
-      </div>
-    )}
-    {word.ayahStructure?.en && (
-      <div className={`p-4 rounded-2xl border ${cardBg}`}>
-        <SectionTitle en={`Ayah ${word.ayahNumber} Flow`} />
-        <p className="text-xs sm:text-sm opacity-90 leading-relaxed">{word.ayahStructure.en}</p>
-      </div>
-    )}
-  </div>
-);
+export const SyntaxTab = ({ word, theme, cardBg }) => {
+  const dark = isDarkSurface(theme);
+  return (
+    <div className="space-y-3.5">
+      {word.role_en && (
+        <QuickFactCard
+          icon={FiTarget}
+          label="Role in This Ayah"
+          valueEn={word.role_en}
+          theme={theme}
+          cardBg={cardBg}
+          accent="amber"
+        />
+      )}
+      {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} />}
+      {word.irab?.en && (
+        <div className={`p-4 rounded-2xl border-l-4 border-l-blue-500 border flex items-start gap-3 ${cardBg}`}>
+          <span
+            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+              dark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
+            }`}
+            aria-hidden="true"
+          >
+            <SafeIcon icon={FiCheckCircle} className="text-sm" />
+          </span>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">
+              How It Works (Grammar)
+            </div>
+            <p className="text-sm opacity-90 mt-1 leading-relaxed">{word.irab.en}</p>
+          </div>
+        </div>
+      )}
+      {word.ayahStructure?.en && (
+        <div className={`p-4 rounded-2xl border flex items-start gap-3 ${cardBg}`}>
+          <span
+            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+              dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+            }`}
+            aria-hidden="true"
+          >
+            <SafeIcon icon={FiNavigation} className="text-sm" />
+          </span>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">
+              Ayah {word.ayahNumber} Flow
+            </div>
+            <p className="text-xs sm:text-sm opacity-90 mt-1 leading-relaxed">
+              {word.ayahStructure.en}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-export const InsightTab = ({ word, cardBg }) => {
+export const InsightTab = ({ word, theme, cardBg }) => {
   if (!word.insight) {
     return <p className="text-sm opacity-75 text-center py-6">No reflection recorded for this word.</p>;
   }
+  const dark = isDarkSurface(theme);
   return (
-    <div className={`p-5 rounded-2xl border ${cardBg}`}>
-      <p className="text-base font-bold mb-2.5">{word.insight.title_en}</p>
-      <p className="text-sm sm:text-base leading-relaxed opacity-95">{word.insight.en}</p>
+    <div className={`p-5 rounded-2xl border flex items-start gap-3.5 ${cardBg}`}>
+      <span
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          dark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+        }`}
+        aria-hidden="true"
+      >
+        <SafeIcon icon={FiSun} className="text-lg" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-base font-bold mb-2">{word.insight.title_en}</p>
+        <p className="text-sm sm:text-base leading-relaxed opacity-95">{word.insight.en}</p>
+      </div>
     </div>
   );
 };

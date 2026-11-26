@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import {
-  CATEGORY_LABELS,
   getSegmentBarClass,
   resolveSurah100Shade
 } from './sarfStyles';
@@ -79,7 +78,7 @@ export const getGrammarSegmentClass = (
 };
 
 /**
- * Simple, easy-to-read part-of-speech label for Surah 100 cards & detail modals.
+ * Simple, easy-to-read part-of-speech label for cards & detail modals.
  */
 export const getSimplePartOfSpeech = (word) => {
   if (!word) return '';
@@ -207,9 +206,7 @@ const GrammarWord = ({
 
   if (interlinear) {
     const isSurah100 = palette === 'surah_100';
-    const subLabel = isSurah100
-      ? getSimplePartOfSpeech(word)
-      : (word.sarf?.wazn || CATEGORY_LABELS[word.primary_category]?.ar || '');
+    const partOfSpeechLabel = getSimplePartOfSpeech(word);
 
     const hasEmphasisSegment = Boolean(
       word.has_emphasis || segments.some((s) => s.emphasis || s.subclass === 'emphasis')
@@ -312,23 +309,17 @@ const GrammarWord = ({
           ))}
         </span>
 
-        {/* Part of speech (Surah 100) or Wazn (Surah 103) */}
-        <span
-          dir={isSurah100 ? 'ltr' : 'rtl'}
-          className={
-            isSurah100
-              ? `english-text text-[10px] font-semibold uppercase tracking-wide leading-tight mt-1.5 ${
-                  darkCard ? 'text-slate-300' : 'text-slate-500'
-                }`
-              : `font-arabic text-base font-semibold leading-tight mt-1.5 ${
-                  word.sarf
-                    ? (darkCard ? 'text-amber-300' : 'text-amber-800')
-                    : (darkCard ? 'text-slate-400' : 'text-slate-600')
-                }`
-          }
-        >
-          {subLabel}
-        </span>
+        {/* Clean Part of Speech (replaces Arabic wazn like فَعْل) */}
+        {partOfSpeechLabel && (
+          <span
+            dir="ltr"
+            className={`english-text text-[10px] font-semibold uppercase tracking-wide leading-tight mt-1.5 ${
+              darkCard ? 'text-slate-300' : 'text-slate-500'
+            }`}
+          >
+            {partOfSpeechLabel}
+          </span>
+        )}
 
         {/* English gloss */}
         <span

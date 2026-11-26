@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import Layout from '../Layout';
 import GrammarWord from '../grammar/GrammarWord';
 import GrammarBottomSheet from '../grammar/GrammarBottomSheet';
-import { MizanCard, MorphologyTab, SyntaxTab, InsightTab } from '../grammar/SarfDetails';
+import { RootSummaryCard, MorphologyTab, SyntaxTab, InsightTab } from '../grammar/SarfDetails';
 import AyahGrammarText from '../grammar/AyahGrammarText';
 import GrammarToggle from '../grammar/GrammarToggle';
 import { useGrammarKeyboardShortcuts } from '../../hooks/useGrammarKeyboardShortcuts';
@@ -137,7 +137,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
   });
 
   describe('GrammarWord interlinear mode', () => {
-    it('renders Arabic word, wazn, and English translation in interlinear card mode', () => {
+    it('renders Arabic word, clean Part of Speech, and English translation without Arabic wazn (فَعْل)', () => {
       const alAsr = surah103.ayahs['1'].words[0];
       const handleSelect = vi.fn();
 
@@ -154,7 +154,8 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
 
       const card = screen.getByTestId('interlinear-word');
       expect(card).toBeInTheDocument();
-      expect(screen.getByText('فَعْل')).toBeInTheDocument();
+      expect(screen.queryByText('فَعْل')).not.toBeInTheDocument();
+      expect(screen.getByText('Ism')).toBeInTheDocument();
       expect(screen.getByText('By the time')).toBeInTheDocument();
 
       fireEvent.keyDown(card, { key: 'Enter' });
@@ -180,24 +181,22 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
 
       const translationEl = screen.getByText('By the time');
       expect(translationEl.className).toContain('text-slate-300');
-      const waznEl = screen.getByText('فَعْل');
-      expect(waznEl.className).toContain('text-amber-300');
+      const posEl = screen.getByText('Ism');
+      expect(posEl.className).toContain('text-slate-300');
     });
   });
 
-  describe('SarfDetails & MizanCard', () => {
-    it('explains merged radicals (idgham) for بِٱلْحَقِّ and deleted radicals for وَتَوَاصَوْا۟', () => {
-      const haqq = surah103.ayahs['3'].words.find((w) => w.position === 7);
-      const { rerender } = render(
-        <MizanCard sarf={haqq.sarf} theme="light" cardBg="bg-slate-50 border-slate-200" />
+  describe('SarfDetails & RootSummaryCard', () => {
+    it('renders clean root letters and core meaning without فَعْلِ pattern tables', () => {
+      const alAsr = surah103.ayahs['1'].words[0];
+      render(
+        <RootSummaryCard sarf={alAsr.sarf} theme="light" cardBg="bg-slate-50 border-slate-200" />
       );
-      expect(screen.getByTestId('mizan-card')).toBeInTheDocument();
-      expect(screen.getByText(/two identical root letters/i)).toBeInTheDocument();
-
-      const tawasaw = surah103.ayahs['3'].words.find((w) => w.position === 6);
-      rerender(<MizanCard sarf={tawasaw.sarf} theme="green" cardBg="bg-emerald-900/60 border-emerald-800" />);
-      expect(screen.getByText('deleted')).toBeInTheDocument();
-      expect(screen.getByText('تَفَاعَلُوا')).toBeInTheDocument();
+      expect(screen.getByTestId('root-summary-card')).toBeInTheDocument();
+      expect(screen.getByText('3-Letter Root & Core Meaning')).toBeInTheDocument();
+      expect(screen.getByText(alAsr.sarf.root_meaning)).toBeInTheDocument();
+      expect(screen.queryByText('فَعْلِ')).not.toBeInTheDocument();
+      expect(screen.queryByText('فَعْل')).not.toBeInTheDocument();
     });
 
     it('invokes onOpenAyah when clicking a Quran root family reference', () => {
@@ -216,13 +215,13 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(onOpenAyah).toHaveBeenCalledWith(12, 36);
     });
 
-    it('renders mabni note cleanly for particles without a sarf scale', () => {
+    it('renders fixed-word note cleanly for particles without a sarf scale', () => {
       const inna = surah103.ayahs['2'].words[0];
       render(
         <MorphologyTab word={inna} theme="light" cardBg="bg-slate-50 border-slate-200" />
       );
       expect(screen.getByTestId('sarf-note')).toBeInTheDocument();
-      expect(screen.getByText(/Fixed Word — No Root Pattern/i)).toBeInTheDocument();
+      expect(screen.getByText(/Fixed Word — Never Changes Form/i)).toBeInTheDocument();
     });
 
     it('renders SyntaxTab and InsightTab accurately', () => {
@@ -262,7 +261,8 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       const insightTab = screen.getByRole('tab', { name: /Insight/i });
 
       expect(sarfTab).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByTestId('mizan-card')).toBeInTheDocument();
+      expect(screen.getByTestId('root-summary-card')).toBeInTheDocument();
+      expect(screen.getByTestId('quick-facts-grid')).toBeInTheDocument();
 
       // Switch to Iʿrāb via click
       fireEvent.click(irabTab);
