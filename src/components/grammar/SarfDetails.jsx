@@ -68,7 +68,7 @@ const QuickFactCard = ({ icon, label, valueArabic, valueEn, theme, cardBg, accen
       <div className="min-w-0 flex-1">
         <div className="text-[10px] font-bold uppercase tracking-wider opacity-65">{label}</div>
         {valueArabic && (
-          <p dir="rtl" className="font-arabic text-lg font-bold leading-snug text-right">
+          <p dir="rtl" className="quran-text-pak !text-xl !leading-[1.5] [text-shadow:none] !text-inherit font-bold text-right">
             {valueArabic}
           </p>
         )}

@@ -35,7 +35,7 @@ export default {
         }
       },
       fontFamily: {
-        arabic: ['Amiri', 'serif'],
+        arabic: ['"Scheherazade New"', 'serif'],
         english: ['Inter', 'sans-serif'],
       }
     },

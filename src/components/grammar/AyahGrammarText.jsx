@@ -69,7 +69,7 @@ const AyahGrammarText = ({
   return (
     <div
       dir="rtl"
-      className={`quran-text-pak text-right leading-loose flex flex-wrap items-center justify-start ${
+      className={`relative z-10 quran-text-pak text-right leading-loose flex flex-wrap items-center justify-start ${
         interlinear ? 'gap-x-1.5 gap-y-3 items-start' : 'gap-y-2'
       } ${className}`}
     >

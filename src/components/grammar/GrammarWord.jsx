@@ -44,11 +44,13 @@ export const getGrammarSegmentClass = (
   if (resolvedPalette === 'surah_103') {
     const isEmphasisHarf =
       category === 'harf' && Boolean(segment?.emphasis || segment?.subclass === 'emphasis');
-    const emphasisClass = isEmphasisHarf
-      ? ` harf-emphasis-red-glow${pulsePaused ? ' harf-emphasis-paused' : ''}`
-      : '';
 
     if (mode === 'underline') {
+      if (isEmphasisHarf) {
+        return isDark
+          ? 'border-b-2 border-white pb-0.5 text-white font-bold'
+          : 'border-b-2 border-black pb-0.5 text-black font-bold';
+      }
       const darkText = isDark ? ' text-slate-100' : '';
       switch (category) {
         case 'fil':
@@ -56,10 +58,14 @@ export const getGrammarSegmentClass = (
         case 'ism':
           return `border-b-2 border-red-500 pb-0.5${darkText}`;
         case 'harf':
-          return `border-b-2 border-yellow-500 pb-0.5${darkText}${emphasisClass}`;
+          return `border-b-2 border-yellow-500 pb-0.5${darkText}`;
         default:
           return '';
       }
+    }
+
+    if (isEmphasisHarf) {
+      return isDark ? 'text-white font-bold' : 'text-black font-bold';
     }
 
     switch (category) {
@@ -68,7 +74,7 @@ export const getGrammarSegmentClass = (
       case 'ism':
         return isDark ? 'text-red-400 font-semibold' : 'text-red-600 font-semibold';
       case 'harf':
-        return `${isDark ? 'text-yellow-300 font-semibold' : 'text-yellow-600 font-semibold'}${emphasisClass}`;
+        return isDark ? 'text-yellow-300 font-semibold' : 'text-yellow-600 font-semibold';
       default:
         return '';
     }
@@ -395,7 +401,7 @@ const GrammarWord = ({
       aria-label={`${word.text_uthmani}: ${word.translation || ''}`}
       data-arabic-word="true"
       data-active-word={isSelected ? 'true' : undefined}
-      className={`grammar-word-pill inline-block cursor-pointer px-1 py-0.5 rounded-lg transition-all duration-300 ease-out mx-0.5 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+      className={`grammar-word-pill relative z-[1] hover:z-10 focus-visible:z-10 inline-block cursor-pointer px-1 py-0.5 leading-[1.65] rounded-lg transition-all duration-300 ease-out mx-0.5 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
         isSelected
           ? `scale-110 -translate-y-0.5 [text-shadow:0_0_22px_currentColor] ${
               darkCard ? 'ring-2 ring-amber-400 bg-amber-950/60 shadow-sm' : 'ring-2 ring-amber-400 bg-amber-100/70 shadow-sm'

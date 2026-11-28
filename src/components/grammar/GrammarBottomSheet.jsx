@@ -31,21 +31,72 @@ export const getAyahWordClass = ({ isActive, hasActive }) =>
 
 /* ---------------------------- Theme & Color Maps ---------------------------- */
 const THEME_SURFACE_STYLES = {
-  green: 'bg-emerald-950/96 text-emerald-50',
-  red: 'bg-rose-950/96 text-rose-50',
-  blue: 'bg-slate-900/96 text-blue-50',
+  green: 'bg-gradient-to-b from-emerald-50 via-white to-emerald-50/95 text-emerald-950',
+  red: 'bg-gradient-to-b from-rose-50 via-white to-rose-50/95 text-rose-950',
+  blue: 'bg-gradient-to-b from-blue-50 via-white to-sky-50/95 text-blue-950',
   light: 'bg-white text-slate-900',
   dark: 'bg-slate-900 text-slate-100',
   sepia: 'bg-amber-50 text-amber-950'
 };
 
 const THEME_CARD_BG = {
-  green: 'bg-emerald-900/55 border-emerald-700/80',
-  red: 'bg-rose-900/55 border-rose-700/80',
-  blue: 'bg-slate-800/70 border-blue-800/70',
+  green: 'bg-emerald-100/50 border-emerald-200/90',
+  red: 'bg-rose-100/50 border-rose-200/90',
+  blue: 'bg-blue-100/50 border-blue-200/90',
   light: 'bg-slate-50/90 border-slate-200/90',
   dark: 'bg-slate-800/75 border-slate-700/80',
   sepia: 'bg-amber-100/60 border-amber-300/80'
+};
+
+const THEME_MODAL_MIX = {
+  green: {
+    base: '#f0fdf4',
+    border: '#bbf7d0',
+    badge: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    bar: 'bg-emerald-600',
+    tab: 'bg-white border-emerald-300 text-emerald-950 shadow-sm',
+    navBtn: 'border-emerald-300/90 bg-emerald-100/70 hover:bg-emerald-200/70 text-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500'
+  },
+  red: {
+    base: '#fff1f2',
+    border: '#fecdd3',
+    badge: 'bg-rose-100 text-rose-900 border-rose-300',
+    bar: 'bg-rose-600',
+    tab: 'bg-white border-rose-300 text-rose-950 shadow-sm',
+    navBtn: 'border-rose-300/90 bg-rose-100/70 hover:bg-rose-200/70 text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500'
+  },
+  blue: {
+    base: '#eff6ff',
+    border: '#bfdbfe',
+    badge: 'bg-blue-100 text-blue-900 border-blue-300',
+    bar: 'bg-blue-600',
+    tab: 'bg-white border-blue-300 text-blue-950 shadow-sm',
+    navBtn: 'border-blue-300/90 bg-blue-100/70 hover:bg-blue-200/70 text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500'
+  },
+  sepia: {
+    base: '#fffbeb',
+    border: '#fde68a',
+    badge: 'bg-amber-100 text-amber-900 border-amber-300',
+    bar: 'bg-amber-600',
+    tab: 'bg-white border-amber-300 text-amber-950 shadow-sm',
+    navBtn: 'border-amber-300/90 bg-amber-100/70 hover:bg-amber-200/70 text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500'
+  },
+  light: {
+    base: '#ffffff',
+    border: '#e2e8f0',
+    badge: 'bg-slate-100 text-slate-800 border-slate-200',
+    bar: 'bg-emerald-500',
+    tab: 'bg-white border-slate-300/90 text-slate-900 shadow-sm',
+    navBtn: 'border-slate-300/90 bg-slate-100/80 hover:bg-slate-200/80 text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500'
+  },
+  dark: {
+    base: '#0f172a',
+    border: '#1e293b',
+    badge: 'bg-emerald-950/70 text-emerald-200 border-emerald-700/60',
+    bar: 'bg-emerald-500',
+    tab: 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200 shadow-sm',
+    navBtn: 'border-white/20 bg-white/5 hover:bg-white/15 text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400'
+  }
 };
 
 const FRAME_GRADIENT_COLORS = {
@@ -289,13 +340,17 @@ export const buildDiagramChips = (word, palette, dark) => {
       const posLow = s(seg.pos_name_en);
       if (seg.emphasis || seg.tag === 'EMPH' || posLow.includes('oath')) {
         const isOath = posLow.includes('oath');
+        const chipColor =
+          palette === 'surah_103'
+            ? (dark ? '#f8fafc' : '#0f172a')
+            : getToneColor('harf', dark, palette);
         return {
           segIndex: idx,
           id: `seg-${idx}`,
           icon: 'emphasis',
           title: isOath ? 'Oath' : 'Emphasis',
           value: isOath ? 'By…' : seg.text === 'إِنَّ' ? 'indeed' : 'surely',
-          color: getToneColor('harf', dark, palette)
+          color: chipColor
         };
       }
       if (seg.tag === 'DET' || posLow.includes('definite')) {
@@ -1348,14 +1403,15 @@ const Sheet = ({
   const dark = isDarkSurface(theme);
   const surfaceStyle = THEME_SURFACE_STYLES[theme] || THEME_SURFACE_STYLES.light;
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
+  const themeMix = THEME_MODAL_MIX[theme] || THEME_MODAL_MIX.light;
   const segments = word.segments || [];
   const singularAr = word.sarf?.noun?.singular_ar;
   const singularEn = word.sarf?.noun?.singular_en;
   const wordKey = `${word.surahNumber ?? ''}-${word.ayahNumber ?? ''}-${word.position ?? ''}-${word.text_uthmani}`;
 
   const frameColors = FRAME_GRADIENT_COLORS[palette] || FRAME_GRADIENT_COLORS.default;
-  const mixBase = dark ? '#0f172a' : theme === 'sepia' ? '#fffbeb' : '#ffffff';
-  const tileBorderBase = dark ? '#1e293b' : mixBase;
+  const mixBase = themeMix.base;
+  const tileBorderBase = themeMix.border;
 
   const totalWords = word.wordsInAyah?.length || 0;
   const currentWordIndex = totalWords > 0
@@ -1370,9 +1426,7 @@ const Sheet = ({
       ? Math.round(((currentWordIndex + 1) / totalWords) * 100)
       : null;
 
-  const navBtn = dark
-    ? 'border-white/20 bg-white/5 hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400'
-    : 'border-slate-300/90 bg-slate-100/80 hover:bg-slate-200/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500';
+  const navBtn = themeMix.navBtn;
   const kbd = dark ? 'bg-white/10 text-slate-200' : 'bg-black/10 text-slate-700';
 
   const handleTabListKeyDown = (e) => {
@@ -1456,11 +1510,7 @@ const Sheet = ({
           <div className="relative flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2 min-w-0">
               <span
-                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
-                  dark
-                    ? 'bg-emerald-950/70 text-emerald-200 border-emerald-700/60'
-                    : 'bg-slate-100 text-slate-800 border-slate-200'
-                }`}
+                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${themeMix.badge}`}
               >
                 <SafeIcon icon={Fi('FiBookOpen')} className="text-xs opacity-75" aria-hidden="true" />
                 {place}
@@ -1470,13 +1520,13 @@ const Sheet = ({
                 <div
                   aria-hidden="true"
                   className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono ${
-                    dark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'
+                    dark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/70 border-current/15 opacity-80'
                   }`}
                 >
-                  <div className={`w-12 h-1.5 rounded-full overflow-hidden ${dark ? 'bg-white/15' : 'bg-slate-300/80'}`}>
+                  <div className={`w-12 h-1.5 rounded-full overflow-hidden ${dark ? 'bg-white/15' : 'bg-black/10'}`}>
                     <div
                       style={{ width: `${progressPct}%` }}
-                      className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+                      className={`h-full rounded-full transition-[width] duration-300 ${themeMix.bar}`}
                     />
                   </div>
                   <span>{currentWordIndex + 1}/{totalWords}</span>
@@ -1545,7 +1595,7 @@ const Sheet = ({
                     >
                       <SafeIcon icon={Fi('FiLink')} className="text-xs shrink-0" aria-hidden="true" />
                       <span>{word.idafa.label_en}:</span>
-                      <span dir="rtl" className="font-arabic text-sm font-bold">
+                      <span dir="rtl" className="quran-text-pak !text-lg !leading-[1.5] [text-shadow:none] !text-inherit font-bold">
                         {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
                       </span>
                     </span>
@@ -1602,11 +1652,7 @@ const Sheet = ({
                           <motion.span
                             layoutId="grammar-tab-pill"
                             transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 26, stiffness: 360 }}
-                            className={`absolute inset-0 rounded-full border ${
-                              dark
-                                ? 'bg-emerald-500/20 border-emerald-400/50 shadow-sm'
-                                : 'bg-white border-slate-300/90 shadow-sm'
-                            }`}
+                            className={`absolute inset-0 rounded-full border ${themeMix.tab}`}
                           />
                         )}
                         <SafeIcon icon={tab.icon} className="relative text-sm shrink-0" aria-hidden="true" />

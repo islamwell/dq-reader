@@ -12,8 +12,8 @@
  *      * Harf = ROYAL BLUE (with slow pulsing effect for emphasis harfs)
  */
 
-// Themes whose bottom-sheet / modal surfaces are dark
-const DARK_SURFACE_THEMES = ['green', 'red', 'blue', 'dark'];
+// Themes whose bottom-sheet / modal surfaces are dark (green, red, blue are light pastel themes)
+const DARK_SURFACE_THEMES = ['dark'];
 
 export const isDarkSurface = (theme) => DARK_SURFACE_THEMES.includes(theme);
 
@@ -248,14 +248,16 @@ export const getCategoryTextClass = (category, theme, item = null, palette = 'de
   if (resolvedPalette === 'surah_103') {
     const isEmphasisHarf =
       category === 'harf' && Boolean(item?.emphasis || item?.subclass === 'emphasis');
-    const glow = isEmphasisHarf ? ' harf-emphasis-red-glow' : '';
+    if (isEmphasisHarf) {
+      return dark ? 'text-white font-bold' : 'text-black font-bold';
+    }
     switch (category) {
       case 'fil':
         return dark ? 'text-emerald-400' : 'text-emerald-700';
       case 'ism':
         return dark ? 'text-red-400' : 'text-red-600';
       case 'harf':
-        return `${dark ? 'text-yellow-300' : 'text-yellow-600'}${glow}`;
+        return dark ? 'text-yellow-300' : 'text-yellow-600';
       default:
         return '';
     }

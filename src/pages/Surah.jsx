@@ -277,8 +277,8 @@ const Surah = () => {
         onScrollToAyah={scrollToAyah}
       />
 
-      {/* Add bottom padding for audio player */}
-      <div className="pb-20">
+      {/* Add generous bottom padding so the last ayahs scroll cleanly above the floating grammar modal */}
+      <div className="pb-[68vh] sm:pb-80">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

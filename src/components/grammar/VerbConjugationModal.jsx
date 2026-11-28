@@ -58,6 +58,57 @@ const buildFallbackConjugationTable = (word) => {
   };
 };
 
+const THEME_CONJ_SURFACES = {
+  green: {
+    surface: 'bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xl shadow-emerald-950/20',
+    card: 'bg-white/85 border-emerald-200',
+    header: 'bg-emerald-100/95 text-emerald-950 border-b border-emerald-200',
+    rowHeader: 'bg-emerald-50/95 text-emerald-950 border-r border-emerald-200',
+    wrapperBorder: 'border-emerald-200',
+    pill: 'bg-emerald-100 text-emerald-900 border-emerald-300'
+  },
+  red: {
+    surface: 'bg-rose-50 text-rose-950 border-rose-300 shadow-2xl shadow-rose-950/20',
+    card: 'bg-white/85 border-rose-200',
+    header: 'bg-rose-100/95 text-rose-950 border-b border-rose-200',
+    rowHeader: 'bg-rose-50/95 text-rose-950 border-r border-rose-200',
+    wrapperBorder: 'border-rose-200',
+    pill: 'bg-rose-100 text-rose-900 border-rose-300'
+  },
+  blue: {
+    surface: 'bg-blue-50 text-blue-950 border-blue-300 shadow-2xl shadow-blue-950/20',
+    card: 'bg-white/85 border-blue-200',
+    header: 'bg-blue-100/95 text-blue-950 border-b border-blue-200',
+    rowHeader: 'bg-blue-50/95 text-blue-950 border-r border-blue-200',
+    wrapperBorder: 'border-blue-200',
+    pill: 'bg-blue-100 text-blue-900 border-blue-300'
+  },
+  sepia: {
+    surface: 'bg-amber-50 text-amber-950 border-amber-300 shadow-2xl shadow-amber-950/20',
+    card: 'bg-white/80 border-amber-200',
+    header: 'bg-amber-100/95 text-amber-950 border-b border-amber-200',
+    rowHeader: 'bg-amber-50/95 text-amber-950 border-r border-amber-200',
+    wrapperBorder: 'border-amber-200',
+    pill: 'bg-amber-100 text-amber-900 border-amber-300'
+  },
+  light: {
+    surface: 'bg-white text-slate-900 border-emerald-300 shadow-2xl shadow-slate-900/25',
+    card: 'bg-slate-50 border-slate-200',
+    header: 'bg-slate-100 text-slate-900 border-b border-slate-200',
+    rowHeader: 'bg-white/95 text-slate-800 border-r border-slate-200',
+    wrapperBorder: 'border-slate-200',
+    pill: 'bg-emerald-100 text-emerald-900 border-emerald-300'
+  },
+  dark: {
+    surface: 'bg-slate-900 text-slate-100 border-emerald-700/70 shadow-2xl shadow-black/80',
+    card: 'bg-slate-800/90 border-slate-700',
+    header: 'bg-slate-800 text-slate-100 border-b border-slate-700',
+    rowHeader: 'bg-slate-900/95 text-slate-200 border-r border-slate-800',
+    wrapperBorder: 'border-slate-700',
+    pill: 'bg-emerald-950/80 text-emerald-200 border-emerald-700'
+  }
+};
+
 const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAyah, renderMoreDetails }) => {
   const dialogRef = useRef(null);
   const titleId = useId();
@@ -127,21 +178,11 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
 
   if (!isOpen || !tableData) return null;
 
-  const surfaceClass = dark
-    ? 'bg-slate-900 text-slate-100 border-emerald-700/70 shadow-2xl shadow-black/80'
-    : 'bg-white text-slate-900 border-emerald-300 shadow-2xl shadow-slate-900/25';
-
-  const cardBg = dark
-    ? 'bg-slate-800/90 border-slate-700'
-    : 'bg-slate-50 border-slate-200';
-
-  const stickyHeaderBg = dark
-    ? 'bg-slate-800 text-slate-100 border-b border-slate-700'
-    : 'bg-slate-100 text-slate-900 border-b border-slate-200';
-
-  const stickyRowHeaderBg = dark
-    ? 'bg-slate-900/95 text-slate-200 border-r border-slate-800'
-    : 'bg-white/95 text-slate-800 border-r border-slate-200';
+  const themePalette = THEME_CONJ_SURFACES[theme] || THEME_CONJ_SURFACES.light;
+  const surfaceClass = themePalette.surface;
+  const cardBg = themePalette.card;
+  const stickyHeaderBg = themePalette.header;
+  const stickyRowHeaderBg = themePalette.rowHeader;
 
   const handleDialogClose = () => {
     const dialog = dialogRef.current;
@@ -171,11 +212,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                  dark
-                    ? 'bg-emerald-950/80 text-emerald-200 border-emerald-700'
-                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${themePalette.pill}`}
               >
                 <SafeIcon icon={FiLayers} className="text-xs" />
                 <span>Full Verb Conjugation</span>
@@ -243,9 +280,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
           tabIndex={0}
           role="region"
           aria-labelledby={captionId}
-          className={`conjugation-table-wrapper rounded-2xl border ${
-            dark ? 'border-slate-700' : 'border-slate-200'
-          }`}
+          className={`conjugation-table-wrapper rounded-2xl border ${themePalette.wrapperBorder}`}
         >
           <table className="text-xs sm:text-sm">
             <caption id={captionId} className="sr-only">
@@ -303,7 +338,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
                       <div className="flex items-center justify-between gap-2">
                         <span>{row.pronoun_en}</span>
                         {row.pronoun_ar && (
-                          <span dir="rtl" className="font-arabic text-base font-bold">
+                          <span dir="rtl" className="quran-text-pak !text-lg !leading-[1.5] [text-shadow:none] !text-inherit font-bold">
                             {row.pronoun_ar}
                           </span>
                         )}
@@ -420,7 +455,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
                   >
                     <div className="flex items-center justify-between text-[11px] opacity-75 px-1">
                       <span>{cmd.pronoun_en}</span>
-                      <span dir="rtl" className="font-arabic font-bold">{cmd.pronoun_ar}</span>
+                      <span dir="rtl" className="quran-text-pak !text-base !leading-[1.4] [text-shadow:none] !text-inherit font-bold">{cmd.pronoun_ar}</span>
                     </div>
                     <div
                       dir="rtl"

@@ -294,16 +294,22 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(handleNavigate).toHaveBeenCalledWith(1);
     });
 
-    it('uses Green for Verb, Red for Ism, Yellow for Harf, unified green for verb endings, and 3-pulse red glow for emphasis harfs', () => {
+    it('uses Green for Verb, Red for Ism, Yellow for Harf, unified green for verb endings, and black bold (no glow) for emphasis harfs', () => {
       expect(getGrammarSegmentClass('fil', 'colored', 'light', null, 'surah_103')).toContain('text-emerald-700');
       expect(getGrammarSegmentClass('ism', 'colored', 'light', null, 'surah_103')).toContain('text-red-600');
       expect(getGrammarSegmentClass('harf', 'colored', 'light', null, 'surah_103')).toContain('text-yellow-600');
       expect(getGrammarSegmentClass('harf', 'colored', 'light', { emphasis: false }, 'surah_103')).not.toContain('harf-emphasis-red-glow');
-      expect(getGrammarSegmentClass('harf', 'colored', 'light', { emphasis: true }, 'surah_103')).toContain('harf-emphasis-red-glow');
+      const empLight = getGrammarSegmentClass('harf', 'colored', 'light', { emphasis: true }, 'surah_103');
+      expect(empLight).toContain('text-black font-bold');
+      expect(empLight).not.toContain('harf-emphasis-red-glow');
+      expect(getGrammarSegmentClass('harf', 'colored', 'green', { emphasis: true }, 'surah_103')).toContain('text-black font-bold');
 
       expect(getGrammarSegmentClass('fil', 'colored', 'dark', null, 'surah_103')).toContain('text-emerald-400');
       expect(getGrammarSegmentClass('ism', 'colored', 'dark', null, 'surah_103')).toContain('text-red-400');
       expect(getGrammarSegmentClass('harf', 'colored', 'dark', null, 'surah_103')).toContain('text-yellow-300');
+      const empDark = getGrammarSegmentClass('harf', 'colored', 'dark', { emphasis: true }, 'surah_103');
+      expect(empDark).toContain('text-white font-bold');
+      expect(empDark).not.toContain('harf-emphasis-red-glow');
 
       // All 4 Surah 103 verbs keep their subject suffix (وا۟ / وْا۟) in the same green 'fil' category
       const tawasaw = surah103.ayahs['3'].words[5];
