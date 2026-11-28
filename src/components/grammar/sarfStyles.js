@@ -246,13 +246,16 @@ export const getCategoryTextClass = (category, theme, item = null, palette = 'de
   }
 
   if (resolvedPalette === 'surah_103') {
+    const isEmphasisHarf =
+      category === 'harf' && Boolean(item?.emphasis || item?.subclass === 'emphasis');
+    const glow = isEmphasisHarf ? ' harf-emphasis-red-glow' : '';
     switch (category) {
       case 'fil':
         return dark ? 'text-emerald-400' : 'text-emerald-700';
       case 'ism':
         return dark ? 'text-red-400' : 'text-red-600';
       case 'harf':
-        return dark ? 'text-yellow-300' : 'text-yellow-600';
+        return `${dark ? 'text-yellow-300' : 'text-yellow-600'}${glow}`;
       default:
         return '';
     }

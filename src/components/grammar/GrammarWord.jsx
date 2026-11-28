@@ -42,6 +42,12 @@ export const getGrammarSegmentClass = (
   }
 
   if (resolvedPalette === 'surah_103') {
+    const isEmphasisHarf =
+      category === 'harf' && Boolean(segment?.emphasis || segment?.subclass === 'emphasis');
+    const emphasisClass = isEmphasisHarf
+      ? ` harf-emphasis-red-glow${pulsePaused ? ' harf-emphasis-paused' : ''}`
+      : '';
+
     if (mode === 'underline') {
       const darkText = isDark ? ' text-slate-100' : '';
       switch (category) {
@@ -50,7 +56,7 @@ export const getGrammarSegmentClass = (
         case 'ism':
           return `border-b-2 border-red-500 pb-0.5${darkText}`;
         case 'harf':
-          return `border-b-2 border-yellow-500 pb-0.5${darkText}`;
+          return `border-b-2 border-yellow-500 pb-0.5${darkText}${emphasisClass}`;
         default:
           return '';
       }
@@ -62,7 +68,7 @@ export const getGrammarSegmentClass = (
       case 'ism':
         return isDark ? 'text-red-400 font-semibold' : 'text-red-600 font-semibold';
       case 'harf':
-        return isDark ? 'text-yellow-300 font-semibold' : 'text-yellow-600 font-semibold';
+        return `${isDark ? 'text-yellow-300 font-semibold' : 'text-yellow-600 font-semibold'}${emphasisClass}`;
       default:
         return '';
     }

@@ -294,17 +294,33 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(handleNavigate).toHaveBeenCalledWith(1);
     });
 
-    it('uses Green for Verb, Red for Ism, and Yellow for Harf in Surah 103 palette', () => {
+    it('uses Green for Verb, Red for Ism, Yellow for Harf, unified green for verb endings, and 3-pulse red glow for emphasis harfs', () => {
       expect(getGrammarSegmentClass('fil', 'colored', 'light', null, 'surah_103')).toContain('text-emerald-700');
       expect(getGrammarSegmentClass('ism', 'colored', 'light', null, 'surah_103')).toContain('text-red-600');
       expect(getGrammarSegmentClass('harf', 'colored', 'light', null, 'surah_103')).toContain('text-yellow-600');
+      expect(getGrammarSegmentClass('harf', 'colored', 'light', { emphasis: false }, 'surah_103')).not.toContain('harf-emphasis-red-glow');
+      expect(getGrammarSegmentClass('harf', 'colored', 'light', { emphasis: true }, 'surah_103')).toContain('harf-emphasis-red-glow');
 
       expect(getGrammarSegmentClass('fil', 'colored', 'dark', null, 'surah_103')).toContain('text-emerald-400');
       expect(getGrammarSegmentClass('ism', 'colored', 'dark', null, 'surah_103')).toContain('text-red-400');
       expect(getGrammarSegmentClass('harf', 'colored', 'dark', null, 'surah_103')).toContain('text-yellow-300');
+
+      // All 4 Surah 103 verbs keep their subject suffix (وا۟ / وْا۟) in the same green 'fil' category
+      const tawasaw = surah103.ayahs['3'].words[5];
+      const suffix = tawasaw.segments.find((s) => s.role === 'suffix');
+      expect(suffix.text).toBe('وْا۟');
+      expect(suffix.category).toBe('fil');
+      expect(suffix.pos_name_en).toBe('They');
+      expect(getGrammarSegmentClass(suffix.category, 'colored', 'light', suffix, 'surah_103')).toContain('text-emerald-700');
+
+      // Emphasis harfs in Surah 103: وَ of oath (1:1), إِنَّ (2:1), and لَ (2:3)
+      expect(surah103.ayahs['1'].words[0].segments[0].emphasis).toBe(true);
+      expect(surah103.ayahs['2'].words[0].segments[0].emphasis).toBe(true);
+      expect(surah103.ayahs['2'].words[2].segments[0].emphasis).toBe(true);
+      expect(surah103.ayahs['2'].words[2].segments[1].emphasis).toBeUndefined();
     });
 
-    it('renders plain-English visual traits, click-outside close, and passive verb forms under More details for ءَامَنُوا۟', () => {
+    it('renders visual diagram, grouped feature tiles with They (no Pronoun), duo cards, and moves More details inside VerbConjugationModal for ءَامَنُوا۟', () => {
       const amanu = { ...surah103.ayahs['3'].words[2], ayahNumber: 3, surahNumber: 103, color_palette: 'surah_103' };
       const handleClose = vi.fn();
       const traits = buildTraits(amanu);
@@ -334,16 +350,42 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(screen.getByTestId('grammar-floating-wrapper').className).toContain('bottom-6');
       expect(screen.getByRole('dialog').className).not.toContain('overscroll-contain');
       expect(screen.getByTestId('grammar-hero-stage')).toBeInTheDocument();
+      expect(screen.getByTestId('word-bracket-diagram')).toBeInTheDocument();
       expect(screen.getByTestId('hero-root-pill')).toHaveTextContent('أ · م · ن');
-      expect(screen.getAllByTestId('bento-trait-card')).toHaveLength(5);
-      expect(screen.getByText('Past')).toBeInTheDocument();
-      expect(screen.getByText('Does it')).toBeInTheDocument();
-      expect(screen.getByText('Someone else')).toBeInTheDocument();
-      expect(screen.getByText('Male')).toBeInTheDocument();
-      expect(screen.getByText('Many')).toBeInTheDocument();
-      expect(screen.getByTestId('open-conjugation-modal')).toBeInTheDocument();
 
-      // Expand "More details": Word Pieces is removed; Quick Verb Forms, Passive Form, and Same Root are kept
+      // Grouped visual tiles: Verb + They (never "Pronoun") + animated Past timeline + bottom duo row
+      expect(screen.getByTestId('visual-feature-groups')).toBeInTheDocument();
+      expect(screen.getAllByTestId('visual-feature-tile')).toHaveLength(6);
+      expect(screen.getByTestId('tense-timeline')).toBeInTheDocument();
+      expect(screen.getByTestId('feature-group-subject-col')).toHaveTextContent('They');
+      expect(screen.queryByText(/\bPronoun\b/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Past')).toBeInTheDocument();
+      expect(screen.getByText('Active')).toBeInTheDocument();
+      expect(screen.getByText('3rd person')).toBeInTheDocument();
+      expect(screen.getByText('Masculine')).toBeInTheDocument();
+      expect(screen.getByText('Plural')).toBeInTheDocument();
+      expect(screen.getByTestId('visual-duo-row')).toHaveTextContent('those who have faith');
+      expect(screen.getByTestId('visual-root-card')).toHaveTextContent('safety, security, trust');
+
+      // Pause/Play motion toggle (WCAG 2.2.2, label-swapping without aria-pressed)
+      const motionBtn = screen.getByTestId('toggle-modal-motion');
+      expect(motionBtn).toHaveTextContent('Pause motion');
+      expect(motionBtn).not.toHaveAttribute('aria-pressed');
+      fireEvent.click(motionBtn);
+      expect(motionBtn).toHaveTextContent('Play motion');
+
+      // For verbs, "More details" is moved inside VerbConjugationModal (not inline in FactsPanel)
+      expect(screen.queryByTestId('toggle-more-details')).not.toBeInTheDocument();
+      const openConjBtn = screen.getByTestId('open-conjugation-modal');
+      fireEvent.click(openConjBtn);
+
+      const conjModal = screen.getByTestId('verb-conjugation-modal');
+      expect(conjModal).toBeInTheDocument();
+      expect(conjModal).toHaveTextContent('she believed');
+      expect(conjModal).toHaveTextContent('we believed');
+      expect(conjModal).toHaveTextContent('Believe!');
+
+      // Expand "More details" inside VerbConjugationModal: Quick Verb Forms, Passive Form, and Same Root are present; Word Pieces stays absent
       fireEvent.click(screen.getByTestId('toggle-more-details'));
       expect(screen.queryByText(/Word Pieces/i)).not.toBeInTheDocument();
       expect(screen.getByText('Quick Verb Forms')).toBeInTheDocument();
@@ -351,6 +393,10 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       const passiveStrip = screen.getByTestId('verb-passive-strip');
       expect(passiveStrip).toHaveTextContent('أُومِنَ');
       expect(passiveStrip).toHaveTextContent('يُؤْمَنُ');
+
+      // Close conjugation sub-modal before testing click-outside dismiss on GrammarBottomSheet
+      fireEvent.click(screen.getByLabelText('Close verb conjugation sub-modal'));
+      expect(screen.queryByTestId('verb-conjugation-modal')).not.toBeInTheDocument();
       expect(handleClose).not.toHaveBeenCalled();
 
       // Clicking inside the modal does not close it

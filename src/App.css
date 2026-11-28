@@ -366,6 +366,320 @@ dialog::backdrop {
   }
 }
 
+/* Surah 103 emphasis particles (و of oath, إِنَّ, لَ): slow red outline glow 3 times, then stops */
+@keyframes harfEmphasisRedOutline {
+  0%, 100% {
+    text-shadow: 0 0 0 rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  50% {
+    text-shadow:
+      -1px -1px 0 rgba(239, 68, 68, 0.9),
+      1px -1px 0 rgba(239, 68, 68, 0.9),
+      -1px 1px 0 rgba(239, 68, 68, 0.9),
+      1px 1px 0 rgba(239, 68, 68, 0.9),
+      0 0 14px rgba(239, 68, 68, 0.72);
+    box-shadow:
+      0 0 0 2px rgba(239, 68, 68, 0.85),
+      0 0 14px rgba(239, 68, 68, 0.45);
+  }
+}
+
+.harf-emphasis-red-glow {
+  display: inline;
+  border-radius: 0.35rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .harf-emphasis-red-glow:not(.harf-emphasis-paused) {
+    animation: harfEmphasisRedOutline 2.4s ease-in-out 3 forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .harf-emphasis-red-glow {
+    text-shadow:
+      -0.75px -0.75px 0 rgba(239, 68, 68, 0.75),
+      0.75px -0.75px 0 rgba(239, 68, 68, 0.75),
+      -0.75px 0.75px 0 rgba(239, 68, 68, 0.75),
+      0.75px 0.75px 0 rgba(239, 68, 68, 0.75);
+  }
+}
+
+/* ---------- Visual Grammar Inspector Modal (conic border, brackets, tiles, timeline, root) ---------- */
+:root {
+  --in-oklab: ;
+  --in-oklch: ;
+}
+
+@supports (background: linear-gradient(in oklab, white, black)) {
+  :root {
+    --in-oklab: in oklab;
+    --in-oklch: in oklch;
+  }
+}
+
+@property --grammar-frame-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes grammarFrameSpin {
+  to {
+    --grammar-frame-angle: 360deg;
+  }
+}
+
+.grammar-modal-frame {
+  --grammar-frame-angle: 0deg;
+  padding: 2.5px;
+  border-radius: 28px;
+  background: conic-gradient(
+    from var(--grammar-frame-angle),
+    var(--gf-c1, #10b981),
+    var(--gf-c2, #ef4444),
+    var(--gf-c3, #eab308),
+    var(--gf-c4, #0d9488),
+    var(--gf-c1, #10b981)
+  );
+  box-shadow: 0 32px 80px -24px rgba(15, 23, 42, 0.45);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grammar-modal-frame:not(.grammar-motion-paused) {
+    animation: grammarFrameSpin 8s linear infinite;
+  }
+}
+
+/* SVG curved morpheme bracket draw animation */
+@keyframes grammarBracketDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.grammar-bracket-path {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grammar-modal-frame:not(.grammar-motion-paused) .grammar-bracket-path {
+    stroke-dashoffset: 1;
+    animation: grammarBracketDraw 0.85s ease-out 0.25s forwards;
+  }
+}
+
+/* Floating morpheme chips */
+.grammar-chip {
+  background: color-mix(in oklab, var(--c) 11%, var(--chip-base, #ffffff));
+  border: 1.5px solid color-mix(in oklab, var(--c) 36%, var(--chip-base, #ffffff));
+}
+
+.grammar-chip-dot {
+  background: var(--c);
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--c) 50%, transparent);
+}
+
+/* Group heading rule */
+.grammar-group-heading {
+  color: var(--c);
+}
+
+.grammar-group-heading::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right var(--in-oklab),
+    color-mix(in oklab, var(--c) 45%, transparent),
+    transparent
+  );
+}
+
+/* Feature tile with pulsing ring icon badge */
+.grammar-tile {
+  background: linear-gradient(
+    135deg var(--in-oklab),
+    color-mix(in oklab, var(--c) 11%, var(--tile-base, #ffffff)),
+    var(--tile-base, #ffffff) 72%
+  );
+  border: 1.5px solid color-mix(in oklab, var(--c) 24%, var(--tile-border-base, #ffffff));
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.grammar-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px -14px var(--c);
+}
+
+.grammar-ic {
+  position: relative;
+  color: #ffffff;
+  background: linear-gradient(
+    135deg var(--in-oklab),
+    var(--c),
+    color-mix(in oklab, var(--c) 62%, #ffffff)
+  );
+  box-shadow: 0 8px 18px -6px var(--c);
+}
+
+@keyframes grammarIconRing {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  70%, 100% {
+    opacity: 0;
+    transform: scale(1.42);
+  }
+}
+
+.grammar-ic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--c);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grammar-modal-frame:not(.grammar-motion-paused) .grammar-ic::after {
+    animation: grammarIconRing 2.8s ease-out infinite;
+    animation-delay: var(--p, 0s);
+  }
+}
+
+/* Animated verb tense timeline widget (then • ── | NOW) */
+.grammar-tl {
+  position: relative;
+  width: 70px;
+  height: 22px;
+  flex: none;
+}
+
+.grammar-tl::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(
+    to right var(--in-oklab),
+    var(--tl-color, #f59e0b),
+    rgba(148, 163, 184, 0.45)
+  );
+}
+
+.grammar-tl-dot {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--tl-color, #f59e0b);
+}
+
+@keyframes grammarTimelineBeat {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.35);
+    opacity: 0;
+  }
+}
+
+.grammar-tl-pulse {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--tl-color, #f59e0b);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grammar-modal-frame:not(.grammar-motion-paused) .grammar-tl-pulse {
+    animation: grammarTimelineBeat 1.8s ease-out infinite;
+  }
+}
+
+.grammar-tl-now {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+  background: #94a3b8;
+}
+
+.grammar-tl-label {
+  position: absolute;
+  top: 100%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.1em;
+}
+
+/* Spinning habit/context loop icon & popping root letter tiles */
+@keyframes grammarSpinLoop {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grammar-modal-frame:not(.grammar-motion-paused) .grammar-loop-spin {
+    animation: grammarSpinLoop 4s linear infinite;
+  }
+}
+
+@keyframes grammarRootPop {
+  from {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grammar-modal-frame:not(.grammar-motion-paused) .grammar-root-tile {
+    animation: grammarRootPop 0.55s cubic-bezier(0.3, 1.55, 0.5, 1) both;
+    animation-delay: var(--rd, 0.25s);
+  }
+}
+
+/* Equation pill block inside "In this verse" duo card */
+.grammar-eq-blk {
+  background: color-mix(in oklab, var(--c) 12%, var(--eq-base, #ffffff));
+  border: 1px solid color-mix(in oklab, var(--c) 26%, var(--eq-base, #ffffff));
+}
+
 /* Responsive verb conjugation table container & sticky headers */
 .conjugation-table-wrapper {
   overflow: auto;

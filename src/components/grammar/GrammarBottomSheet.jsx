@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useDragControls, useReducedMotion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
+import GrammarVisualIcon from './GrammarVisualIcons';
 import {
   getCategoryMeta,
   getCategoryBadgeClass,
   getCategoryTextClass,
-  getSegmentBarClass,
   isDarkSurface
 } from './sarfStyles';
 import { getSimplePartOfSpeech } from './GrammarWord';
@@ -30,102 +30,29 @@ export const getAyahWordClass = ({ isActive, hasActive }) =>
         : 'hover:opacity-80'
   ].join(' ');
 
-/* ---------------------------- Theme maps ---------------------------- */
-const THEME_DRAWER_STYLES = {
-  green:
-    'bg-gradient-to-b from-emerald-950/95 via-emerald-950/95 to-teal-950/98 text-emerald-50 border-emerald-700/80 shadow-[0_28px_80px_-16px_rgba(2,44,34,0.9)]',
-  red:
-    'bg-gradient-to-b from-rose-950/95 via-rose-950/95 to-red-950/98 text-rose-50 border-rose-700/80 shadow-[0_28px_80px_-16px_rgba(76,5,25,0.9)]',
-  blue:
-    'bg-gradient-to-b from-slate-900/95 via-slate-900/95 to-blue-950/98 text-blue-50 border-blue-800/80 shadow-[0_28px_80px_-16px_rgba(15,23,42,0.92)]',
-  light:
-    'bg-gradient-to-b from-white/95 via-white/95 to-slate-50/95 text-slate-900 border-slate-200/90 shadow-[0_28px_80px_-16px_rgba(15,23,42,0.28)]',
-  dark:
-    'bg-gradient-to-b from-slate-900/95 via-slate-900/95 to-slate-950/98 text-slate-100 border-slate-700/80 shadow-[0_28px_80px_-16px_rgba(0,0,0,0.85)]',
-  sepia:
-    'bg-gradient-to-b from-amber-50/95 via-amber-50/95 to-orange-50/95 text-amber-950 border-amber-300/90 shadow-[0_28px_80px_-16px_rgba(120,53,15,0.25)]'
+/* ---------------------------- Theme & Color Maps ---------------------------- */
+const THEME_SURFACE_STYLES = {
+  green: 'bg-emerald-950/96 text-emerald-50',
+  red: 'bg-rose-950/96 text-rose-50',
+  blue: 'bg-slate-900/96 text-blue-50',
+  light: 'bg-white text-slate-900',
+  dark: 'bg-slate-900 text-slate-100',
+  sepia: 'bg-amber-50 text-amber-950'
 };
 
 const THEME_CARD_BG = {
   green: 'bg-emerald-900/55 border-emerald-700/80',
   red: 'bg-rose-900/55 border-rose-700/80',
   blue: 'bg-slate-800/70 border-blue-800/70',
-  light: 'bg-white/85 border-slate-200/90 shadow-xs',
+  light: 'bg-slate-50/90 border-slate-200/90',
   dark: 'bg-slate-800/75 border-slate-700/80',
   sepia: 'bg-amber-100/60 border-amber-300/80'
 };
 
-// Category-reactive luminous accents (top beam, floating ambient orbs, halo ring)
-const CATEGORY_ACCENTS = {
-  default: {
-    ism: {
-      beam: 'from-sky-400 via-blue-500 to-indigo-500',
-      aura: 'bg-blue-500/30',
-      orb2: 'bg-sky-400/20',
-      halo: 'border-sky-400/35',
-      ring: 'ring-blue-400/25'
-    },
-    fil: {
-      beam: 'from-amber-400 via-orange-500 to-yellow-500',
-      aura: 'bg-amber-500/30',
-      orb2: 'bg-orange-400/20',
-      halo: 'border-amber-400/35',
-      ring: 'ring-amber-400/25'
-    },
-    harf: {
-      beam: 'from-emerald-400 via-teal-500 to-cyan-500',
-      aura: 'bg-emerald-500/30',
-      orb2: 'bg-teal-400/20',
-      halo: 'border-emerald-400/35',
-      ring: 'ring-emerald-400/25'
-    }
-  },
-  surah_100: {
-    ism: {
-      beam: 'from-rose-500 via-red-500 to-orange-500',
-      aura: 'bg-red-500/30',
-      orb2: 'bg-rose-400/20',
-      halo: 'border-rose-400/35',
-      ring: 'ring-rose-500/25'
-    },
-    fil: {
-      beam: 'from-emerald-400 via-green-500 to-teal-500',
-      aura: 'bg-emerald-500/30',
-      orb2: 'bg-teal-400/20',
-      halo: 'border-emerald-400/35',
-      ring: 'ring-emerald-500/25'
-    },
-    harf: {
-      beam: 'from-blue-400 via-indigo-500 to-sky-500',
-      aura: 'bg-blue-500/30',
-      orb2: 'bg-indigo-400/25',
-      halo: 'border-blue-400/35',
-      ring: 'ring-blue-500/25'
-    }
-  },
-  surah_103: {
-    ism: {
-      beam: 'from-rose-500 via-red-500 to-orange-500',
-      aura: 'bg-red-500/30',
-      orb2: 'bg-rose-400/20',
-      halo: 'border-red-400/35',
-      ring: 'ring-red-500/25'
-    },
-    fil: {
-      beam: 'from-emerald-400 via-green-500 to-teal-500',
-      aura: 'bg-emerald-500/30',
-      orb2: 'bg-teal-400/20',
-      halo: 'border-emerald-400/35',
-      ring: 'ring-emerald-500/25'
-    },
-    harf: {
-      beam: 'from-yellow-400 via-amber-400 to-yellow-500',
-      aura: 'bg-yellow-400/30',
-      orb2: 'bg-amber-300/25',
-      halo: 'border-yellow-400/40',
-      ring: 'ring-yellow-400/30'
-    }
-  }
+const FRAME_GRADIENT_COLORS = {
+  surah_103: ['#10b981', '#ef4444', '#eab308', '#0d9488'],
+  surah_100: ['#dc2626', '#059669', '#2563eb', '#f59e0b'],
+  default: ['#4f46e5', '#0d9488', '#f59e0b', '#db2777']
 };
 
 const LEGEND = [
@@ -134,52 +61,39 @@ const LEGEND = [
   { label: 'Small word', dot: 'bg-emerald-500', dot100: 'bg-blue-600', dot103: 'bg-yellow-500' }
 ];
 
-// [light icon badge, dark icon badge]
-const TONES = {
-  time: ['bg-amber-500/15 text-amber-700 ring-1 ring-amber-400/40', 'bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/35'],
-  doing: ['bg-rose-500/15 text-rose-700 ring-1 ring-rose-400/40', 'bg-rose-400/20 text-rose-300 ring-1 ring-rose-400/35'],
-  who: ['bg-sky-500/15 text-sky-700 ring-1 ring-sky-400/40', 'bg-sky-400/20 text-sky-300 ring-1 ring-sky-400/35'],
-  gender: ['bg-pink-500/15 text-pink-700 ring-1 ring-pink-400/40', 'bg-pink-400/20 text-pink-300 ring-1 ring-pink-400/35'],
-  amount: ['bg-violet-500/15 text-violet-700 ring-1 ring-violet-400/40', 'bg-violet-400/20 text-violet-300 ring-1 ring-violet-400/35'],
-  kind: ['bg-teal-500/15 text-teal-700 ring-1 ring-teal-400/40', 'bg-teal-400/20 text-teal-300 ring-1 ring-teal-400/35'],
-  role: ['bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-400/40', 'bg-emerald-400/20 text-emerald-300 ring-1 ring-emerald-400/35'],
-  emphasis: ['bg-indigo-500/15 text-indigo-700 ring-1 ring-indigo-400/40', 'bg-indigo-400/25 text-blue-200 ring-1 ring-indigo-400/40']
+// High-contrast accessible hex colors [lightSurface, darkSurface]
+const TONE_HEX = {
+  verb: ['#047857', '#34d399'],
+  ism: ['#dc2626', '#f87171'],
+  harf103: ['#a16207', '#facc15'],
+  harf100: ['#1d4ed8', '#60a5fa'],
+  harfDefault: ['#059669', '#34d399'],
+  past: ['#d97706', '#fbbf24'],
+  present: ['#059669', '#34d399'],
+  future: ['#0891b2', '#22d3ee'],
+  link: ['#db2777', '#f472b6'],
+  act: ['#16a34a', '#4ade80'],
+  passive: ['#7c3aed', '#c084fc'],
+  third: ['#9333ea', '#c084fc'],
+  masc: ['#2563eb', '#60a5fa'],
+  fem: ['#db2777', '#f472b6'],
+  plur: ['#ea580c', '#fb923c'],
+  sing: ['#0284c7', '#38bdf8'],
+  def: ['#0d9488', '#2dd4bf'],
+  role: ['#4f46e5', '#818cf8'],
+  emphasis: ['#dc2626', '#f87171'],
+  habit: ['#0891b2', '#22d3ee'],
+  root: ['#b45309', '#fbbf24']
 };
 
-// Individual Bento card surfaces per trait group [light surface, dark surface]
-const TONE_CARDS = {
-  time: [
-    'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 border-amber-200/80 hover:border-amber-300',
-    'bg-gradient-to-br from-amber-950/45 via-slate-900/60 to-amber-900/25 border-amber-500/30 hover:border-amber-400/50'
-  ],
-  doing: [
-    'bg-gradient-to-br from-rose-50/90 via-white to-pink-50/50 border-rose-200/80 hover:border-rose-300',
-    'bg-gradient-to-br from-rose-950/45 via-slate-900/60 to-rose-900/25 border-rose-500/30 hover:border-rose-400/50'
-  ],
-  who: [
-    'bg-gradient-to-br from-sky-50/90 via-white to-blue-50/50 border-sky-200/80 hover:border-sky-300',
-    'bg-gradient-to-br from-sky-950/45 via-slate-900/60 to-sky-900/25 border-sky-500/30 hover:border-sky-400/50'
-  ],
-  gender: [
-    'bg-gradient-to-br from-pink-50/90 via-white to-fuchsia-50/50 border-pink-200/80 hover:border-pink-300',
-    'bg-gradient-to-br from-pink-950/45 via-slate-900/60 to-pink-900/25 border-pink-500/30 hover:border-pink-400/50'
-  ],
-  amount: [
-    'bg-gradient-to-br from-violet-50/90 via-white to-purple-50/50 border-violet-200/80 hover:border-violet-300',
-    'bg-gradient-to-br from-violet-950/45 via-slate-900/60 to-violet-900/25 border-violet-500/30 hover:border-violet-400/50'
-  ],
-  kind: [
-    'bg-gradient-to-br from-teal-50/90 via-white to-cyan-50/50 border-teal-200/80 hover:border-teal-300',
-    'bg-gradient-to-br from-teal-950/45 via-slate-900/60 to-teal-900/25 border-teal-500/30 hover:border-teal-400/50'
-  ],
-  role: [
-    'bg-gradient-to-br from-emerald-50/90 via-white to-green-50/50 border-emerald-200/80 hover:border-emerald-300',
-    'bg-gradient-to-br from-emerald-950/45 via-slate-900/60 to-emerald-900/25 border-emerald-500/30 hover:border-emerald-400/50'
-  ],
-  emphasis: [
-    'bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/50 border-indigo-200/80 hover:border-indigo-300',
-    'bg-gradient-to-br from-indigo-950/50 via-slate-900/60 to-blue-900/30 border-indigo-500/35 hover:border-indigo-400/60'
-  ]
+const getToneColor = (tone, dark, palette = 'surah_103') => {
+  if (tone === 'harf') {
+    const key = palette === 'surah_100' ? 'harf100' : palette === 'surah_103' ? 'harf103' : 'harfDefault';
+    return TONE_HEX[key][dark ? 1 : 0];
+  }
+  if (tone === 'fil') return TONE_HEX.verb[dark ? 1 : 0];
+  const pair = TONE_HEX[tone] || TONE_HEX.habit;
+  return pair[dark ? 1 : 0];
 };
 
 const TABS = [
@@ -189,8 +103,7 @@ const TABS = [
 ];
 
 /* ------------------------------------------------------------------
-   TRAITS — turns surah_103.json and surah_100.json fields into
-   plain-English visual icon facts.
+   TRAITS — preserved export for plain-English trait extraction
 ------------------------------------------------------------------- */
 const s = (v) => String(v ?? '').toLowerCase();
 const has = (v, ...keys) => keys.some((k) => s(v).includes(k));
@@ -207,7 +120,6 @@ export const buildTraits = (word) => {
   const add = (group, label, value, hint, visual) =>
     out.push({ group, label, value, hint, ...visual });
 
-  // Time (verb tense)
   const tense = pick(v, 'tense_en', 'tense', 'verb_tense') ?? (word?.primary_category === 'fil' ? word.tense : null);
   if (tense) {
     if (has(tense, 'command', 'amr', 'imperative'))
@@ -222,7 +134,6 @@ export const buildTraits = (word) => {
       add('time', 'Time', 'Later', 'Yet to happen', { icon: Fi('FiPlay') });
   }
 
-  // Doing (active / passive voice)
   const voice = pick(v, 'voice_en', 'voice') ?? (word?.primary_category === 'fil' ? word.voice : null);
   if (voice != null || typeof v.passive === 'boolean') {
     const passive = v.passive === true || has(voice, 'passive', 'majhul');
@@ -235,7 +146,6 @@ export const buildTraits = (word) => {
     );
   }
 
-  // Who (person)
   const person = pick(v, 'person_en', 'person');
   if (person != null) {
     const pText = s(person);
@@ -249,7 +159,6 @@ export const buildTraits = (word) => {
     );
   }
 
-  // Gender (noun.gender_en, verb.gender_en, or embedded inside verb.person_en)
   const g = pick(v, 'gender_en', 'gender') ?? pick(n, 'gender_en', 'gender') ?? person;
   if (g != null) {
     const gText = s(g);
@@ -261,7 +170,6 @@ export const buildTraits = (word) => {
       });
   }
 
-  // How many (noun.number_en, verb.number_en, or embedded inside verb.person_en)
   const num = pick(v, 'number_en', 'number') ?? pick(n, 'number_en', 'number') ?? person;
   if (num != null) {
     const nText = s(num);
@@ -273,7 +181,6 @@ export const buildTraits = (word) => {
       add('amount', 'How many', 'One', 'Just one', { dots: 1 });
   }
 
-  // Specific or general (definiteness)
   const def = pick(n, 'definiteness_en', 'definite', 'is_definite', 'definiteness', 'state');
   if (def != null) {
     const dText = s(def);
@@ -287,7 +194,6 @@ export const buildTraits = (word) => {
     );
   }
 
-  // Role in the sentence (case)
   const c = pick(n, 'case_en', 'case', 'irab_case');
   if (c != null) {
     const cText = s(c);
@@ -299,7 +205,6 @@ export const buildTraits = (word) => {
       add('role', 'Role', 'Linked', 'Follows a word like in, of or by', { icon: Fi('FiLink') });
   }
 
-  // Emphasis particle indicator
   if (word?.has_emphasis || word?.subclass === 'emphasis') {
     add('emphasis', 'Emphasis', 'Strong stress', 'Adds certainty or opens an oath', {
       icon: Fi('FiZap')
@@ -317,157 +222,1079 @@ export const buildTraits = (word) => {
   return out;
 };
 
-/* ------------------------------ Pieces ------------------------------ */
-const Dots = ({ n }) => (
-  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-    {n === 1 && <circle cx="12" cy="12" r="4.5" />}
-    {n === 2 && (
-      <>
-        <circle cx="7.5" cy="12" r="3.5" />
-        <circle cx="16.5" cy="12" r="3.5" />
-      </>
-    )}
-    {n === 3 && (
-      <>
-        <circle cx="12" cy="6.5" r="3" />
-        <circle cx="6.5" cy="16" r="3" />
-        <circle cx="17.5" cy="16" r="3" />
-      </>
-    )}
-  </svg>
-);
+/* ------------------------------------------------------------------
+   SUBJECT LABEL HELPER — Never calls verb endings "Pronoun"!
+   Returns concise plain-English subject like "They", "She", "We", "He".
+------------------------------------------------------------------- */
+const getVerbSubjectLabel = (word) => {
+  const person = s(word?.sarf?.verb?.person_en || '');
+  const is1st = /1st|first|\bi\b|\bwe\b/.test(person);
+  const is2nd = /2nd|second|\byou\b/.test(person);
+  const isPlur = /\bplur|\bthey\b|\bwe\b/.test(person);
+  const isFem = /\bfem|\bshe\b/.test(person);
 
-const TraitVisual = ({ t }) => {
-  if (t.dots) return <Dots n={t.dots} />;
-  if (t.mark) return <span className="text-xl leading-none font-bold" aria-hidden="true">{t.mark}</span>;
-  return <SafeIcon icon={t.icon} className="text-lg" aria-hidden="true" />;
+  if (is1st) return isPlur ? 'We' : 'I';
+  if (is2nd) return isPlur ? 'You all' : 'You';
+  if (isPlur) return 'They';
+  return isFem ? 'She' : 'He';
 };
 
-const Trait = ({ t, i, dark, reduce }) => (
-  <motion.li
-    data-testid="bento-trait-card"
-    initial={reduce ? false : { opacity: 0, y: 18, scale: 0.9 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    whileHover={reduce ? undefined : { y: -3, scale: 1.02 }}
-    whileTap={reduce ? undefined : { scale: 0.98 }}
-    transition={
-      reduce
-        ? { duration: 0.01 }
-        : { delay: 0.045 * i, type: 'spring', damping: 18, stiffness: 320 }
-    }
-    className={`group relative overflow-hidden flex items-start gap-3 p-3.5 rounded-2xl border shadow-xs transition-shadow hover:shadow-md ${
-      (TONE_CARDS[t.group] || TONE_CARDS.kind)[dark ? 1 : 0]
-    }`}
-  >
-    <motion.span
-      initial={reduce ? false : { scale: 0.4, rotate: -18, opacity: 0 }}
-      animate={{ scale: 1, rotate: 0, opacity: 1 }}
-      transition={{ delay: reduce ? 0 : 0.055 * i + 0.05, type: 'spring', damping: 13, stiffness: 340 }}
-      className={`grid place-items-center w-10 h-10 rounded-xl shrink-0 transition-transform duration-300 group-hover:scale-110 ${
-        (TONES[t.group] || TONES.kind)[dark ? 1 : 0]
-      }`}
-    >
-      <TraitVisual t={t} />
-    </motion.span>
-    <span className="min-w-0">
-      <span className="block text-[11px] font-bold uppercase tracking-wider opacity-65">{t.label}</span>
-      <span className="block text-[15px] font-bold leading-tight mt-0.5">{t.value}</span>
-      <span className="block mt-1 text-xs leading-snug opacity-75">{t.hint}</span>
-    </span>
-  </motion.li>
-);
+/* ------------------------------------------------------------------
+   HERO BRACKET CHIP BUILDER — maps each Arabic morpheme segment
+   to a clean visual chip with icon, title, short meaning & color.
+------------------------------------------------------------------- */
+const cleanShortMeaning = (text, fallback) => {
+  if (!text) return fallback;
+  const cleaned = text
+    .replace(/^\s*(and|by|to|in|the)\s+/i, '')
+    .replace(/\s*\([^)]*\)\s*/g, ' ')
+    .replace(/\[[^\]]*\]/g, '')
+    .trim();
+  const short = cleaned || text.trim();
+  return short.length > 18 ? `${short.slice(0, 16).trim()}…` : short;
+};
 
-const FactsPanel = ({ word, theme, cardBg, dark, reduce, onOpenAyah }) => {
+export const buildDiagramChips = (word, palette, dark) => {
+  const segments = word?.segments || [];
+  if (!segments.length) return [];
+
+  return segments.map((seg, idx) => {
+    const isSubjectEnding = Boolean(
+      seg.is_subject_ending || (seg.role === 'suffix' && seg.category === 'fil')
+    );
+
+    if (isSubjectEnding) {
+      const subjectLabel = getVerbSubjectLabel(word);
+      return {
+        segIndex: idx,
+        id: `seg-${idx}`,
+        icon: 'person',
+        title: subjectLabel,
+        value: 'who did it',
+        color: getToneColor('verb', dark, palette)
+      };
+    }
+
+    if (seg.category === 'fil') {
+      return {
+        segIndex: idx,
+        id: `seg-${idx}`,
+        icon: 'verb',
+        title: 'Verb',
+        value: cleanShortMeaning(word.translation, 'action'),
+        color: getToneColor('verb', dark, palette)
+      };
+    }
+
+    if (seg.category === 'harf') {
+      const posLow = s(seg.pos_name_en);
+      if (seg.emphasis || seg.tag === 'EMPH' || posLow.includes('oath')) {
+        const isOath = posLow.includes('oath');
+        return {
+          segIndex: idx,
+          id: `seg-${idx}`,
+          icon: 'emphasis',
+          title: isOath ? 'Oath' : 'Emphasis',
+          value: isOath ? 'By…' : seg.text === 'إِنَّ' ? 'indeed' : 'surely',
+          color: getToneColor('harf', dark, palette)
+        };
+      }
+      if (seg.tag === 'DET' || posLow.includes('definite')) {
+        return {
+          segIndex: idx,
+          id: `seg-${idx}`,
+          icon: 'def',
+          title: 'The',
+          value: 'al-',
+          color: getToneColor('harf', dark, palette)
+        };
+      }
+      if (seg.tag === 'CONJ' || posLow.includes('conjunction')) {
+        return {
+          segIndex: idx,
+          id: `seg-${idx}`,
+          icon: 'link',
+          title: 'And',
+          value: 'connects',
+          color: getToneColor('harf', dark, palette)
+        };
+      }
+      if (seg.tag === 'EXP' || posLow.includes('except')) {
+        return {
+          segIndex: idx,
+          id: `seg-${idx}`,
+          icon: 'particle',
+          title: 'Except',
+          value: 'lifts out',
+          color: getToneColor('harf', dark, palette)
+        };
+      }
+      if (seg.tag === 'P' || posLow.includes('preposition')) {
+        const gloss = seg.text.startsWith('ب') ? 'to / with' : seg.text.startsWith('ف') ? 'inside' : 'link';
+        return {
+          segIndex: idx,
+          id: `seg-${idx}`,
+          icon: 'link',
+          title: 'Link',
+          value: gloss,
+          color: getToneColor('harf', dark, palette)
+        };
+      }
+      return {
+        segIndex: idx,
+        id: `seg-${idx}`,
+        icon: 'particle',
+        title: 'Particle',
+        value: cleanShortMeaning(word.translation, 'small word'),
+        color: getToneColor('harf', dark, palette)
+      };
+    }
+
+    // ism (noun, relative pronoun, or attached object/possessive pronoun like كُمْ / هُمْ)
+    if (seg.role === 'suffix') {
+      const label = cleanShortMeaning(seg.pos_name_en, 'object');
+      return {
+        segIndex: idx,
+        id: `seg-${idx}`,
+        icon: 'person',
+        title: 'Attached',
+        value: label,
+        color: getToneColor('ism', dark, palette)
+      };
+    }
+
+    if (seg.tag === 'REL' || s(seg.pos_name_en).includes('relative')) {
+      return {
+        segIndex: idx,
+        id: `seg-${idx}`,
+        icon: 'plur',
+        title: 'Who',
+        value: 'those who',
+        color: getToneColor('ism', dark, palette)
+      };
+    }
+
+    return {
+      segIndex: idx,
+      id: `seg-${idx}`,
+      icon: 'noun',
+      title: 'Noun',
+      value: cleanShortMeaning(word.translation, 'name'),
+      color: getToneColor('ism', dark, palette)
+    };
+  });
+};
+
+/* ------------------------------------------------------------------
+   HERO BRACKET DIAGRAM — Animated SVG curved lines connecting each
+   morpheme segment directly to its floating icon chip underneath.
+------------------------------------------------------------------- */
+const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
+  const boxRef = useRef(null);
+  const segRefs = useRef([]);
+  const chipRefs = useRef([]);
+  const [layout, setLayout] = useState(null);
+
+  const segments = useMemo(() => word?.segments || [], [word]);
+  const chips = useMemo(() => buildDiagramChips(word, palette, dark), [word, palette, dark]);
+
+  const computeLayout = useCallback(() => {
+    const box = boxRef.current;
+    if (!box || !chips.length) {
+      setLayout(null);
+      return;
+    }
+
+    const boxRect = box.getBoundingClientRect();
+    const W = box.offsetWidth || boxRect.width;
+    if (!W || W < 40) {
+      setLayout(null);
+      return;
+    }
+
+    const measured = chips
+      .map((chip, idx) => {
+        const segEl = segRefs.current[chip.segIndex];
+        const chipEl = chipRefs.current[idx];
+        if (!segEl || !chipEl) return null;
+        const sr = segEl.getBoundingClientRect();
+        const cr = chipEl.getBoundingClientRect();
+        const segWidth = sr.width || segEl.offsetWidth;
+        const chipWidth = cr.width || chipEl.offsetWidth;
+        if (!segWidth || !chipWidth) return null;
+
+        const l = sr.left - boxRect.left + 2;
+        const r = sr.right - boxRect.left - 2;
+        const y = sr.bottom - boxRect.top - 8;
+        return {
+          idx,
+          chip,
+          l,
+          r,
+          cx: (l + r) / 2,
+          y,
+          w: chipWidth,
+          h: cr.height || chipEl.offsetHeight || 44
+        };
+      })
+      .filter(Boolean);
+
+    if (measured.length !== chips.length) {
+      setLayout(null);
+      return;
+    }
+
+    // Sort left-to-right on screen (in RTL Arabic: suffix -> stem -> prefix)
+    const ordered = [...measured].sort((a, b) => a.cx - b.cx);
+    const gap = 10;
+    const xs = ordered.map((m) => m.cx);
+
+    // Push overlapping adjacent chips apart
+    for (let i = 1; i < ordered.length; i += 1) {
+      const minCenterDist = (ordered[i - 1].w + ordered[i].w) / 2 + gap;
+      const dist = xs[i] - xs[i - 1];
+      if (dist < minCenterDist) {
+        const shift = (minCenterDist - dist) / 2;
+        xs[i - 1] -= shift;
+        xs[i] += shift;
+      }
+    }
+
+    // Clamp to container bounds and re-sweep to keep clean spacing
+    const pad = 4;
+    if (ordered.length > 0) {
+      xs[0] = Math.max(ordered[0].w / 2 + pad, xs[0]);
+      for (let i = 1; i < ordered.length; i += 1) {
+        const minX = xs[i - 1] + (ordered[i - 1].w + ordered[i].w) / 2 + gap;
+        if (xs[i] < minX) xs[i] = minX;
+      }
+      const last = ordered.length - 1;
+      const maxRight = W - ordered[last].w / 2 - pad;
+      if (xs[last] > maxRight) {
+        xs[last] = maxRight;
+        for (let i = last - 1; i >= 0; i -= 1) {
+          const maxX = xs[i + 1] - (ordered[i].w + ordered[i + 1].w) / 2 - gap;
+          if (xs[i] > maxX) xs[i] = maxX;
+        }
+      }
+    }
+
+    const top = Math.max(...ordered.map((m) => m.y)) + 40;
+    const maxChipH = Math.max(...ordered.map((m) => m.h));
+    const positions = {};
+    const paths = [];
+
+    ordered.forEach((m, i) => {
+      const x = Math.min(Math.max(xs[i], m.w / 2 + pad), W - m.w / 2 - pad);
+      positions[m.idx] = { left: x, top };
+
+      const span = Math.max(0, m.r - m.l);
+      const rad = Math.min(7, Math.max(1.5, span / 3));
+      const bracketPart =
+        span > 6
+          ? `M${m.l} ${m.y - rad} Q${m.l} ${m.y} ${m.l + rad} ${m.y} H${m.r - rad} Q${m.r} ${m.y} ${m.r} ${m.y - rad}`
+          : `M${m.cx} ${m.y - 4} V${m.y}`;
+      const stemPart = `M${m.cx} ${m.y} C${m.cx} ${m.y + 20} ${x} ${top - 20} ${x} ${top}`;
+      paths.push({
+        id: m.chip.id,
+        color: m.chip.color,
+        d: `${bracketPart} ${stemPart}`
+      });
+    });
+
+    setLayout({
+      height: Math.ceil(top + maxChipH + 8),
+      positions,
+      paths
+    });
+  }, [chips]);
+
+  useLayoutEffect(() => {
+    computeLayout();
+    let cancelled = false;
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        if (!cancelled) computeLayout();
+      });
+    }
+    let observer;
+    if (typeof ResizeObserver !== 'undefined' && boxRef.current) {
+      observer = new ResizeObserver(() => computeLayout());
+      observer.observe(boxRef.current);
+    }
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+    };
+  }, [computeLayout, word?.text_uthmani]);
+
+  return (
+    <div
+      ref={boxRef}
+      data-testid="word-bracket-diagram"
+      style={layout ? { minHeight: `${layout.height}px` } : undefined}
+      className="relative text-center select-none"
+    >
+      {/* Large Arabic Word — no spaces between spans so cursive joining stays authentic */}
+      <div
+        dir="rtl"
+        className="quran-text-pak !text-5xl sm:!text-6xl !leading-[1.65] [text-shadow:none] !text-inherit inline-block"
+      >
+        {segments.map((seg, i) => (
+          <motion.span
+            key={i}
+            ref={(el) => { segRefs.current[i] = el; }}
+            initial={reduce ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduce ? { duration: 0.01 } : { delay: i * 0.05, duration: 0.28 }}
+            className={getCategoryTextClass(seg.category, theme, seg, palette)}
+          >{seg.text}</motion.span>
+        ))}
+      </div>
+
+      {/* Animated SVG curved bracket connectors */}
+      {layout?.paths?.length > 0 && (
+        <svg
+          data-testid="bracket-connector-svg"
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full overflow-visible pointer-events-none"
+        >
+          {layout.paths.map((p) => (
+            <path
+              key={p.id}
+              pathLength={1}
+              d={p.d}
+              stroke={p.color}
+              className="grammar-bracket-path"
+            />
+          ))}
+        </svg>
+      )}
+
+      {/* Floating pill chips (positioned beneath brackets when measured, clean flex row fallback) */}
+      <div
+        className={
+          layout
+            ? 'pointer-events-none'
+            : 'mt-3 flex flex-wrap items-center justify-center gap-2'
+        }
+      >
+        {chips.map((chip, idx) => {
+          const pos = layout?.positions?.[idx];
+          return (
+            <div
+              key={chip.id}
+              ref={(el) => { chipRefs.current[idx] = el; }}
+              data-testid="diagram-morpheme-chip"
+              style={{
+                '--c': chip.color,
+                ...(pos
+                  ? {
+                      position: 'absolute',
+                      left: `${pos.left}px`,
+                      top: `${pos.top}px`,
+                      transform: 'translateX(-50%)'
+                    }
+                  : {})
+              }}
+              className="grammar-chip pointer-events-auto inline-flex items-center gap-2 py-1 pl-1.5 pr-3 rounded-full whitespace-nowrap shadow-2xs"
+            >
+              <span className="grammar-chip-dot w-7 h-7 rounded-full grid place-items-center text-white shrink-0">
+                <GrammarVisualIcon name={chip.icon} className="w-4 h-4" />
+              </span>
+              <span className="text-left leading-tight">
+                <b
+                  className="block text-[10px] font-extrabold tracking-[0.12em] uppercase"
+                  style={{ color: chip.color }}
+                >
+                  {chip.title}
+                </b>
+                <span className="block text-xs font-bold">{chip.value}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------
+   TENSE TIMELINE WIDGET (then • ── | NOW)
+------------------------------------------------------------------- */
+const TenseTimeline = ({ kind = 'past', color }) => {
+  const dotLeft = kind === 'present' ? '76%' : kind === 'future' ? '84%' : '22%';
+  const nowLeft = kind === 'future' ? '34%' : '76%';
+
+  return (
+    <div
+      data-testid="tense-timeline"
+      className="grammar-tl ml-auto"
+      style={{ '--tl-color': color }}
+      aria-hidden="true"
+    >
+      <span className="grammar-tl-pulse" style={{ left: dotLeft }} />
+      <span className="grammar-tl-dot" style={{ left: dotLeft }} />
+      <span className="grammar-tl-now" style={{ left: nowLeft }} />
+      <small className="grammar-tl-label" style={{ left: nowLeft }}>
+        NOW
+      </small>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------
+   VISUAL FEATURE GROUPS — replaces old Bento tiles with prototype's
+   2-column grouped icon cards (with "They" instead of "Pronoun"!).
+------------------------------------------------------------------- */
+export const buildFeatureGroups = (word, palette, dark) => {
+  const sarf = word?.sarf;
+  const segments = word?.segments || [];
+
+  // 1. VERBS (e.g. ءَامَنُوا۟, وَعَمِلُوا۟, وَتَوَاصَوْا۟, Surah 100 verbs)
+  if (sarf?.verb) {
+    const v = sarf.verb;
+    const verbColor = getToneColor('verb', dark, palette);
+    const stemSeg = segments.find((seg) => seg.role === 'stem');
+    const suffixSeg = segments.find((seg) => seg.is_subject_ending || (seg.role === 'suffix' && seg.category === 'fil'));
+    const lemmaAr = v.conjugation?.[0]?.ar || stemSeg?.text || word.text_uthmani;
+
+    // Column 1: Verb (Tense + Timeline, Form Meaning, Active/Passive Voice)
+    const verbTiles = [];
+    const tenseRaw = s(v.tense_en || word.tense || '');
+    if (has(tenseRaw, 'command', 'amr', 'imperative')) {
+      verbTiles.push({
+        key: 'tense',
+        icon: 'command',
+        title: 'Command',
+        subtitle: 'telling someone to do it',
+        color: getToneColor('future', dark, palette)
+      });
+    } else if (has(tenseRaw, 'present', 'imperfect') && !has(tenseRaw, 'past', 'perfect')) {
+      verbTiles.push({
+        key: 'tense',
+        icon: 'present',
+        title: 'Now or later',
+        subtitle: 'ongoing or habitual action',
+        color: getToneColor('present', dark, palette),
+        timeline: 'present'
+      });
+    } else if (has(tenseRaw, 'past', 'perfect') && has(tenseRaw, 'future')) {
+      verbTiles.push({
+        key: 'tense',
+        icon: 'past',
+        title: 'Certain future',
+        subtitle: 'spoken as already guaranteed',
+        color: getToneColor('past', dark, palette),
+        timeline: 'future'
+      });
+    } else {
+      verbTiles.push({
+        key: 'tense',
+        icon: 'past',
+        title: 'Past',
+        subtitle: 'already happened',
+        color: getToneColor('past', dark, palette),
+        timeline: 'past'
+      });
+    }
+
+    // Form meaning tile (e.g. Form VI Mutual, Form IV Causative, Form I Base action)
+    const formTitle =
+      v.form === 'VI'
+        ? 'Mutual'
+        : v.form === 'IV'
+          ? 'Form IV'
+          : v.form
+            ? `Form ${v.form}`
+            : 'Action';
+    const formSub = v.meaning_of_form_en
+      ? v.meaning_of_form_en.replace(/^[^—–-]+[-—–]\s*/i, '').trim()
+      : 'core meaning of the root';
+    verbTiles.push({
+      key: 'form',
+      icon: 'link',
+      title: formTitle,
+      subtitle: formSub,
+      color: getToneColor('link', dark, palette)
+    });
+
+    const isPassive = has(v.voice_en || word.voice, 'passive', 'majhul');
+    verbTiles.push({
+      key: 'voice',
+      icon: isPassive ? 'passive' : 'act',
+      title: isPassive ? 'Passive' : 'Active',
+      subtitle: isPassive ? 'the action is done to it' : 'the subject is the doer',
+      color: getToneColor(isPassive ? 'passive' : 'act', dark, palette)
+    });
+
+    // Column 2: Subject ("They" — NEVER "Pronoun" — unified in verb green color!)
+    const subjectTitle = getVerbSubjectLabel(word);
+    const subjectTiles = [];
+    const personRaw = s(v.person_en || '');
+    const is1st = /1st|first|\bi\b|\bwe\b/.test(personRaw);
+    const is2nd = /2nd|second|\byou\b/.test(personRaw);
+    subjectTiles.push({
+      key: 'person',
+      icon: is1st || is2nd ? 'person' : 'third',
+      title: is1st ? '1st person' : is2nd ? '2nd person' : '3rd person',
+      subtitle: is1st
+        ? 'the speaker (I / we)'
+        : is2nd
+          ? 'the one addressed (you)'
+          : 'spoken about, not present',
+      color: getToneColor('third', dark, palette)
+    });
+
+    const isFem = /\bfem|\bshe\b/.test(personRaw);
+    const isMasc = !isFem && /\bmasc|\bhe\b/.test(personRaw);
+    if (isFem || isMasc) {
+      subjectTiles.push({
+        key: 'gender',
+        icon: isFem ? 'fem' : 'masc',
+        title: isFem ? 'Feminine' : 'Masculine',
+        subtitle: isFem ? 'female group or subject' : 'men, or a mixed group',
+        color: getToneColor(isFem ? 'fem' : 'masc', dark, palette)
+      });
+    }
+
+    const isDual = /\bdual\b/.test(personRaw);
+    const isPlur = /\bplur|\bthey\b|\bwe\b/.test(personRaw);
+    subjectTiles.push({
+      key: 'number',
+      icon: isDual ? 'dual' : isPlur ? 'plur' : 'sing',
+      title: isDual ? 'Dual' : isPlur ? 'Plural' : 'Singular',
+      subtitle: isDual ? 'exactly two' : isPlur ? 'three or more' : 'just one',
+      color: getToneColor(isPlur ? 'plur' : 'sing', dark, palette)
+    });
+
+    return [
+      { key: 'verb-col', title: 'Verb', ar: lemmaAr, color: verbColor, tiles: verbTiles },
+      {
+        key: 'subject-col',
+        title: subjectTitle,
+        ar: suffixSeg?.text || '',
+        color: verbColor,
+        tiles: subjectTiles
+      }
+    ];
+  }
+
+  // 2. NOUNS (e.g. وَٱلْعَصْرِ, ٱلْإِنسَـٰنَ, خُسْرٍ, ٱلصَّـٰلِحَـٰتِ, بِٱلْحَقِّ, بِٱلصَّبْرِ)
+  if (sarf?.noun) {
+    const n = sarf.noun;
+    const ismColor = getToneColor('ism', dark, palette);
+    const stemSeg = segments.find((seg) => seg.role === 'stem');
+
+    const nounTiles = [];
+    const isIndef = /\bindef|\bnakira/.test(s(n.definiteness_en));
+    nounTiles.push({
+      key: 'def',
+      icon: isIndef ? 'indef' : 'def',
+      title: isIndef ? 'General' : 'Specific',
+      subtitle: isIndef ? 'open & vast (tanwīn)' : 'particular one (“the”)',
+      color: getToneColor('def', dark, palette)
+    });
+
+    const caseLow = s(n.case_en);
+    if (/gen|jar|iḍāfa|oath/.test(caseLow)) {
+      nounTiles.push({
+        key: 'case',
+        icon: 'link',
+        title: 'Linked',
+        subtitle: 'follows “by”, “in”, or “to”',
+        color: getToneColor('role', dark, palette)
+      });
+    } else if (/acc|nasb|object/.test(caseLow)) {
+      nounTiles.push({
+        key: 'case',
+        icon: 'target',
+        title: 'Target',
+        subtitle: 'receives the action or focus',
+        color: getToneColor('link', dark, palette)
+      });
+    } else {
+      nounTiles.push({
+        key: 'case',
+        icon: 'verb',
+        title: 'Main part',
+        subtitle: 'subject or main statement',
+        color: getToneColor('act', dark, palette)
+      });
+    }
+
+    if (word.has_emphasis) {
+      nounTiles.push({
+        key: 'emphasis',
+        icon: 'emphasis',
+        title: 'Oath stress',
+        subtitle: 'opens a solemn oath (“By…”)',
+        color: getToneColor('emphasis', dark, palette)
+      });
+    } else if (n.singular_ar) {
+      nounTiles.push({
+        key: 'singular',
+        icon: 'sing',
+        title: 'One of them',
+        subtitle: `${n.singular_ar} · ${n.singular_en || 'singular'}`,
+        color: getToneColor('past', dark, palette)
+      });
+    }
+
+    const formTiles = [];
+    const isFem = /\bfem/.test(s(n.gender_en));
+    formTiles.push({
+      key: 'gender',
+      icon: isFem ? 'fem' : 'masc',
+      title: isFem ? 'Feminine' : 'Masculine',
+      subtitle: isFem ? 'feminine noun form' : 'masculine noun form',
+      color: getToneColor(isFem ? 'fem' : 'masc', dark, palette)
+    });
+
+    const isDual = /\bdual\b/.test(s(n.number_en));
+    const isPlur = /\bplur/.test(s(n.number_en));
+    formTiles.push({
+      key: 'number',
+      icon: isDual ? 'dual' : isPlur ? 'plur' : 'sing',
+      title: isDual ? 'Dual' : isPlur ? 'Plural' : 'Singular',
+      subtitle: isDual ? 'exactly two' : isPlur ? 'three or more' : 'one single noun',
+      color: getToneColor(isPlur ? 'plur' : 'sing', dark, palette)
+    });
+
+    if (word.idafa) {
+      formTiles.push({
+        key: 'idafa',
+        icon: 'link',
+        title: word.idafa.label_en,
+        subtitle: `${word.idafa.mudaf_ar} + ${word.idafa.mudaf_ilayhi_ar}`,
+        color: getToneColor('past', dark, palette)
+      });
+    } else if (word.role_en) {
+      formTiles.push({
+        key: 'role',
+        icon: 'verse',
+        title: 'Verse role',
+        subtitle: word.role_en,
+        color: getToneColor('habit', dark, palette)
+      });
+    }
+
+    return [
+      { key: 'noun-col', title: 'Noun', ar: stemSeg?.text || word.text_uthmani, color: ismColor, tiles: nounTiles },
+      { key: 'form-col', title: 'Form', ar: n.number_ar?.split(' ')[0] || '', color: getToneColor('role', dark, palette), tiles: formTiles }
+    ];
+  }
+
+  // 3. PARTICLES & FIXED WORDS (e.g. إِنَّ, لَفِى, إِلَّا, ٱلَّذِينَ)
+  const isHarf = word?.primary_category === 'harf';
+  const mainColor = getToneColor(isHarf ? 'harf' : 'ism', dark, palette);
+
+  const leftTiles = [
+    {
+      key: 'fixed',
+      icon: 'anchor',
+      title: 'Fixed word',
+      subtitle: 'stays the same — never inflects',
+      color: getToneColor('role', dark, palette)
+    }
+  ];
+
+  if (word?.has_emphasis) {
+    leftTiles.push({
+      key: 'emphasis',
+      icon: 'emphasis',
+      title: 'Strong stress',
+      subtitle: 'adds certainty & emphasis',
+      color: getToneColor('emphasis', dark, palette)
+    });
+  } else if (word?.role_en) {
+    leftTiles.push({
+      key: 'role',
+      icon: 'link',
+      title: word.role_en,
+      subtitle: isHarf ? 'shapes the clause around it' : 'points to the group that follows',
+      color: getToneColor('link', dark, palette)
+    });
+  }
+
+  const rightTiles = segments.map((seg, idx) => ({
+    key: `seg-desc-${idx}`,
+    icon: seg.emphasis ? 'emphasis' : seg.tag === 'REL' ? 'plur' : 'particle',
+    title: seg.pos_name_en || (seg.category === 'harf' ? 'Particle' : 'Word'),
+    subtitle: seg.desc_en || word.sarf_note_en || 'shapes meaning in this verse',
+    color: getToneColor(idx === 0 ? 'habit' : 'past', dark, palette)
+  }));
+
+  return [
+    {
+      key: 'main-col',
+      title: isHarf ? 'Particle' : 'Who',
+      ar: word?.text_uthmani || '',
+      color: mainColor,
+      tiles: leftTiles
+    },
+    {
+      key: 'effect-col',
+      title: 'Effect',
+      ar: '',
+      color: getToneColor('habit', dark, palette),
+      tiles: rightTiles
+    }
+  ];
+};
+
+/* ------------------------------------------------------------------
+   BOTTOM DUO ROW — "In this verse" equation + "Root" popping tiles
+------------------------------------------------------------------- */
+const VisualDuoRow = ({ word, palette, dark, cardBg, reduce }) => {
+  const habitColor = getToneColor('habit', dark, palette);
+  const rootColor = getToneColor('root', dark, palette);
+
+  // Build "In this verse" equation data (curated in_verse -> idafa -> generic word role)
+  const verseEq = useMemo(() => {
+    if (word?.in_verse) {
+      return {
+        a: {
+          ar: word.in_verse.a.ar,
+          en: word.in_verse.a.en,
+          color: getToneColor(word.in_verse.a.tone || 'verb', dark, palette)
+        },
+        op: word.in_verse.op || '+',
+        b: {
+          ar: word.in_verse.b.ar,
+          en: word.in_verse.b.en,
+          color: getToneColor(word.in_verse.b.tone || 'ism', dark, palette)
+        },
+        result: word.in_verse.result,
+        note: word.in_verse.note
+      };
+    }
+    if (word?.idafa) {
+      return {
+        a: {
+          ar: word.idafa.mudaf_ar,
+          en: 'Muḍāf (of…)',
+          color: getToneColor('ism', dark, palette)
+        },
+        op: '+',
+        b: {
+          ar: word.idafa.mudaf_ilayhi_ar,
+          en: 'Muḍāf Ilayhi',
+          color: getToneColor('link', dark, palette)
+        },
+        result: word.idafa.label_en,
+        note: word.idafa.explanation_en || 'Linked possessive pair'
+      };
+    }
+    return null;
+  }, [word, dark, palette]);
+
+  const rootLetters = word?.sarf?.root || [];
+  const deletedRadicals = word?.sarf?.deleted_radicals || [];
+  const slotKeys = rootLetters.length === 4 ? ['f', 'a', 'l', 'l2'] : ['f', 'a', 'l'];
+
+  return (
+    <div
+      data-testid="visual-duo-row"
+      className="grid grid-cols-1 sm:grid-cols-[1.45fr_1fr] gap-3 pt-1"
+    >
+      {/* Left Card: In this verse */}
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={reduce ? { duration: 0.01 } : { delay: 0.22, duration: 0.35 }}
+        className={`rounded-[20px] p-3.5 border ${cardBg}`}
+      >
+        <h4
+          className="flex items-center gap-2 text-[11px] font-bold tracking-[0.14em] uppercase mb-2.5"
+          style={{ color: habitColor }}
+        >
+          <GrammarVisualIcon name="verse" className="w-[18px] h-[18px] shrink-0" />
+          <span>In this verse</span>
+        </h4>
+
+        {verseEq ? (
+          <>
+            <div dir="rtl" className="flex items-center justify-center gap-2 flex-wrap">
+              <div
+                className="grammar-eq-blk text-center px-3 py-1 rounded-2xl"
+                style={{ '--c': verseEq.a.color }}
+              >
+                <b
+                  className="block quran-text-pak !text-2xl !leading-[1.55] [text-shadow:none]"
+                  style={{ color: verseEq.a.color }}
+                >
+                  {verseEq.a.ar}
+                </b>
+                <span dir="ltr" className="block text-[11px] font-bold opacity-85">
+                  {verseEq.a.en}
+                </span>
+              </div>
+
+              <span className="text-lg font-light opacity-50 select-none" aria-hidden="true">
+                {verseEq.op}
+              </span>
+
+              <div
+                className="grammar-eq-blk text-center px-3 py-1 rounded-2xl"
+                style={{ '--c': verseEq.b.color }}
+              >
+                <b
+                  className="block quran-text-pak !text-2xl !leading-[1.55] [text-shadow:none]"
+                  style={{ color: verseEq.b.color }}
+                >
+                  {verseEq.b.ar}
+                </b>
+                <span dir="ltr" className="block text-[11px] font-bold opacity-85">
+                  {verseEq.b.en}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`mt-2.5 px-3 py-2 rounded-2xl flex items-center justify-center gap-2.5 ${
+                dark
+                  ? 'bg-cyan-950/50 border border-cyan-500/30'
+                  : 'bg-gradient-to-r from-cyan-50 to-indigo-50 border border-cyan-200/70'
+              }`}
+            >
+              <GrammarVisualIcon
+                name="loop"
+                className="w-5 h-5 shrink-0 grammar-loop-spin"
+              />
+              <div className="min-w-0 text-left">
+                <div className="text-sm font-extrabold leading-tight">
+                  &ldquo;{verseEq.result}&rdquo;
+                </div>
+                {verseEq.note && (
+                  <small className="block text-[11px] opacity-75 leading-snug mt-0.5">
+                    {verseEq.note}
+                  </small>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2">
+            {word?.role_en && (
+              <p className="text-sm font-bold leading-snug">{word.role_en}</p>
+            )}
+            <p className="text-xs opacity-80 leading-relaxed">
+              {word?.irab?.en || word?.ayahStructure?.en || 'Tap the In this verse tab for full sentence flow.'}
+            </p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Right Card: Root letter blocks (RTL popping tiles) */}
+      <motion.div
+        data-testid="visual-root-card"
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={reduce ? { duration: 0.01 } : { delay: 0.28, duration: 0.35 }}
+        className={`rounded-[20px] p-3.5 border flex flex-col justify-between ${cardBg}`}
+      >
+        <h4
+          className="flex items-center gap-2 text-[11px] font-bold tracking-[0.14em] uppercase mb-2.5"
+          style={{ color: rootColor }}
+        >
+          <GrammarVisualIcon name="root" className="w-[18px] h-[18px] shrink-0" />
+          <span>{rootLetters.length ? 'Root' : 'Fixed Word'}</span>
+        </h4>
+
+        {rootLetters.length > 0 ? (
+          <div className="my-auto">
+            <div dir="rtl" className="flex items-center justify-center gap-2">
+              {rootLetters.map((letter, idx) => {
+                const isDropped = deletedRadicals.includes(slotKeys[idx]);
+                return (
+                  <i
+                    key={`${letter}-${idx}`}
+                    style={{ '--rd': `${0.25 + idx * 0.13}s` }}
+                    title={isDropped ? 'Dropped in this spelling for smoother pronunciation' : undefined}
+                    className={`grammar-root-tile not-italic quran-text-pak !text-2xl !leading-none [text-shadow:none] w-11 h-12 grid place-items-center rounded-[13px] border-[1.5px] font-bold ${
+                      isDropped ? 'border-dashed opacity-70 line-through' : ''
+                    } ${
+                      dark
+                        ? 'bg-amber-950/55 border-amber-500/50 !text-amber-300'
+                        : 'bg-amber-50 border-amber-300 !text-amber-800'
+                    }`}
+                  >
+                    {letter}
+                  </i>
+                );
+              })}
+            </div>
+            <p className="text-center mt-2.5 text-xs sm:text-[13px] font-bold leading-snug opacity-90">
+              {word.sarf.root_meaning}
+            </p>
+          </div>
+        ) : (
+          <div className="my-auto text-center py-1">
+            <span
+              className={`inline-flex items-center justify-center w-11 h-11 rounded-2xl mb-2 ${
+                dark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              <GrammarVisualIcon name="anchor" className="w-5 h-5" />
+            </span>
+            <p className="text-xs font-semibold leading-relaxed opacity-85">
+              {word?.sarf_note_en || 'Particles and fixed words do not derive from a 3-letter root.'}
+            </p>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------
+   FACTS PANEL — Grouped Prototype Feature Tiles + Duo Cards.
+   For verbs: "More details" lives inside VerbConjugationModal!
+   For non-verbs: "More details" remains cleanly accessible inline.
+------------------------------------------------------------------- */
+const FactsPanel = ({ word, theme, palette, cardBg, dark, reduce, onOpenAyah }) => {
   const [more, setMore] = useState(false);
   const [isConjugationModalOpen, setIsConjugationModalOpen] = useState(false);
-  const traits = buildTraits(word);
+
+  const groups = useMemo(() => buildFeatureGroups(word, palette, dark), [word, palette, dark]);
   const hasVerbConjugation = Boolean(
     word?.sarf?.verb?.conjugation_table || word?.sarf?.verb?.conjugation
   );
 
-  if (!traits.length) {
-    return <MorphologyTab word={word} theme={theme} cardBg={cardBg} onOpenAyah={onOpenAyah} />;
-  }
+  // Reset inline details when switching words
+  useEffect(() => {
+    setMore(false);
+  }, [word]);
 
   return (
     <div className="space-y-3.5" data-testid="facts-panel">
-      <ul
-        className={`grid gap-2.5 ${
-          traits.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'
-        }`}
+      {/* Grouped Feature Tiles (2 columns on desktop, 1 on mobile) */}
+      <div
+        data-testid="visual-feature-groups"
+        className={`grid gap-3.5 ${groups.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}
       >
-        {traits.map((t, i) => (
-          <Trait key={t.label} t={t} i={i} dark={dark} reduce={reduce} />
+        {groups.map((group) => (
+          <div key={group.key} data-testid={`feature-group-${group.key}`}>
+            <div
+              className="grammar-group-heading flex items-center gap-2 text-[11px] font-bold tracking-[0.14em] uppercase mb-2.5"
+              style={{ '--c': group.color }}
+            >
+              <span>{group.title}</span>
+              {group.ar && (
+                <em
+                  dir="rtl"
+                  className="not-italic quran-text-pak !text-xl !leading-none [text-shadow:none] tracking-normal"
+                  style={{ color: group.color }}
+                >
+                  {group.ar}
+                </em>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {group.tiles.map((tile, k) => (
+                <motion.div
+                  key={tile.key}
+                  data-testid="visual-feature-tile"
+                  initial={reduce ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={
+                    reduce
+                      ? { duration: 0.01 }
+                      : { delay: 0.06 * k + 0.08, duration: 0.32, ease: 'easeOut' }
+                  }
+                  style={{ '--c': tile.color, '--p': `${k * 0.5}s` }}
+                  className="grammar-tile relative flex items-center gap-3 p-2.5 rounded-[18px]"
+                >
+                  <div className="grammar-ic flex-none w-11 h-11 rounded-[14px] grid place-items-center">
+                    <GrammarVisualIcon name={tile.icon} className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <b
+                      className="block text-[15px] font-extrabold tracking-tight leading-tight"
+                      style={{ color: tile.color }}
+                    >
+                      {tile.title}
+                    </b>
+                    <span className="block text-xs opacity-75 leading-snug mt-0.5">
+                      {tile.subtitle}
+                    </span>
+                  </div>
+                  {tile.timeline && (
+                    <TenseTimeline kind={tile.timeline} color={tile.color} />
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
 
-      {word.sarf_note_en && (
-        <motion.p
-          initial={reduce ? false : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`flex gap-2.5 rounded-2xl border p-3.5 text-sm leading-relaxed ${cardBg}`}
-        >
-          <SafeIcon icon={Fi('FiInfo')} className="mt-0.5 shrink-0 opacity-70" aria-hidden="true" />
-          <span>{word.sarf_note_en}</span>
-        </motion.p>
-      )}
+      {/* Bottom Duo Cards: "In this verse" + "Root" */}
+      <VisualDuoRow word={word} palette={palette} dark={dark} cardBg={cardBg} reduce={reduce} />
 
-      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-0.5">
-        {hasVerbConjugation && (
+      {/* Action Footer:
+          - For verbs: Open Conjugation Table (which contains "More details" inside!)
+          - For non-verbs: Keep "More details" accessible right here */}
+      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+        {hasVerbConjugation ? (
           <button
             type="button"
             data-testid="open-conjugation-modal"
             onClick={() => setIsConjugationModalOpen(true)}
-            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 shadow-xs hover:shadow-md active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all duration-150 shadow-xs hover:shadow-md active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
               dark
                 ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/80 hover:bg-emerald-900'
                 : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
             }`}
           >
             <SafeIcon icon={Fi('FiMaximize2')} className="text-xs" aria-hidden="true" />
-            <span>Open Full Conjugation Table</span>
+            <span>Open Conjugation Table &amp; More Details</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid="toggle-more-details"
+            onClick={() => setMore((m) => !m)}
+            aria-expanded={more}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 hover:shadow-sm active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+              dark
+                ? 'bg-white/5 border-white/15 hover:bg-white/10 text-slate-200'
+                : 'bg-slate-100/90 border-slate-200/90 hover:bg-slate-200/75 text-slate-700'
+            }`}
+          >
+            {more ? 'Hide details' : 'More details'}
+            <SafeIcon
+              icon={Fi('FiChevronDown')}
+              className={`transition-transform duration-200 ${more ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
           </button>
         )}
-
-        <button
-          type="button"
-          data-testid="toggle-more-details"
-          onClick={() => setMore((m) => !m)}
-          aria-expanded={more}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 hover:shadow-sm active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
-            dark
-              ? 'bg-white/5 border-white/15 hover:bg-white/10 text-slate-200'
-              : 'bg-slate-100/90 border-slate-200/90 hover:bg-slate-200/75 text-slate-700'
-          }`}
-        >
-          {more ? 'Hide details' : 'More details'}
-          <SafeIcon
-            icon={Fi('FiChevronDown')}
-            className={`transition-transform duration-200 ${more ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          />
-        </button>
       </div>
 
-      <AnimatePresence initial={false}>
-        {more && (
-          <motion.div
-            initial={reduce ? false : { height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={reduce ? { duration: 0.01 } : { duration: 0.25, ease: 'easeOut' }}
-            className="overflow-hidden pt-1"
-          >
-            <MorphologyTab
-              word={word}
-              theme={theme}
-              cardBg={cardBg}
-              onOpenAyah={onOpenAyah}
-              hideConjugationButton={hasVerbConjugation}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {!hasVerbConjugation && (
+        <AnimatePresence initial={false}>
+          {more && (
+            <motion.div
+              initial={reduce ? false : { height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              transition={reduce ? { duration: 0.01 } : { duration: 0.25, ease: 'easeOut' }}
+              className="overflow-hidden pt-1"
+            >
+              <MorphologyTab
+                word={word}
+                theme={theme}
+                cardBg={cardBg}
+                onOpenAyah={onOpenAyah}
+                hideConjugationButton={true}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
 
       {hasVerbConjugation && (
         <VerbConjugationModal
@@ -475,6 +1302,16 @@ const FactsPanel = ({ word, theme, cardBg, dark, reduce, onOpenAyah }) => {
           onClose={() => setIsConjugationModalOpen(false)}
           word={word}
           theme={theme}
+          onOpenAyah={onOpenAyah}
+          renderMoreDetails={(handleJumpAyah) => (
+            <MorphologyTab
+              word={word}
+              theme={theme}
+              cardBg={cardBg}
+              onOpenAyah={handleJumpAyah}
+              hideConjugationButton={true}
+            />
+          )}
         />
       )}
     </div>
@@ -494,13 +1331,14 @@ const NavBtn = ({ icon, label, title, onClick, disabled, className }) => (
   </button>
 );
 
-/* ------------------------------ The sheet ------------------------------ */
+/* ------------------------------ The Sheet ------------------------------ */
 const Sheet = ({
   word, theme, activeTab, setActiveTab, navDir, dialogRef, tabRefs,
   onClose, onNavigateWord, hasPreviousWord, hasNextWord, onOpenAyah
 }) => {
   const controls = useDragControls();
   const reduce = useReducedMotion();
+  const [motionPaused, setMotionPaused] = useState(false);
 
   const isEnhanced = hasEnhancedData(word);
   const palette =
@@ -510,18 +1348,20 @@ const Sheet = ({
         ? 'surah_103'
         : 'default';
   const dark = isDarkSurface(theme);
-  const drawerStyle = THEME_DRAWER_STYLES[theme] || THEME_DRAWER_STYLES.light;
+  const surfaceStyle = THEME_SURFACE_STYLES[theme] || THEME_SURFACE_STYLES.light;
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
   const segments = word.segments || [];
   const cat = word.primary_category === 'fil' ? 'fil' : word.primary_category === 'harf' ? 'harf' : 'ism';
-  const accent = CATEGORY_ACCENTS[palette][cat];
   const posIcon = Fi(cat === 'fil' ? 'FiZap' : cat === 'harf' ? 'FiLink2' : 'FiTag');
   const singularAr = word.sarf?.noun?.singular_ar;
   const singularEn = word.sarf?.noun?.singular_en;
   const rootLetters = isEnhanced && word.sarf?.root?.length ? word.sarf.root : null;
   const wordKey = `${word.surahNumber ?? ''}-${word.ayahNumber ?? ''}-${word.position ?? ''}-${word.text_uthmani}`;
 
-  // Compute progress percentage across the surah/ayah word list when available
+  const frameColors = FRAME_GRADIENT_COLORS[palette] || FRAME_GRADIENT_COLORS.default;
+  const mixBase = dark ? '#0f172a' : theme === 'sepia' ? '#fffbeb' : '#ffffff';
+  const tileBorderBase = dark ? '#1e293b' : mixBase;
+
   const totalWords = word.wordsInAyah?.length || 0;
   const currentWordIndex = totalWords > 0
     ? word.wordsInAyah.findIndex(
@@ -537,7 +1377,7 @@ const Sheet = ({
 
   const navBtn = dark
     ? 'border-white/20 bg-white/5 hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400'
-    : 'border-slate-300/90 bg-white/80 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500';
+    : 'border-slate-300/90 bg-slate-100/80 hover:bg-slate-200/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500';
   const kbd = dark ? 'bg-white/10 text-slate-200' : 'bg-black/10 text-slate-700';
 
   const handleTabListKeyDown = (e) => {
@@ -569,13 +1409,8 @@ const Sheet = ({
       exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.14 } }}
       className="fixed inset-x-0 bottom-6 sm:bottom-10 md:bottom-12 z-[70] flex justify-center px-3 sm:px-6 pointer-events-none"
     >
-      {/* Elevated floating glass inspector card: positioned comfortably above the bottom edge;
-          clicking outside closes the box while keeping the surah scrollable and interactive. */}
+      {/* Animated conic-gradient border frame */}
       <motion.div
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-label={`Grammar details for ${word.text_uthmani}`}
         drag="y"
         dragControls={controls}
         dragListener={false}
@@ -584,260 +1419,190 @@ const Sheet = ({
         onDragEnd={(_, info) => {
           if (info.offset.y > 85 || info.velocity.y > 480) onClose?.();
         }}
-        initial={reduce ? { opacity: 0 } : { y: 64, scale: 0.94, opacity: 0 }}
+        initial={reduce ? { opacity: 0 } : { y: 40, scale: 0.95, opacity: 0 }}
         animate={reduce ? { opacity: 1 } : { y: 0, scale: 1, opacity: 1 }}
         exit={
           reduce
             ? { opacity: 0, transition: { duration: 0.01 } }
-            : { y: 40, scale: 0.96, opacity: 0, transition: { duration: 0.14, ease: 'easeOut' } }
+            : { y: 32, scale: 0.96, opacity: 0, transition: { duration: 0.14, ease: 'easeOut' } }
         }
         transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 24, stiffness: 320 }}
-        className={`pointer-events-auto relative w-full max-w-2xl max-h-[66vh] sm:max-h-[70vh] overflow-y-auto rounded-3xl border ring-1 ${accent.ring} px-4 sm:px-7 pb-5 backdrop-blur-2xl focus:outline-none ${drawerStyle}`}
+        style={{
+          '--gf-c1': frameColors[0],
+          '--gf-c2': frameColors[1],
+          '--gf-c3': frameColors[2],
+          '--gf-c4': frameColors[3],
+          '--chip-base': mixBase,
+          '--tile-base': mixBase,
+          '--tile-border-base': tileBorderBase,
+          '--eq-base': mixBase
+        }}
+        className={`grammar-modal-frame pointer-events-auto w-full max-w-[680px] ${
+          motionPaused || reduce ? 'grammar-motion-paused' : ''
+        }`}
       >
-        {/* Top category-colored luminous shimmer beam */}
         <div
-          aria-hidden="true"
-          className="pointer-events-none sticky top-0 -mx-4 sm:-mx-7 mb-1 h-1.5 overflow-hidden rounded-t-3xl z-10"
+          ref={dialogRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-label={`Grammar details for ${word.text_uthmani}`}
+          className={`relative w-full max-h-[72vh] sm:max-h-[76vh] overflow-y-auto rounded-[25.5px] px-4 sm:px-6 pb-4 backdrop-blur-2xl focus:outline-none ${surfaceStyle}`}
         >
-          <div className={`w-full h-full bg-gradient-to-r ${accent.beam}`} />
-          {!reduce && (
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: '200%' }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.2 }}
-              className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/75 to-transparent"
-            />
-          )}
-        </div>
+          {/* Drag handle */}
+          <div
+            onPointerDown={(e) => controls.start(e)}
+            className="relative touch-none cursor-grab active:cursor-grabbing pt-2.5 pb-1.5"
+            aria-hidden="true"
+          >
+            <div className={`w-11 h-1.5 rounded-full mx-auto ${dark ? 'bg-white/25' : 'bg-slate-300/90'}`} />
+          </div>
 
-        {/* Ambient floating aurora orbs inside the card */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-          <motion.div
-            animate={
-              reduce
-                ? undefined
-                : { scale: [1, 1.15, 1], x: [0, 18, 0], y: [0, -10, 0] }
-            }
-            transition={reduce ? undefined : { duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-            className={`absolute -top-16 -right-12 w-56 h-56 rounded-full blur-3xl opacity-70 ${accent.aura}`}
-          />
-          <motion.div
-            animate={
-              reduce
-                ? undefined
-                : { scale: [1, 1.2, 1], x: [0, -16, 0], y: [0, 12, 0] }
-            }
-            transition={reduce ? undefined : { duration: 7.5, repeat: Infinity, ease: 'easeInOut' }}
-            className={`absolute -bottom-20 -left-12 w-56 h-56 rounded-full blur-3xl opacity-60 ${accent.orb2}`}
-          />
-        </div>
-
-        {/* Drag handle */}
-        <div
-          onPointerDown={(e) => controls.start(e)}
-          className="relative touch-none cursor-grab active:cursor-grabbing py-2.5"
-          aria-hidden="true"
-        >
-          <div className={`w-11 h-1.5 rounded-full mx-auto transition-transform hover:scale-x-110 ${dark ? 'bg-white/30' : 'bg-slate-300/90'}`} />
-        </div>
-
-        {/* Header */}
-        <div className="relative flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border shadow-2xs ${
-                dark
-                  ? 'bg-islamic-gold/20 text-amber-300 border-islamic-gold/40'
-                  : 'bg-amber-100/85 text-amber-900 border-amber-300'
-              }`}
-            >
-              <SafeIcon icon={Fi('FiBookOpen')} className="text-xs" aria-hidden="true" />
-              {place}
-            </span>
-
-            {progressPct !== null && (
-              <div
-                aria-hidden="true"
-                className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono ${
-                  dark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'
+          {/* Header Bar */}
+          <div className="relative flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
+                  dark
+                    ? 'bg-emerald-950/70 text-emerald-200 border-emerald-700/60'
+                    : 'bg-slate-100 text-slate-800 border-slate-200'
                 }`}
               >
-                <div className={`w-12 h-1.5 rounded-full overflow-hidden ${dark ? 'bg-white/15' : 'bg-slate-300/80'}`}>
-                  <motion.div
-                    initial={false}
-                    animate={{ width: `${progressPct}%` }}
-                    transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 22, stiffness: 260 }}
-                    className={`h-full rounded-full bg-gradient-to-r ${accent.beam}`}
-                  />
+                <SafeIcon icon={Fi('FiBookOpen')} className="text-xs opacity-75" aria-hidden="true" />
+                {place}
+              </span>
+
+              {progressPct !== null && (
+                <div
+                  aria-hidden="true"
+                  className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono ${
+                    dark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <div className={`w-12 h-1.5 rounded-full overflow-hidden ${dark ? 'bg-white/15' : 'bg-slate-300/80'}`}>
+                    <div
+                      style={{ width: `${progressPct}%` }}
+                      className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+                    />
+                  </div>
+                  <span>{currentWordIndex + 1}/{totalWords}</span>
                 </div>
-                <span>{currentWordIndex + 1}/{totalWords}</span>
-              </div>
-            )}
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <NavBtn icon={Fi('FiChevronLeft')} label="Previous word" title="Previous word ([ or ←)" onClick={() => onNavigateWord?.(-1)} disabled={!hasPreviousWord} className={navBtn} />
+              <NavBtn icon={Fi('FiChevronRight')} label="Next word" title="Next word (] or →)" onClick={() => onNavigateWord?.(1)} disabled={!hasNextWord} className={navBtn} />
+              <button
+                type="button"
+                onClick={onClose}
+                title="Close (Esc)"
+                aria-label="Close grammar panel"
+                className={`ml-1 w-9 h-9 rounded-full border grid place-items-center transition-all duration-200 hover:rotate-90 active:scale-95 ${navBtn}`}
+              >
+                <GrammarVisualIcon name="x" className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <NavBtn icon={Fi('FiChevronLeft')} label="Previous word" title="Previous word ([ or ←)" onClick={() => onNavigateWord?.(-1)} disabled={!hasPreviousWord} className={navBtn} />
-            <NavBtn icon={Fi('FiChevronRight')} label="Next word" title="Next word (] or →)" onClick={() => onNavigateWord?.(1)} disabled={!hasNextWord} className={navBtn} />
-            <NavBtn icon={Fi('FiX')} label="Close grammar panel" title="Close (Esc)" onClick={onClose} className={`ml-1 ${navBtn}`} />
-          </div>
-        </div>
-
-        <motion.div
-          key={wordKey}
-          initial={
-            reduce
-              ? false
-              : { opacity: 0, x: navDir * 32, y: 8, scale: 0.96 }
-          }
-          animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-          transition={
-            reduce
-              ? { duration: 0.01 }
-              : { type: 'spring', damping: 24, stiffness: 320 }
-          }
-          className="relative"
-        >
-            {/* Hero Spotlight Stage */}
+          <motion.div
+            key={wordKey}
+            initial={reduce ? false : { opacity: 0, x: navDir * 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 24, stiffness: 320 }}
+            className="relative"
+          >
+            {/* Hero Stage: Animated Bracket Diagram + Gloss + Badges */}
             <div
               data-testid="grammar-hero-stage"
-              className={`relative overflow-hidden rounded-3xl border text-center px-4 py-5 mb-4 ${cardBg}`}
+              className={`relative rounded-[22px] border text-center px-3 sm:px-5 pt-2 pb-4 mb-4 ${cardBg}`}
             >
-              {/* Soft category aura */}
-              <motion.div
-                aria-hidden="true"
-                initial={reduce ? false : { opacity: 0, scale: 0.55 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: reduce ? 0.01 : 0.7, ease: 'easeOut' }}
-                className={`absolute left-1/2 top-1 -translate-x-1/2 w-64 h-32 rounded-full blur-3xl ${accent.aura}`}
-              />
-
-              {/* Rotating ornamental geometric halo ring */}
-              <motion.div
-                aria-hidden="true"
-                animate={reduce ? undefined : { rotate: 360 }}
-                transition={reduce ? undefined : { duration: 28, repeat: Infinity, ease: 'linear' }}
-                className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full border border-dashed opacity-45 ${accent.halo}`}
-              />
-
-              <div className="relative">
-                {/* Animated Arabic Word with staggered segment reveal */}
+              {isEnhanced ? (
+                <WordBracketDiagram
+                  word={word}
+                  theme={theme}
+                  palette={palette}
+                  dark={dark}
+                  reduce={reduce}
+                />
+              ) : (
                 <div className="quran-text-pak !text-4xl sm:!text-5xl !leading-[1.7] [text-shadow:none] !text-inherit">
                   {segments.map((seg, i) => (
-                    <motion.span
+                    <span
                       key={i}
-                      initial={reduce ? false : { opacity: 0, y: 12, scale: 0.86 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={
-                        reduce
-                          ? { duration: 0.01 }
-                          : { delay: i * 0.055, type: 'spring', damping: 15, stiffness: 320 }
-                      }
                       className={getCategoryTextClass(seg.category, theme, seg, palette)}
-                    >
-                      {seg.text}
-                    </motion.span>
+                    >{seg.text}</span>
                   ))}
                 </div>
+              )}
 
-                {/* Animated proportional morpheme color bar */}
-                {segments.length > 0 && (
-                  <div
-                    dir="rtl"
-                    aria-hidden="true"
-                    className="flex items-center justify-center gap-1 max-w-[11rem] mx-auto mt-1 mb-1.5"
+              <p className="mt-2 text-xl sm:text-2xl font-extrabold tracking-tight">
+                &ldquo;{word.translation}&rdquo;
+              </p>
+
+              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
+                <span
+                  data-testid="word-pos-label"
+                  className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold border shadow-2xs ${getCategoryBadgeClass(word.primary_category, theme, word, palette)}`}
+                >
+                  <SafeIcon icon={posIcon} className="text-xs shrink-0" aria-hidden="true" />
+                  <span>{getSimplePartOfSpeech(word)}</span>
+                </span>
+
+                {rootLetters && (
+                  <span
+                    data-testid="hero-root-pill"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                      dark
+                        ? 'bg-amber-950/60 border-amber-500/50 text-amber-200'
+                        : 'bg-amber-50 border-amber-300/90 text-amber-900'
+                    }`}
                   >
-                    {segments.map((seg, idx) => (
-                      <motion.span
-                        key={idx}
-                        initial={reduce ? false : { scaleX: 0, opacity: 0 }}
-                        animate={{ scaleX: 1, opacity: 1 }}
-                        transition={
-                          reduce
-                            ? { duration: 0.01 }
-                            : { delay: 0.08 + idx * 0.06, type: 'spring', damping: 18, stiffness: 280 }
-                        }
-                        className={`h-1.5 rounded-full ${getSegmentBarClass(seg, palette)} ${
-                          seg.role === 'stem' ? 'flex-[3]' : 'flex-1 opacity-80'
-                        }`}
-                      />
-                    ))}
-                  </div>
+                    <GrammarVisualIcon name="root" className="w-3.5 h-3.5 shrink-0" />
+                    <span>Root:</span>
+                    <span dir="rtl" className="font-arabic text-sm font-bold tracking-wide">
+                      {rootLetters.join(' · ')}
+                    </span>
+                  </span>
                 )}
 
-                <motion.p
-                  initial={reduce ? false : { opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={reduce ? { duration: 0.01 } : { delay: 0.08, duration: 0.2 }}
-                  className="mt-1 text-lg sm:text-xl font-bold tracking-tight"
-                >
-                  &ldquo;{word.translation}&rdquo;
-                </motion.p>
-
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {word.idafa && (
                   <span
-                    data-testid="word-pos-label"
-                    className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold border shadow-2xs ${getCategoryBadgeClass(word.primary_category, theme, word, palette)}`}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                      dark
+                        ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
+                        : 'bg-amber-100/80 border-amber-300 text-amber-950'
+                    }`}
                   >
-                    <SafeIcon icon={posIcon} className="text-xs shrink-0" aria-hidden="true" />
-                    <span>{getSimplePartOfSpeech(word)}</span>
+                    <SafeIcon icon={Fi('FiLink')} className="text-xs shrink-0" aria-hidden="true" />
+                    <span>{word.idafa.label_en}:</span>
+                    <span dir="rtl" className="font-arabic text-sm font-bold">
+                      {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
+                    </span>
                   </span>
+                )}
 
-                  {rootLetters && (
-                    <span
-                      data-testid="hero-root-pill"
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                        dark
-                          ? 'bg-amber-950/60 border-amber-500/50 text-amber-200'
-                          : 'bg-amber-50 border-amber-300/90 text-amber-900'
-                      }`}
-                    >
-                      <SafeIcon icon={Fi('FiGitBranch')} className="text-xs shrink-0" aria-hidden="true" />
-                      <span>Root:</span>
-                      <span dir="rtl" className="font-arabic text-sm font-bold tracking-wide">
-                        {rootLetters.join(' · ')}
-                      </span>
+                {singularAr && (
+                  <span
+                    data-testid="plural-singular-badge"
+                    className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full border text-xs ${
+                      dark
+                        ? 'bg-rose-950/60 border-rose-700/70 text-rose-100'
+                        : 'bg-rose-50 border-rose-200 text-rose-950'
+                    }`}
+                  >
+                    <SafeIcon icon={Fi('FiUser')} className="shrink-0" aria-hidden="true" />
+                    <span className="font-semibold">One of them:</span>
+                    <span dir="rtl" className={`quran-text-pak !text-xl !leading-[1.5] [text-shadow:none] font-bold ${dark ? '!text-rose-200' : '!text-rose-800'}`}>
+                      {singularAr}
                     </span>
-                  )}
-
-                  {word.idafa && (
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                        dark
-                          ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
-                          : 'bg-amber-100/80 border-amber-300 text-amber-950'
-                      }`}
-                    >
-                      <SafeIcon icon={Fi('FiLink')} className="text-xs shrink-0" aria-hidden="true" />
-                      <span>{word.idafa.label_en}:</span>
-                      <span dir="rtl" className="font-arabic text-sm font-bold">
-                        {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
-                      </span>
-                    </span>
-                  )}
-
-                  {singularAr && (
-                    <span
-                      data-testid="plural-singular-badge"
-                      className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full border text-xs ${
-                        dark
-                          ? 'bg-rose-950/60 border-rose-700/70 text-rose-100'
-                          : 'bg-rose-50 border-rose-200 text-rose-950'
-                      }`}
-                    >
-                      <SafeIcon icon={Fi('FiUser')} className="shrink-0" aria-hidden="true" />
-                      <span className="font-semibold">One of them:</span>
-                      <span dir="rtl" className={`quran-text-pak !text-xl !leading-[1.5] [text-shadow:none] font-bold ${dark ? '!text-rose-200' : '!text-rose-800'}`}>
-                        {singularAr}
-                      </span>
-                      {singularEn && <span className="opacity-80">({singularEn})</span>}
-                    </span>
-                  )}
-                </div>
+                    {singularEn && <span className="opacity-80">({singularEn})</span>}
+                  </span>
+                )}
               </div>
             </div>
 
             {isEnhanced ? (
-              <div className="mb-4">
+              <div className="mb-3">
                 <div
                   role="tablist"
                   aria-label="Word grammar analysis"
@@ -859,7 +1624,7 @@ const Sheet = ({
                         tabIndex={selected ? 0 : -1}
                         onClick={() => setActiveTab(tab.id)}
                         className={`relative flex items-center justify-center gap-1.5 px-2 py-2 rounded-full text-xs font-bold transition-all duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
-                          selected ? (dark ? 'text-amber-200' : 'text-slate-900') : 'opacity-65 hover:opacity-100'
+                          selected ? (dark ? 'text-emerald-200' : 'text-slate-900') : 'opacity-65 hover:opacity-100'
                         }`}
                       >
                         {selected && (
@@ -868,8 +1633,8 @@ const Sheet = ({
                             transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 26, stiffness: 360 }}
                             className={`absolute inset-0 rounded-full border ${
                               dark
-                                ? 'bg-gradient-to-r from-amber-500/25 via-islamic-gold/25 to-amber-500/25 border-islamic-gold/60 shadow-sm'
-                                : 'bg-white border-amber-300/90 shadow-sm'
+                                ? 'bg-emerald-500/20 border-emerald-400/50 shadow-sm'
+                                : 'bg-white border-slate-300/90 shadow-sm'
                             }`}
                           />
                         )}
@@ -884,12 +1649,20 @@ const Sheet = ({
                 <div id={`panel-${activeTab}`} role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
                   <motion.div
                     key={activeTab}
-                    initial={reduce ? false : { opacity: 0, y: 10, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 24, stiffness: 320 }}
+                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={reduce ? { duration: 0.01 } : { duration: 0.22, ease: 'easeOut' }}
                   >
                     {activeTab === 'morphology' && (
-                      <FactsPanel word={word} theme={theme} cardBg={cardBg} dark={dark} reduce={reduce} onOpenAyah={onOpenAyah} />
+                      <FactsPanel
+                        word={word}
+                        theme={theme}
+                        palette={palette}
+                        cardBg={cardBg}
+                        dark={dark}
+                        reduce={reduce}
+                        onOpenAyah={onOpenAyah}
+                      />
                     )}
                     {activeTab === 'syntax' && <SyntaxTab word={word} theme={theme} cardBg={cardBg} />}
                     {activeTab === 'insight' && <InsightTab word={word} theme={theme} cardBg={cardBg} />}
@@ -1013,35 +1786,55 @@ const Sheet = ({
             )}
           </motion.div>
 
-        {/* Footer */}
-        <div className="relative flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-current/15 text-[11px] opacity-80">
-          <div className="flex items-center gap-3">
-            {LEGEND.map((l) => (
-              <span key={l.label} className="flex items-center gap-1">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    palette === 'surah_100'
-                      ? l.dot100
-                      : palette === 'surah_103'
-                        ? l.dot103
-                        : l.dot
+          {/* Footer: Color Legend + Motion Pause Control + Shortcuts */}
+          <div className="relative flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-current/15 text-[11px] opacity-85">
+            <div className="flex items-center gap-3">
+              {LEGEND.map((l) => (
+                <span key={l.label} className="flex items-center gap-1">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      palette === 'surah_100'
+                        ? l.dot100
+                        : palette === 'surah_103'
+                          ? l.dot103
+                          : l.dot
+                    }`}
+                  />
+                  {l.label}
+                </span>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {!reduce && (
+                <button
+                  type="button"
+                  data-testid="toggle-modal-motion"
+                  onClick={() => setMotionPaused((p) => !p)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+                    dark
+                      ? 'border-white/15 bg-white/5 hover:bg-white/15 text-slate-200'
+                      : 'border-slate-300/90 bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
-                />
-                {l.label}
-              </span>
-            ))}
-          </div>
-          <div className="hidden sm:flex flex-wrap items-center gap-1.5 font-mono">
-            <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbd}`}>← →</kbd>
-            <span>Words</span>
-            {isEnhanced && (
-              <>
-                <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbd}`}>1 2 3</kbd>
-                <span>Tabs</span>
-              </>
-            )}
-            <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbd}`}>?</kbd>
-            <span>Color guide</span>
+                >
+                  <SafeIcon icon={Fi(motionPaused ? 'FiPlay' : 'FiPause')} className="text-[10px]" aria-hidden="true" />
+                  <span>{motionPaused ? 'Play motion' : 'Pause motion'}</span>
+                </button>
+              )}
+
+              <div className="hidden sm:flex flex-wrap items-center gap-1.5 font-mono">
+                <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbd}`}>← →</kbd>
+                <span>Words</span>
+                {isEnhanced && (
+                  <>
+                    <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbd}`}>1 2 3</kbd>
+                    <span>Tabs</span>
+                  </>
+                )}
+                <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${kbd}`}>?</kbd>
+                <span>Color guide</span>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -1091,7 +1884,6 @@ const GrammarBottomSheet = ({
     wasOpenRef.current = isOpen;
   }, [word]);
 
-  // Start at the top whenever the word changes.
   useEffect(() => {
     dialogRef.current?.scrollTo?.({ top: 0 });
   }, [word]);
@@ -1199,7 +1991,6 @@ const GrammarBottomSheet = ({
     };
   }, [word, onClose]);
 
-  // AnimatePresence stays mounted so the sheet slides out cleanly.
   return (
     <AnimatePresence>
       {word && (

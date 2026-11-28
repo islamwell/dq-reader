@@ -34,7 +34,8 @@
               "pos_name_ar": "واو القسم",
               "pos_name_en": "Wāw of oath",
               "desc_ar": "حرف جر يفيد القسم",
-              "desc_en": "A preposition used for swearing an oath: \"By…\""
+              "desc_en": "A preposition used for swearing an oath: \"By…\"",
+              "emphasis": true
             },
             {
               "text": "ٱلْ",
@@ -142,7 +143,23 @@
           },
           "root": "ع ص ر",
           "root_meaning": "to press, squeeze out; an age or epoch; late afternoon",
-          "wazn": "فَعْل"
+          "wazn": "فَعْل",
+          "has_emphasis": true,
+          "in_verse": {
+            "a": {
+              "ar": "وَ",
+              "en": "By (oath)",
+              "tone": "harf"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ٱلْعَصْرِ",
+              "en": "the time",
+              "tone": "ism"
+            },
+            "result": "By the passing of time",
+            "note": "swears by time itself as witness"
+          }
         }
       ]
     },
@@ -169,7 +186,8 @@
               "pos_name_ar": "حرف توكيد ونصب",
               "pos_name_en": "Accusative particle",
               "desc_ar": "من الحروف المشبهة بالفعل: تنصب الاسم وترفع الخبر",
-              "desc_en": "One of the \"verb-like particles\": makes its subject accusative"
+              "desc_en": "One of the \"verb-like particles\": makes its subject accusative",
+              "emphasis": true
             }
           ],
           "sarf": null,
@@ -186,7 +204,23 @@
           },
           "root": null,
           "root_meaning": null,
-          "wazn": null
+          "wazn": null,
+          "has_emphasis": true,
+          "in_verse": {
+            "a": {
+              "ar": "إِنَّ",
+              "en": "Indeed",
+              "tone": "harf"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ٱلْإِنسَـٰنَ",
+              "en": "mankind",
+              "tone": "ism"
+            },
+            "result": "Indeed, mankind…",
+            "note": "strong certainty answering the oath"
+          }
         },
         {
           "position": 2,
@@ -321,7 +355,22 @@
           },
           "root": "أ ن س",
           "root_meaning": "to be familiar, sociable, at ease with; to perceive",
-          "wazn": "فِعْلَان"
+          "wazn": "فِعْلَان",
+          "in_verse": {
+            "a": {
+              "ar": "إِنَّ",
+              "en": "Indeed",
+              "tone": "harf"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ٱلْإِنسَـٰنَ",
+              "en": "mankind",
+              "tone": "ism"
+            },
+            "result": "Every human being",
+            "note": "covers all of humanity as a species"
+          }
         },
         {
           "position": 3,
@@ -340,7 +389,8 @@
               "pos_name_ar": "اللام المزحلقة",
               "pos_name_en": "Emphatic lām",
               "desc_ar": "لام التوكيد زُحلقت إلى الخبر",
-              "desc_en": "The lām of emphasis, \"slid\" onto the predicate"
+              "desc_en": "The lām of emphasis, \"slid\" onto the predicate",
+              "emphasis": true
             },
             {
               "text": "فِى",
@@ -367,7 +417,23 @@
           },
           "root": null,
           "root_meaning": null,
-          "wazn": null
+          "wazn": null,
+          "has_emphasis": true,
+          "in_verse": {
+            "a": {
+              "ar": "لَ",
+              "en": "surely",
+              "tone": "harf"
+            },
+            "op": "+",
+            "b": {
+              "ar": "فِى خُسْرٍ",
+              "en": "inside loss",
+              "tone": "ism"
+            },
+            "result": "is surely inside loss",
+            "note": "emphatic lām + deep immersion (fī)"
+          }
         },
         {
           "position": 4,
@@ -479,7 +545,22 @@
           },
           "root": "خ س ر",
           "root_meaning": "to lose, suffer loss (esp. of capital in trade); to diminish",
-          "wazn": "فُعْل"
+          "wazn": "فُعْل",
+          "in_verse": {
+            "a": {
+              "ar": "لَفِى",
+              "en": "surely in",
+              "tone": "harf"
+            },
+            "op": "+",
+            "b": {
+              "ar": "خُسْرٍ",
+              "en": "loss",
+              "tone": "ism"
+            },
+            "result": "immersed in vast loss",
+            "note": "indefinite tanwīn magnifies the loss"
+          }
         }
       ]
     },
@@ -523,7 +604,22 @@
           },
           "root": null,
           "root_meaning": null,
-          "wazn": null
+          "wazn": null,
+          "in_verse": {
+            "a": {
+              "ar": "خُسْرٍ",
+              "en": "loss",
+              "tone": "ism"
+            },
+            "op": "−",
+            "b": {
+              "ar": "إِلَّا",
+              "en": "except",
+              "tone": "harf"
+            },
+            "result": "Except those who…",
+            "note": "lifts the faithful out of universal loss"
+          }
         },
         {
           "position": 2,
@@ -559,7 +655,22 @@
           },
           "root": null,
           "root_meaning": null,
-          "wazn": null
+          "wazn": null,
+          "in_verse": {
+            "a": {
+              "ar": "إِلَّا",
+              "en": "except",
+              "tone": "harf"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ٱلَّذِينَ",
+              "en": "those who",
+              "tone": "ism"
+            },
+            "result": "Those defined by 4 qualities",
+            "note": "faith, deeds, truth & patience"
+          }
         },
         {
           "position": 3,
@@ -582,13 +693,14 @@
             },
             {
               "text": "وا۟",
-              "category": "ism",
+              "category": "fil",
               "tag": "PRON",
               "role": "suffix",
               "pos_name_ar": "واو الجماعة",
-              "pos_name_en": "Subject pronoun \"they\"",
+              "pos_name_en": "They",
               "desc_ar": "ضمير متصل في محل رفع فاعل، والألف بعده فارقة لا تُنطق",
-              "desc_en": "Attached pronoun (subject); the alif after it is silent (alif fāriqa)"
+              "desc_en": "Verb subject ending (they); the final alif is silent (alif fāriqa)",
+              "is_subject_ending": true
             }
           ],
           "sarf": {
@@ -690,7 +802,126 @@
                   "ar": "يُؤْمَنُ",
                   "en": "he / it is believed in (trusted)"
                 }
-              ]
+              ],
+              "conjugation_table": {
+                "verb_lemma_ar": "ءَامَنَ",
+                "verb_lemma_en": "to believe, have faith",
+                "root": [
+                  "أ",
+                  "م",
+                  "ن"
+                ],
+                "form": "Form IV (أَفْعَلَ)",
+                "active_occurrence_pronoun": "They (m.)",
+                "active_occurrence_tense": "past",
+                "rows": [
+                  {
+                    "pronoun_ar": "هُوَ",
+                    "pronoun_en": "He",
+                    "past_ar": "ءَامَنَ",
+                    "past_en": "he believed",
+                    "present_ar": "يُؤْمِنُ",
+                    "present_en": "he believes",
+                    "future_ar": "سَيُؤْمِنُ",
+                    "future_en": "he will believe"
+                  },
+                  {
+                    "pronoun_ar": "هِيَ",
+                    "pronoun_en": "She",
+                    "past_ar": "ءَامَنَتْ",
+                    "past_en": "she believed",
+                    "present_ar": "تُؤْمِنُ",
+                    "present_en": "she believes",
+                    "future_ar": "سَتُؤْمِنُ",
+                    "future_en": "she will believe"
+                  },
+                  {
+                    "pronoun_ar": "هُمْ",
+                    "pronoun_en": "They (m.)",
+                    "past_ar": "ءَامَنُوا۟",
+                    "past_en": "they believed",
+                    "present_ar": "يُؤْمِنُونَ",
+                    "present_en": "they believe",
+                    "future_ar": "سَيُؤْمِنُونَ",
+                    "future_en": "they will believe",
+                    "in_ayah": true
+                  },
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (m.)",
+                    "past_ar": "ءَامَنتَ",
+                    "past_en": "you believed",
+                    "present_ar": "تُؤْمِنُ",
+                    "present_en": "you believe",
+                    "future_ar": "سَتُؤْمِنُ",
+                    "future_en": "you will believe"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "past_ar": "ءَامَنتُمْ",
+                    "past_en": "you all believed",
+                    "present_ar": "تُؤْمِنُونَ",
+                    "present_en": "you all believe",
+                    "future_ar": "سَتُؤْمِنُونَ",
+                    "future_en": "you all will believe"
+                  },
+                  {
+                    "pronoun_ar": "أَنَا",
+                    "pronoun_en": "I",
+                    "past_ar": "ءَامَنتُ",
+                    "past_en": "I believed",
+                    "present_ar": "أُؤْمِنُ",
+                    "present_en": "I believe",
+                    "future_ar": "سَأُؤْمِنُ",
+                    "future_en": "I will believe"
+                  },
+                  {
+                    "pronoun_ar": "نَحْنُ",
+                    "pronoun_en": "We",
+                    "past_ar": "ءَامَنَّا",
+                    "past_en": "we believed",
+                    "present_ar": "نُؤْمِنُ",
+                    "present_en": "we believe",
+                    "future_ar": "سَنُؤْمِنُ",
+                    "future_en": "we will believe"
+                  }
+                ],
+                "passive": [
+                  {
+                    "label_ar": "الماضي المجهول",
+                    "label_en": "Past Passive",
+                    "ar": "أُومِنَ",
+                    "en": "he / it was believed in"
+                  },
+                  {
+                    "label_ar": "المضارع المجهول",
+                    "label_en": "Present Passive",
+                    "ar": "يُؤْمَنُ",
+                    "en": "he / it is believed in"
+                  }
+                ],
+                "imperative": [
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (sg.)",
+                    "ar": "ءَامِنْ",
+                    "en": "Believe!"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "ar": "ءَامِنُوا۟",
+                    "en": "Believe! (all)"
+                  },
+                  {
+                    "pronoun_ar": "نَهْي",
+                    "pronoun_en": "Do not",
+                    "ar": "لَا تُؤْمِنْ",
+                    "en": "Do not believe!"
+                  }
+                ]
+              }
             },
             "noun": null,
             "transformation": {
@@ -738,7 +969,22 @@
           },
           "root": "أ م ن",
           "root_meaning": "safety, security, trust; to believe, have faith",
-          "wazn": "أَفْعَلُوا"
+          "wazn": "أَفْعَلُوا",
+          "in_verse": {
+            "a": {
+              "ar": "ٱلَّذِينَ",
+              "en": "those who",
+              "tone": "ism"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ءَامَنُوا۟",
+              "en": "believe",
+              "tone": "fil"
+            },
+            "result": "those who have faith",
+            "note": "1st rescue quality: heartfelt trust"
+          }
         },
         {
           "position": 4,
@@ -771,13 +1017,14 @@
             },
             {
               "text": "وا۟",
-              "category": "ism",
+              "category": "fil",
               "tag": "PRON",
               "role": "suffix",
               "pos_name_ar": "واو الجماعة",
-              "pos_name_en": "Subject pronoun \"they\"",
+              "pos_name_en": "They",
               "desc_ar": "ضمير متصل في محل رفع فاعل، والألف بعده فارقة لا تُنطق",
-              "desc_en": "Attached pronoun (subject); the alif after it is silent (alif fāriqa)"
+              "desc_en": "Verb subject ending (they); the final alif is silent (alif fāriqa)",
+              "is_subject_ending": true
             }
           ],
           "sarf": {
@@ -871,7 +1118,126 @@
                   "ar": "يُعْمَلُ",
                   "en": "it is done / worked"
                 }
-              ]
+              ],
+              "conjugation_table": {
+                "verb_lemma_ar": "عَمِلَ",
+                "verb_lemma_en": "to work, do deeds",
+                "root": [
+                  "ع",
+                  "م",
+                  "ل"
+                ],
+                "form": "Form I (فَعِلَ)",
+                "active_occurrence_pronoun": "They (m.)",
+                "active_occurrence_tense": "past",
+                "rows": [
+                  {
+                    "pronoun_ar": "هُوَ",
+                    "pronoun_en": "He",
+                    "past_ar": "عَمِلَ",
+                    "past_en": "he did / worked",
+                    "present_ar": "يَعْمَلُ",
+                    "present_en": "he does / works",
+                    "future_ar": "سَيَعْمَلُ",
+                    "future_en": "he will do"
+                  },
+                  {
+                    "pronoun_ar": "هِيَ",
+                    "pronoun_en": "She",
+                    "past_ar": "عَمِلَتْ",
+                    "past_en": "she did / worked",
+                    "present_ar": "تَعْمَلُ",
+                    "present_en": "she does / works",
+                    "future_ar": "سَتَعْمَلُ",
+                    "future_en": "she will do"
+                  },
+                  {
+                    "pronoun_ar": "هُمْ",
+                    "pronoun_en": "They (m.)",
+                    "past_ar": "عَمِلُوا۟",
+                    "past_en": "they did / worked",
+                    "present_ar": "يَعْمَلُونَ",
+                    "present_en": "they do / work",
+                    "future_ar": "سَيَعْمَلُونَ",
+                    "future_en": "they will do",
+                    "in_ayah": true
+                  },
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (m.)",
+                    "past_ar": "عَمِلْتَ",
+                    "past_en": "you did",
+                    "present_ar": "تَعْمَلُ",
+                    "present_en": "you do",
+                    "future_ar": "سَتَعْمَلُ",
+                    "future_en": "you will do"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "past_ar": "عَمِلْتُمْ",
+                    "past_en": "you all did",
+                    "present_ar": "تَعْمَلُونَ",
+                    "present_en": "you all do",
+                    "future_ar": "سَتَعْمَلُونَ",
+                    "future_en": "you all will do"
+                  },
+                  {
+                    "pronoun_ar": "أَنَا",
+                    "pronoun_en": "I",
+                    "past_ar": "عَمِلْتُ",
+                    "past_en": "I did",
+                    "present_ar": "أَعْمَلُ",
+                    "present_en": "I do",
+                    "future_ar": "سَأَعْمَلُ",
+                    "future_en": "I will do"
+                  },
+                  {
+                    "pronoun_ar": "نَحْنُ",
+                    "pronoun_en": "We",
+                    "past_ar": "عَمِلْنَا",
+                    "past_en": "we did",
+                    "present_ar": "نَعْمَلُ",
+                    "present_en": "we do",
+                    "future_ar": "سَنَعْمَلُ",
+                    "future_en": "we will do"
+                  }
+                ],
+                "passive": [
+                  {
+                    "label_ar": "الماضي المجهول",
+                    "label_en": "Past Passive",
+                    "ar": "عُمِلَ",
+                    "en": "it was done / worked"
+                  },
+                  {
+                    "label_ar": "المضارع المجهول",
+                    "label_en": "Present Passive",
+                    "ar": "يُعْمَلُ",
+                    "en": "it is done / worked"
+                  }
+                ],
+                "imperative": [
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (sg.)",
+                    "ar": "ٱعْمَلْ",
+                    "en": "Do / Work!"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "ar": "ٱعْمَلُوا۟",
+                    "en": "Do / Work! (all)"
+                  },
+                  {
+                    "pronoun_ar": "نَهْي",
+                    "pronoun_en": "Do not",
+                    "ar": "لَا تَعْمَلْ",
+                    "en": "Do not do!"
+                  }
+                ]
+              }
             },
             "noun": null,
             "family": [
@@ -908,7 +1274,22 @@
           },
           "root": "ع م ل",
           "root_meaning": "to work, act, do deeds with intention and effort",
-          "wazn": "فَعِلُوا"
+          "wazn": "فَعِلُوا",
+          "in_verse": {
+            "a": {
+              "ar": "وَعَمِلُوا۟",
+              "en": "and do",
+              "tone": "fil"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ٱلصَّـٰلِحَـٰتِ",
+              "en": "righteous deeds",
+              "tone": "ism"
+            },
+            "result": "and do righteous deeds",
+            "note": "2nd rescue quality: steady good action"
+          }
         },
         {
           "position": 5,
@@ -1051,7 +1432,22 @@
           },
           "root": "ص ل ح",
           "root_meaning": "to be sound, right, fitting; to repair, set right",
-          "wazn": "فَاعِلَات"
+          "wazn": "فَاعِلَات",
+          "in_verse": {
+            "a": {
+              "ar": "وَعَمِلُوا۟",
+              "en": "and do",
+              "tone": "fil"
+            },
+            "op": "+",
+            "b": {
+              "ar": "ٱلصَّـٰلِحَـٰتِ",
+              "en": "righteous deeds",
+              "tone": "ism"
+            },
+            "result": "do all kinds of good",
+            "note": "direct object receiving the action"
+          }
         },
         {
           "position": 6,
@@ -1084,13 +1480,14 @@
             },
             {
               "text": "وْا۟",
-              "category": "ism",
+              "category": "fil",
               "tag": "PRON",
               "role": "suffix",
               "pos_name_ar": "واو الجماعة",
-              "pos_name_en": "Subject pronoun \"they\"",
+              "pos_name_en": "They",
               "desc_ar": "ضمير متصل في محل رفع فاعل، والألف بعده فارقة لا تُنطق",
-              "desc_en": "Attached pronoun (subject); the alif after it is silent (alif fāriqa)"
+              "desc_en": "Verb subject ending (they); the final alif is silent (alif fāriqa)",
+              "is_subject_ending": true
             }
           ],
           "sarf": {
@@ -1196,7 +1593,126 @@
                   "ar": "يُتَوَاصَى",
                   "en": "it is mutually enjoined"
                 }
-              ]
+              ],
+              "conjugation_table": {
+                "verb_lemma_ar": "تَوَاصَى",
+                "verb_lemma_en": "to counsel one another",
+                "root": [
+                  "و",
+                  "ص",
+                  "ي"
+                ],
+                "form": "Form VI (تَفَاعَلَ)",
+                "active_occurrence_pronoun": "They (m.)",
+                "active_occurrence_tense": "past",
+                "rows": [
+                  {
+                    "pronoun_ar": "هُوَ",
+                    "pronoun_en": "He",
+                    "past_ar": "تَوَاصَى",
+                    "past_en": "he counselled mutually",
+                    "present_ar": "يَتَوَاصَى",
+                    "present_en": "he counsels mutually",
+                    "future_ar": "سَيَتَوَاصَى",
+                    "future_en": "he will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "هِيَ",
+                    "pronoun_en": "She",
+                    "past_ar": "تَوَاصَتْ",
+                    "past_en": "she counselled mutually",
+                    "present_ar": "تَتَوَاصَى",
+                    "present_en": "she counsels mutually",
+                    "future_ar": "سَتَتَوَاصَى",
+                    "future_en": "she will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "هُمْ",
+                    "pronoun_en": "They (m.)",
+                    "past_ar": "تَوَاصَوْا۟",
+                    "past_en": "they counselled each other",
+                    "present_ar": "يَتَوَاصَوْنَ",
+                    "present_en": "they counsel each other",
+                    "future_ar": "سَيَتَوَاصَوْنَ",
+                    "future_en": "they will counsel each other",
+                    "in_ayah": true
+                  },
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (m.)",
+                    "past_ar": "تَوَاصَيْتَ",
+                    "past_en": "you counselled mutually",
+                    "present_ar": "تَتَوَاصَى",
+                    "present_en": "you counsel mutually",
+                    "future_ar": "سَتَتَوَاصَى",
+                    "future_en": "you will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "past_ar": "تَوَاصَيْتُمْ",
+                    "past_en": "you all counselled each other",
+                    "present_ar": "تَتَوَاصَوْنَ",
+                    "present_en": "you all counsel each other",
+                    "future_ar": "سَتَتَوَاصَوْنَ",
+                    "future_en": "you all will counsel each other"
+                  },
+                  {
+                    "pronoun_ar": "أَنَا",
+                    "pronoun_en": "I",
+                    "past_ar": "تَوَاصَيْتُ",
+                    "past_en": "I counselled mutually",
+                    "present_ar": "أَتَوَاصَى",
+                    "present_en": "I counsel mutually",
+                    "future_ar": "سَأَتَوَاصَى",
+                    "future_en": "I will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "نَحْنُ",
+                    "pronoun_en": "We",
+                    "past_ar": "تَوَاصَيْنَا",
+                    "past_en": "we counselled each other",
+                    "present_ar": "نَتَوَاصَى",
+                    "present_en": "we counsel each other",
+                    "future_ar": "سَنَتَوَاصَى",
+                    "future_en": "we will counsel each other"
+                  }
+                ],
+                "passive": [
+                  {
+                    "label_ar": "الماضي المجهول",
+                    "label_en": "Past Passive",
+                    "ar": "تُوُوصِيَ",
+                    "en": "it was mutually enjoined"
+                  },
+                  {
+                    "label_ar": "المضارع المجهول",
+                    "label_en": "Present Passive",
+                    "ar": "يُتَوَاصَى",
+                    "en": "it is mutually enjoined"
+                  }
+                ],
+                "imperative": [
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (sg.)",
+                    "ar": "تَوَاصَ",
+                    "en": "Counsel mutually!"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "ar": "تَوَاصَوْا۟",
+                    "en": "Counsel each other!"
+                  },
+                  {
+                    "pronoun_ar": "نَهْي",
+                    "pronoun_en": "Do not",
+                    "ar": "لَا تَتَوَاصَ",
+                    "en": "Do not counsel!"
+                  }
+                ]
+              }
             },
             "noun": null,
             "transformation": {
@@ -1244,7 +1760,22 @@
           },
           "root": "و ص ي",
           "root_meaning": "to enjoin, entrust, give lasting counsel; to bequeath",
-          "wazn": "تَفَاعَوْا"
+          "wazn": "تَفَاعَوْا",
+          "in_verse": {
+            "a": {
+              "ar": "وَتَوَاصَوْا۟",
+              "en": "counsel each other",
+              "tone": "fil"
+            },
+            "op": "+",
+            "b": {
+              "ar": "بِٱلْحَقِّ",
+              "en": "to the truth",
+              "tone": "ism"
+            },
+            "result": "urge one another to truth",
+            "note": "3rd quality: mutual two-way counsel"
+          }
         },
         {
           "position": 7,
@@ -1373,7 +1904,22 @@
           },
           "root": "ح ق ق",
           "root_meaning": "to be true, firmly established, binding; a right or due",
-          "wazn": "فَعْل"
+          "wazn": "فَعْل",
+          "in_verse": {
+            "a": {
+              "ar": "وَتَوَاصَوْا۟",
+              "en": "counsel each other",
+              "tone": "fil"
+            },
+            "op": "+",
+            "b": {
+              "ar": "بِٱلْحَقِّ",
+              "en": "to the truth",
+              "tone": "ism"
+            },
+            "result": "encourage one another to truth",
+            "note": "firm truth in belief & rights owed"
+          }
         },
         {
           "position": 8,
@@ -1406,13 +1952,14 @@
             },
             {
               "text": "وْا۟",
-              "category": "ism",
+              "category": "fil",
               "tag": "PRON",
               "role": "suffix",
               "pos_name_ar": "واو الجماعة",
-              "pos_name_en": "Subject pronoun \"they\"",
+              "pos_name_en": "They",
               "desc_ar": "ضمير متصل في محل رفع فاعل، والألف بعده فارقة لا تُنطق",
-              "desc_en": "Attached pronoun (subject); the alif after it is silent (alif fāriqa)"
+              "desc_en": "Verb subject ending (they); the final alif is silent (alif fāriqa)",
+              "is_subject_ending": true
             }
           ],
           "sarf": {
@@ -1518,7 +2065,126 @@
                   "ar": "يُتَوَاصَى",
                   "en": "it is mutually enjoined"
                 }
-              ]
+              ],
+              "conjugation_table": {
+                "verb_lemma_ar": "تَوَاصَى",
+                "verb_lemma_en": "to counsel one another",
+                "root": [
+                  "و",
+                  "ص",
+                  "ي"
+                ],
+                "form": "Form VI (تَفَاعَلَ)",
+                "active_occurrence_pronoun": "They (m.)",
+                "active_occurrence_tense": "past",
+                "rows": [
+                  {
+                    "pronoun_ar": "هُوَ",
+                    "pronoun_en": "He",
+                    "past_ar": "تَوَاصَى",
+                    "past_en": "he counselled mutually",
+                    "present_ar": "يَتَوَاصَى",
+                    "present_en": "he counsels mutually",
+                    "future_ar": "سَيَتَوَاصَى",
+                    "future_en": "he will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "هِيَ",
+                    "pronoun_en": "She",
+                    "past_ar": "تَوَاصَتْ",
+                    "past_en": "she counselled mutually",
+                    "present_ar": "تَتَوَاصَى",
+                    "present_en": "she counsels mutually",
+                    "future_ar": "سَتَتَوَاصَى",
+                    "future_en": "she will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "هُمْ",
+                    "pronoun_en": "They (m.)",
+                    "past_ar": "تَوَاصَوْا۟",
+                    "past_en": "they counselled each other",
+                    "present_ar": "يَتَوَاصَوْنَ",
+                    "present_en": "they counsel each other",
+                    "future_ar": "سَيَتَوَاصَوْنَ",
+                    "future_en": "they will counsel each other",
+                    "in_ayah": true
+                  },
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (m.)",
+                    "past_ar": "تَوَاصَيْتَ",
+                    "past_en": "you counselled mutually",
+                    "present_ar": "تَتَوَاصَى",
+                    "present_en": "you counsel mutually",
+                    "future_ar": "سَتَتَوَاصَى",
+                    "future_en": "you will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "past_ar": "تَوَاصَيْتُمْ",
+                    "past_en": "you all counselled each other",
+                    "present_ar": "تَتَوَاصَوْنَ",
+                    "present_en": "you all counsel each other",
+                    "future_ar": "سَتَتَوَاصَوْنَ",
+                    "future_en": "you all will counsel each other"
+                  },
+                  {
+                    "pronoun_ar": "أَنَا",
+                    "pronoun_en": "I",
+                    "past_ar": "تَوَاصَيْتُ",
+                    "past_en": "I counselled mutually",
+                    "present_ar": "أَتَوَاصَى",
+                    "present_en": "I counsel mutually",
+                    "future_ar": "سَأَتَوَاصَى",
+                    "future_en": "I will counsel mutually"
+                  },
+                  {
+                    "pronoun_ar": "نَحْنُ",
+                    "pronoun_en": "We",
+                    "past_ar": "تَوَاصَيْنَا",
+                    "past_en": "we counselled each other",
+                    "present_ar": "نَتَوَاصَى",
+                    "present_en": "we counsel each other",
+                    "future_ar": "سَنَتَوَاصَى",
+                    "future_en": "we will counsel each other"
+                  }
+                ],
+                "passive": [
+                  {
+                    "label_ar": "الماضي المجهول",
+                    "label_en": "Past Passive",
+                    "ar": "تُوُوصِيَ",
+                    "en": "it was mutually enjoined"
+                  },
+                  {
+                    "label_ar": "المضارع المجهول",
+                    "label_en": "Present Passive",
+                    "ar": "يُتَوَاصَى",
+                    "en": "it is mutually enjoined"
+                  }
+                ],
+                "imperative": [
+                  {
+                    "pronoun_ar": "أَنتَ",
+                    "pronoun_en": "You (sg.)",
+                    "ar": "تَوَاصَ",
+                    "en": "Counsel mutually!"
+                  },
+                  {
+                    "pronoun_ar": "أَنتُمْ",
+                    "pronoun_en": "You (pl.)",
+                    "ar": "تَوَاصَوْا۟",
+                    "en": "Counsel each other!"
+                  },
+                  {
+                    "pronoun_ar": "نَهْي",
+                    "pronoun_en": "Do not",
+                    "ar": "لَا تَتَوَاصَ",
+                    "en": "Do not counsel!"
+                  }
+                ]
+              }
             },
             "noun": null,
             "transformation": {
@@ -1566,7 +2232,22 @@
           },
           "root": "و ص ي",
           "root_meaning": "to enjoin, entrust, give lasting counsel; to bequeath",
-          "wazn": "تَفَاعَوْا"
+          "wazn": "تَفَاعَوْا",
+          "in_verse": {
+            "a": {
+              "ar": "وَتَوَاصَوْا۟",
+              "en": "counsel each other",
+              "tone": "fil"
+            },
+            "op": "+",
+            "b": {
+              "ar": "بِٱلصَّبْرِ",
+              "en": "to patience",
+              "tone": "ism"
+            },
+            "result": "urge one another to patience",
+            "note": "4th quality: standing firm together"
+          }
         },
         {
           "position": 9,
@@ -1693,7 +2374,22 @@
           },
           "root": "ص ب ر",
           "root_meaning": "to restrain, hold back, bind firmly; to persevere",
-          "wazn": "فَعْل"
+          "wazn": "فَعْل",
+          "in_verse": {
+            "a": {
+              "ar": "وَتَوَاصَوْا۟",
+              "en": "counsel each other",
+              "tone": "fil"
+            },
+            "op": "+",
+            "b": {
+              "ar": "بِٱلصَّبْرِ",
+              "en": "to patience",
+              "tone": "ism"
+            },
+            "result": "encourage one another to patience",
+            "note": "steadfastness when holding to truth"
+          }
         }
       ]
     }
