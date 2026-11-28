@@ -194,8 +194,10 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     }, {});
   }, [surahs]);
 
-  // Load verses for bookmarks and history
+  // Load verses for bookmarks and history only when SettingsPanel is open
   useEffect(() => {
+    if (!isOpen) return;
+
     const loadVerses = async () => {
       const newCache = { ...versesCache };
       const itemsToLoad = [...topBookmarks, ...history.slice(0, 15)];
@@ -221,7 +223,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     if (topBookmarks.length > 0 || history.length > 0) {
       loadVerses();
     }
-  }, [topBookmarks, history, fetchSurahVerses]);
+  }, [isOpen, topBookmarks, history, fetchSurahVerses]);
 
   // Get verse text for a bookmark or history item
   const getVerseText = (surahNumber, ayahNumber) => {

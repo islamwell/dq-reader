@@ -143,6 +143,7 @@ const Surah = () => {
 
   useEffect(() => {
     let cancelled = false;
+    let visitTimer = null;
 
     const loadSurah = async () => {
       const normalizedSurahId = parseInt(surahNumber, 10);
@@ -157,19 +158,24 @@ const Surah = () => {
       setSurah(surahInfo);
       setCurrentSurah(surahInfo);
 
-      const versesData = surahInfo ? await fetchSurahVerses(surahNumber) : [];
+      const [versesData] = surahInfo
+        ? await Promise.all([
+            fetchSurahVerses(surahNumber),
+            fetchSurahGrammar ? fetchSurahGrammar(surahNumber) : Promise.resolve(null)
+          ])
+        : [[]];
       if (cancelled) return;
 
       loadedSurahIdRef.current = normalizedSurahId;
       setVerses(versesData);
       setLoading(false);
 
-      if (surahNumber) {
-        fetchSurahGrammar?.(surahNumber);
-      }
-
       if (!initialAyahFromQuery && surahNumber) {
-        addVisitedAyah?.(Number(surahNumber), 1);
+        visitTimer = setTimeout(() => {
+          if (!cancelled) {
+            addVisitedAyah?.(Number(surahNumber), 1);
+          }
+        }, 150);
       }
     };
 
@@ -179,6 +185,7 @@ const Surah = () => {
 
     return () => {
       cancelled = true;
+      clearTimeout(visitTimer);
     };
   }, [fetchSurahVerses, fetchSurahGrammar, setCurrentSurah, surahNumber, surahs, initialAyahFromQuery, addVisitedAyah]);
 
@@ -347,12 +354,11 @@ const Surah = () => {
 
         <div className="space-y-6" id="verses-container">
           {verses.map((verse) => (
-            <div key={`ayah-${surahNumber}-${verse.verse_number}`} data-ayah={verse.verse_number}>
-              <AyahCard
-                verse={verse}
-                surahNumber={parseInt(surahNumber, 10)}
-              />
-            </div>
+            <AyahCard
+              key={`ayah-${surahNumber}-${verse.verse_number}`}
+              verse={verse}
+              surahNumber={parseInt(surahNumber, 10)}
+            />
           ))}
         </div>
 

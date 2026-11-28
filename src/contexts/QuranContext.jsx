@@ -59,6 +59,7 @@ const LANGUAGE_CONFIG = {
 };
 
 const DEFAULT_LANGUAGE = 'Urdu';
+const GRAMMAR_SURAHS = new Set([32, 100, 103]);
 
 const ARABIC_DIACRITICS_REGEX = /[\u0610-\u061A\u064B-\u065F\u06D6-\u06ED]/g;
 const ARABIC_LETTER_REGEX = /[\u0600-\u06FF]/;
@@ -269,6 +270,7 @@ export const QuranProvider = ({ children }) => {
   const [selectedGrammarWord, setSelectedGrammarWord] = useState(null);
   const [grammarData, setGrammarData] = useState({});
   const grammarDataRef = useRef({});
+  const grammarFetchPromisesRef = useRef({});
   // Word-by-word interlinear study cards (only used by enhanced sarf datasets, e.g. Surah 103)
   const [showInterlinear, setShowInterlinearState] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -288,7 +290,6 @@ export const QuranProvider = ({ children }) => {
   const searchIndexRef = useRef(null);
   const searchIndexPromiseRef = useRef(null);
   const fuseIndexRef = useRef(null);
-  const translationPrefetchRef = useRef(false);
   const [floatingVideo, setFloatingVideo] = useState(null);
   const DEFAULT_FLOATING_VIDEO_WIDTH = Math.round(260 * 1.7);
   const docPipWindowRef = useRef(null);
@@ -522,20 +523,24 @@ export const QuranProvider = ({ children }) => {
         return translationsCacheRef.current[cacheKey];
       }
 
-      const storageKey = buildTranslationStorageKey(edition, surahNumber);
+      const isLocalEdition = hasLocalTranslation(edition);
 
-      try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          translationsCacheRef.current[cacheKey] = parsed;
-          return parsed;
+      if (!isLocalEdition) {
+        const storageKey = buildTranslationStorageKey(edition, surahNumber);
+
+        try {
+          const stored = localStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            translationsCacheRef.current[cacheKey] = parsed;
+            return parsed;
+          }
+        } catch (error) {
+          console.error('Failed to restore cached translation:', error);
         }
-      } catch (error) {
-        console.error('Failed to restore cached translation:', error);
       }
 
-      if (hasLocalTranslation(edition)) {
+      if (isLocalEdition) {
         try {
           const local = await loadLocalTranslationForSurah(edition, surahNumber);
 
@@ -547,14 +552,9 @@ export const QuranProvider = ({ children }) => {
               entries: local.entries
             };
 
+            // Bundled .txt datasets stay cached in memory and by the service worker;
+            // persisting 228 duplicate JSON copies overflows localStorage quota and freezes the UI.
             translationsCacheRef.current[cacheKey] = normalized;
-
-            try {
-              localStorage.setItem(storageKey, JSON.stringify(normalized));
-            } catch (storageError) {
-              console.error('Failed to persist translation cache:', storageError);
-            }
-
             return normalized;
           }
         } catch (localError) {
@@ -594,7 +594,7 @@ export const QuranProvider = ({ children }) => {
         translationsCacheRef.current[cacheKey] = normalized;
 
         try {
-          localStorage.setItem(storageKey, JSON.stringify(normalized));
+          localStorage.setItem(buildTranslationStorageKey(edition, surahNumber), JSON.stringify(normalized));
         } catch (storageError) {
           console.error('Failed to persist translation cache:', storageError);
         }
@@ -1225,21 +1225,31 @@ export const QuranProvider = ({ children }) => {
 
   const fetchSurahGrammar = useCallback(async (surahNumber) => {
     const sNum = parseInt(surahNumber, 10);
-    if (!sNum) return null;
+    if (!sNum || !GRAMMAR_SURAHS.has(sNum)) return null;
     if (grammarDataRef.current[sNum]) return grammarDataRef.current[sNum];
-
-    try {
-      const response = await fetch(`/data/grammar/surah_${sNum}.json`);
-      if (!response.ok) {
-        return null;
-      }
-      const data = await response.json();
-      grammarDataRef.current = { ...grammarDataRef.current, [sNum]: data };
-      setGrammarData((prev) => ({ ...prev, [sNum]: data }));
-      return data;
-    } catch {
-      return null;
+    if (grammarFetchPromisesRef.current[sNum]) {
+      return grammarFetchPromisesRef.current[sNum];
     }
+
+    const promise = (async () => {
+      try {
+        const response = await fetch(`/data/grammar/surah_${sNum}.json`);
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        grammarDataRef.current = { ...grammarDataRef.current, [sNum]: data };
+        setGrammarData((prev) => ({ ...prev, [sNum]: data }));
+        return data;
+      } catch {
+        return null;
+      } finally {
+        delete grammarFetchPromisesRef.current[sNum];
+      }
+    })();
+
+    grammarFetchPromisesRef.current[sNum] = promise;
+    return promise;
   }, []);
 
   const setDQ2AudioEnabled = useCallback((value) => {
@@ -1527,83 +1537,7 @@ export const QuranProvider = ({ children }) => {
     }
   }, []);
 
-  useEffect(() => {
-    if (!surahs.length || translationPrefetchRef.current) {
-      return;
-    }
-
-    translationPrefetchRef.current = true;
-    let canceled = false;
-    const languagesToPrefetch = ['Urdu', 'English'];
-    const scheduledIds = new Set();
-
-    const schedulePrefetch = (index) => {
-      if (canceled || index >= surahs.length) {
-        return;
-      }
-
-      const execute = async () => {
-        if (canceled) {
-          return;
-        }
-
-        const surah = surahs[index];
-        if (!surah) {
-          schedulePrefetch(index + 1);
-          return;
-        }
-
-        for (const languageKey of languagesToPrefetch) {
-          if (canceled) {
-            break;
-          }
-
-          try {
-            await fetchTranslationForSurah(languageKey, surah.id);
-          } catch (error) {
-            console.warn('Background translation prefetch failed:', {
-              language: languageKey,
-              surahId: surah.id,
-              error: error?.message || error
-            });
-          }
-        }
-
-        schedulePrefetch(index + 1);
-      };
-
-      if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-        const idleId = window.requestIdleCallback(() => {
-          scheduledIds.delete(idleId);
-          execute();
-        });
-        scheduledIds.add(idleId);
-      } else {
-        const timeoutId = setTimeout(() => {
-          scheduledIds.delete(timeoutId);
-          execute();
-        }, 150);
-        scheduledIds.add(timeoutId);
-      }
-    };
-
-    const startTimer = setTimeout(() => {
-      schedulePrefetch(0);
-    }, 4000);
-
-    return () => {
-      canceled = true;
-      clearTimeout(startTimer);
-      scheduledIds.forEach((id) => {
-        if (typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
-          window.cancelIdleCallback(id);
-        } else {
-          clearTimeout(id);
-        }
-      });
-      scheduledIds.clear();
-    };
-  }, [fetchTranslationForSurah, surahs]);
+  // Translations load on demand via fetchTranslationForSurah and stay cached in memory.
 
   const updateAudioMappingsWithUrl = useCallback(async (urlId) => {
     try {
@@ -2606,15 +2540,22 @@ export const QuranProvider = ({ children }) => {
     const fetchMappings = async () => {
       try {
         const customUrlsRef = collection(db, 'custom_urls');
-        const urlsSnapshot = await getDocs(customUrlsRef);
+        const audioMappingsRef = collection(db, 'audio_mappings');
+        const tafseerEntriesRef = collection(db, 'tafseer_entries');
+        const videoEntriesRef = collection(db, 'video_entries');
+
+        const [urlsSnapshot, audioSnapshot, tafseerSnapshot, videoSnapshot] = await Promise.all([
+          getDocs(customUrlsRef),
+          getDocs(audioMappingsRef),
+          getDocs(tafseerEntriesRef),
+          getDocs(videoEntriesRef)
+        ]);
+
         const urlsData = urlsSnapshot.docs.map((docSnapshot) => ({
           id: docSnapshot.id,
           ...docSnapshot.data()
         }));
-        setCustomUrls(urlsData);
 
-        const audioMappingsRef = collection(db, 'audio_mappings');
-        const audioSnapshot = await getDocs(audioMappingsRef);
         const audioMap = {};
         for (const docSnapshot of audioSnapshot.docs) {
           const mapping = docSnapshot.data();
@@ -2632,22 +2573,15 @@ export const QuranProvider = ({ children }) => {
             customUrl
           };
         }
-        setAudioMappings(audioMap);
 
-        const tafseerEntriesRef = collection(db, 'tafseer_entries');
-        const tafseerSnapshot = await getDocs(tafseerEntriesRef);
         const tafseerMap = {};
         tafseerSnapshot.docs.forEach((docSnapshot) => {
           const mapping = docSnapshot.data();
           const key = `${mapping.surah_number}:${mapping.ayah_number}`;
           tafseerMap[key] = mapping.tafseer_text;
         });
-        setTafseerMappings(tafseerMap);
 
-        const videoEntriesRef = collection(db, 'video_entries');
-        const videoSnapshot = await getDocs(videoEntriesRef);
         const videoMap = {};
-
         videoSnapshot.docs.forEach((docSnapshot) => {
           const mapping = docSnapshot.data();
           const surahKey = String(mapping.surah_number);
@@ -2670,6 +2604,9 @@ export const QuranProvider = ({ children }) => {
           videoMap[key] = videoMap[key].sort((a, b) => a.startAyah - b.startAyah);
         });
 
+        setCustomUrls(urlsData);
+        setAudioMappings(audioMap);
+        setTafseerMappings(tafseerMap);
         setVideoMappings(videoMap);
       } catch (error) {
         if (error.code !== 'permission-denied') {

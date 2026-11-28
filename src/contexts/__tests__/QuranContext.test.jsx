@@ -737,4 +737,84 @@ describe('QuranContext - CRUD Operations', () => {
       expect(localStorage.removeItem).toHaveBeenCalledWith('quran_ayah_history');
     });
   });
+
+  describe('Performance & Grammar Loading Guards', () => {
+    it('skips grammar network fetches for non-grammar surahs and deduplicates/caches grammar surahs', async () => {
+      const originalFetch = global.fetch;
+      const mockGrammarPayload = {
+        surah: 103,
+        ayahs: {
+          '1': {
+            words: [{ position: 1, text_uthmani: 'وَٱلْعَصْرِ', category: 'ism' }]
+          }
+        }
+      };
+
+      const fetchMock = vi.fn((url) => {
+        if (String(url).includes('/data/grammar/surah_103.json')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockGrammarPayload)
+          });
+        }
+        if (String(url).includes('/data/ur.junagarhi.txt')) {
+          return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve('1|1|شروع اللہ کے نام سے\n103|1|زمانے کی قسم\n')
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
+      });
+
+      global.fetch = fetchMock;
+
+      try {
+        const { result } = renderHook(() => useQuran(), {
+          wrapper: QuranProvider
+        });
+
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
+
+        // Non-grammar surahs (e.g. Al-Fatihah) should return null without issuing any fetch
+        let nonGrammarResult;
+        await act(async () => {
+          nonGrammarResult = await result.current.fetchSurahGrammar(1);
+        });
+        expect(nonGrammarResult).toBeNull();
+        expect(
+          fetchMock.mock.calls.some(([url]) => String(url).includes('/data/grammar/surah_1.json'))
+        ).toBe(false);
+
+        // Concurrent requests for a grammar surah (Surah 103) should share one network fetch
+        let firstCall;
+        let secondCall;
+        await act(async () => {
+          [firstCall, secondCall] = await Promise.all([
+            result.current.fetchSurahGrammar(103),
+            result.current.fetchSurahGrammar(103)
+          ]);
+        });
+
+        expect(firstCall).toEqual(mockGrammarPayload);
+        expect(secondCall).toEqual(mockGrammarPayload);
+        const grammar103Calls = fetchMock.mock.calls.filter(([url]) =>
+          String(url).includes('/data/grammar/surah_103.json')
+        );
+        expect(grammar103Calls).toHaveLength(1);
+
+        // Bundled local translations should stay in memory instead of flooding localStorage
+        await act(async () => {
+          await result.current.fetchSurahVerses(1);
+        });
+        const translationStorageWrites = localStorage.setItem.mock.calls.filter(([key]) =>
+          String(key).startsWith('quran_translation_')
+        );
+        expect(translationStorageWrites).toHaveLength(0);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
 });

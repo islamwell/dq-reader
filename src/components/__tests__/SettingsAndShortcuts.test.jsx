@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import SettingsPanel from '../SettingsPanel';
@@ -195,5 +195,32 @@ describe('SettingsPanel & Global Keyboard Shortcuts', () => {
       </MemoryRouter>
     );
     expect(screen.getByText("Au nom d'Allah")).toBeInTheDocument();
+  });
+
+  it('does not fetch bookmark/history verses while SettingsPanel is closed, and loads them once opened', async () => {
+    mockQuranData.bookmarks = [{ surahNumber: 2, ayahNumber: 255 }];
+    mockQuranData.history = [{ id: '1:1', surahNumber: 1, ayahNumber: 1 }];
+    mockQuranData.fetchSurahVerses = vi.fn().mockResolvedValue([
+      { verse_number: 1, verse_key: '1:1', text_uthmani: 'بِسْمِ اللَّهِ' }
+    ]);
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/surah/2']}>
+        <SettingsPanel isOpen={false} onClose={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(mockQuranData.fetchSurahVerses).not.toHaveBeenCalled();
+
+    rerender(
+      <MemoryRouter initialEntries={['/surah/2']}>
+        <SettingsPanel isOpen={true} onClose={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockQuranData.fetchSurahVerses).toHaveBeenCalledWith(2);
+      expect(mockQuranData.fetchSurahVerses).toHaveBeenCalledWith(1);
+    });
   });
 });

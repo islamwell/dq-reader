@@ -1,5 +1,4 @@
 import React, { memo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import { FaLightbulb } from 'react-icons/fa';
 import SafeIcon from '../common/SafeIcon';
@@ -234,10 +233,7 @@ const AyahCard = ({ verse, surahNumber }) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
+    <div
       className={`ayah-card rounded-xl p-6 shadow-md ${isPlaying ? playingStyle : cardStyle}`}
       data-ayah={verse.verse_number}
       data-ayah-arabic={verse.text_uthmani || ''}
@@ -333,7 +329,7 @@ const AyahCard = ({ verse, surahNumber }) => {
         )}
 
       </div>
-    </motion.div>
+    </div>
   );
 };
 

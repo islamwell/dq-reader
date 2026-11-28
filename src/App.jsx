@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
@@ -10,7 +10,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import SettingsPanel from './components/SettingsPanel';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import { useGlobalKeyboardShortcuts } from './hooks/useGlobalKeyboardShortcuts';
-import { register as registerServiceWorker } from './utils/serviceWorkerRegistration';
 import './App.css';
 
 const SearchResults = lazy(() => import('./pages/SearchResults'));
@@ -87,11 +86,6 @@ function AppContent() {
 }
 
 function App() {
-  useEffect(() => {
-    // Register service worker for offline support
-    registerServiceWorker();
-  }, []);
-
   return (
     <AuthProvider>
       <QuranProvider>
