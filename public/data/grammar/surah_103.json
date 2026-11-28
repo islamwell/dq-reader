@@ -928,7 +928,43 @@
               "type_ar": "إبدال",
               "type_en": "Hamza substitution",
               "ar": "أصله «أَأْمَنَ»: اجتمعت همزتان والثانية ساكنة، فأُبدلت الثانية ألفًا من جنس حركة الأولى فصار «آمَنَ».",
-              "en": "Originally aʾmana: two hamzas met with the second one silent, so the second (the root's fāʾ) turned into a long alif — āmana."
+              "en": "Originally aʾmana: two hamzas met with the second one silent, so the second (the root's fāʾ) turned into a long alif — āmana.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "أَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "أْ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "مَنُوا",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "ءَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "ا",
+                      "s": "result"
+                    },
+                    {
+                      "t": "مَنُوا۟",
+                      "s": "normal"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -1719,7 +1755,52 @@
               "type_ar": "إعلال بالقلب ثم بالحذف",
               "type_en": "Weak-letter change, then deletion",
               "ar": "أصله «تَوَاصَيُوا»: تحرّكت الياء وانفتح ما قبلها فقُلبت ألفًا «تَوَاصَاوْا»، ثم حُذفت الألف لالتقاء الساكنين فصار «تَوَاصَوْا» على وزن «تَفَاعَوْا».",
-              "en": "Originally tawāṣayū: the yā' (3rd radical) became an alif, which was then dropped to avoid two consecutive sukūns — leaving tawāṣaw on the pattern tafāʿaw."
+              "en": "Originally tawāṣayū: the yā' (3rd radical) became an alif, which was then dropped to avoid two consecutive sukūns — leaving tawāṣaw on the pattern tafāʿaw.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "تَوَاصَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "يُ",
+                      "s": "changed"
+                    },
+                    {
+                      "t": "وا",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "Dropped",
+                  "parts": [
+                    {
+                      "t": "تَوَاصَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "ا",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "وْا",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "تَوَاصَوْا۟",
+                      "s": "result"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -1868,7 +1949,39 @@
               "type_ar": "إدغام",
               "type_en": "Assimilation (idghām)",
               "ar": "أصله «حَقْقٌ»: اجتمع حرفان متماثلان أولهما ساكن، فأُدغم الأول في الثاني فصار «حَقّ» — والشدّة تجمع العين واللام.",
-              "en": "Originally ḥaqq-q: two identical letters met, the first silent, so they merged into one doubled letter. The shadda holds both the ʿayn and the lām of the pattern."
+              "en": "Originally ḥaqq-q: two identical letters met, the first silent, so they merged into one doubled letter. The shadda holds both the ʿayn and the lām of the pattern.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "حَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "قْ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "قِ",
+                      "s": "changed"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "حَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "قِّ",
+                      "s": "result"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -2191,7 +2304,52 @@
               "type_ar": "إعلال بالقلب ثم بالحذف",
               "type_en": "Weak-letter change, then deletion",
               "ar": "أصله «تَوَاصَيُوا»: تحرّكت الياء وانفتح ما قبلها فقُلبت ألفًا «تَوَاصَاوْا»، ثم حُذفت الألف لالتقاء الساكنين فصار «تَوَاصَوْا» على وزن «تَفَاعَوْا».",
-              "en": "Originally tawāṣayū: the yā' (3rd radical) became an alif, which was then dropped to avoid two consecutive sukūns — leaving tawāṣaw on the pattern tafāʿaw."
+              "en": "Originally tawāṣayū: the yā' (3rd radical) became an alif, which was then dropped to avoid two consecutive sukūns — leaving tawāṣaw on the pattern tafāʿaw.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "تَوَاصَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "يُ",
+                      "s": "changed"
+                    },
+                    {
+                      "t": "وا",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "Dropped",
+                  "parts": [
+                    {
+                      "t": "تَوَاصَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "ا",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "وْا",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "تَوَاصَوْا۟",
+                      "s": "result"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {

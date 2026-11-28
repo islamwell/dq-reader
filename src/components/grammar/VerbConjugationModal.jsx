@@ -1,9 +1,9 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { isDarkSurface } from './sarfStyles';
 
-const { FiX, FiLayers, FiCommand, FiShield, FiChevronDown, FiBookOpen } = FiIcons;
+const { FiX, FiLayers, FiCommand, FiShield } = FiIcons;
 
 /**
  * Fallback conjugation table builder for verbs that only define the 5-item
@@ -63,15 +63,8 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
   const titleId = useId();
   const captionId = useId();
   const dark = isDarkSurface(theme);
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
 
   const tableData = buildFallbackConjugationTable(word);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setShowMoreDetails(false);
-    }
-  }, [isOpen, word]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -155,7 +148,6 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
     if (dialog) {
       dialog.returnValue = '';
     }
-    setShowMoreDetails(false);
     onClose?.();
   };
 
@@ -405,7 +397,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
                     >
                       {p.ar}
                     </div>
-                    <div className="text-xs font-medium mt-0.5">&ldquo;{p.en}&rdquo;</div>
+                    <div className="text-xs font-medium mt-0.5">{p.en}</div>
                   </div>
                 ))}
               </div>
@@ -438,7 +430,7 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
                     >
                       {cmd.ar}
                     </div>
-                    <div className="text-xs font-semibold mt-0.5">&ldquo;{cmd.en}&rdquo;</div>
+                    <div className="text-xs font-semibold mt-0.5">{cmd.en}</div>
                   </div>
                 ))}
               </div>
@@ -446,36 +438,10 @@ const VerbConjugationModal = ({ isOpen, onClose, word, theme = 'light', onOpenAy
           )}
         </div>
 
-        {/* More Details moved inside the Conjugation Table modal */}
+        {/* Verb Details rendered directly inside the Conjugation Table modal (no extra toggle button) */}
         {typeof renderMoreDetails === 'function' && (
-          <div className="pt-2 border-t border-current/15" data-testid="conjugation-more-details-section">
-            <div className="flex justify-center">
-              <button
-                type="button"
-                data-testid="toggle-more-details"
-                aria-expanded={showMoreDetails}
-                onClick={() => setShowMoreDetails((prev) => !prev)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all duration-150 hover:shadow-sm active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
-                  dark
-                    ? 'bg-white/10 border-white/20 hover:bg-white/15 text-slate-100'
-                    : 'bg-slate-100 border-slate-300 hover:bg-slate-200/80 text-slate-800'
-                }`}
-              >
-                <SafeIcon icon={FiBookOpen} className="text-xs opacity-80" aria-hidden="true" />
-                <span>{showMoreDetails ? 'Hide details' : 'More details'}</span>
-                <SafeIcon
-                  icon={FiChevronDown}
-                  className={`transition-transform duration-200 ${showMoreDetails ? 'rotate-180' : ''}`}
-                  aria-hidden="true"
-                />
-              </button>
-            </div>
-
-            {showMoreDetails && (
-              <div className="mt-4" data-testid="conjugation-more-details-body">
-                {renderMoreDetails(handleJumpAyah)}
-              </div>
-            )}
+          <div className="pt-4 border-t border-current/15" data-testid="conjugation-more-details-body">
+            {renderMoreDetails(handleJumpAyah)}
           </div>
         )}
       </div>

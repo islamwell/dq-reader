@@ -168,10 +168,11 @@ describe('Surah 100 (Al-ʿĀdiyāt) Clean Grammar UX, Color Guide in ? Modal, Co
         />
       );
 
-      // Transliteration ḍabḥan is replaced by Part of Speech (Ism)
+      // Transliteration ḍabḥan is omitted, quotation marks are removed, and clean gloss is shown
       expect(screen.queryByText('ḍabḥan')).not.toBeInTheDocument();
-      expect(screen.getByTestId('word-pos-label')).toHaveTextContent('Ism');
-      expect(screen.getByText('“panting”')).toBeInTheDocument();
+      expect(screen.queryByTestId('word-pos-label')).not.toBeInTheDocument();
+      expect(screen.getByText('panting', { selector: 'p' })).toBeInTheDocument();
+      expect(screen.queryByText('“panting”')).not.toBeInTheDocument();
 
       // Cluttered top line and Arabic grammar explanations are absent
       expect(screen.queryByText(/Cognate accusative/i)).not.toBeInTheDocument();
@@ -192,7 +193,6 @@ describe('Surah 100 (Al-ʿĀdiyāt) Clean Grammar UX, Color Guide in ? Modal, Co
         />
       );
 
-      expect(screen.getByTestId('word-pos-label')).toHaveTextContent('Ism · Plural');
       const singularBadge = screen.getByTestId('plural-singular-badge');
       expect(singularBadge).toHaveTextContent('One of them:');
       expect(singularBadge).toHaveTextContent('قَبْر');

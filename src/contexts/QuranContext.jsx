@@ -357,6 +357,11 @@ export const QuranProvider = ({ children }) => {
     }
 
     setHistory((prev) => {
+      // Avoid redundant context re-renders and localStorage writes when already at this surah/ayah
+      if (prev[0]?.surahNumber === sNum && prev[0]?.ayahNumber === aNum) {
+        return prev;
+      }
+
       const filtered = prev.filter(
         (item) => item.surahNumber !== sNum
       );
@@ -1582,10 +1587,13 @@ export const QuranProvider = ({ children }) => {
       }
     };
 
-    schedulePrefetch(0);
+    const startTimer = setTimeout(() => {
+      schedulePrefetch(0);
+    }, 4000);
 
     return () => {
       canceled = true;
+      clearTimeout(startTimer);
       scheduledIds.forEach((id) => {
         if (typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
           window.cancelIdleCallback(id);
@@ -2691,10 +2699,22 @@ export const QuranProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    // Initial data is already fetched once by fetchMappings() above;
+    // skip the initial onSnapshot flood (which emits every existing doc as 'added')
+    // and batch live updates so we never stall the main thread with hundreds of re-renders.
+    let audioInitialized = false;
+    let tafseerInitialized = false;
+    let videosInitialized = false;
+    let urlsInitialized = false;
+
     const audioMappingsRef = collection(db, 'audio_mappings');
     const unsubscribeAudio = onSnapshot(
       audioMappingsRef,
       (snapshot) => {
+        if (!audioInitialized) {
+          audioInitialized = true;
+          return;
+        }
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added' || change.type === 'modified') {
             const data = change.doc.data();
@@ -2713,24 +2733,29 @@ export const QuranProvider = ({ children }) => {
     const unsubscribeTafseer = onSnapshot(
       tafseerEntriesRef,
       (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const data = change.doc.data();
-          const key = `${data.surah_number}:${data.ayah_number}`;
-
-          if (change.type === 'added' || change.type === 'modified') {
-            setTafseerMappings((prev) => {
-              const next = { ...prev, [key]: data.tafseer_text };
-              localStorage.setItem('quran_tafseer_mappings', JSON.stringify(next));
-              return next;
-            });
-          } else if (change.type === 'removed') {
-            setTafseerMappings((prev) => {
-              const next = { ...prev };
+        if (!tafseerInitialized) {
+          tafseerInitialized = true;
+          return;
+        }
+        const changes = snapshot.docChanges();
+        if (!changes.length) return;
+        setTafseerMappings((prev) => {
+          const next = { ...prev };
+          changes.forEach((change) => {
+            const data = change.doc.data();
+            const key = `${data.surah_number}:${data.ayah_number}`;
+            if (change.type === 'added' || change.type === 'modified') {
+              next[key] = data.tafseer_text;
+            } else if (change.type === 'removed') {
               delete next[key];
-              localStorage.setItem('quran_tafseer_mappings', JSON.stringify(next));
-              return next;
-            });
+            }
+          });
+          try {
+            localStorage.setItem('quran_tafseer_mappings', JSON.stringify(next));
+          } catch {
+            // Ignore storage quota errors
           }
+          return next;
         });
       },
       (error) => {
@@ -2744,40 +2769,43 @@ export const QuranProvider = ({ children }) => {
     const unsubscribeVideos = onSnapshot(
       videoEntriesRef,
       (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const data = change.doc.data();
-          const surahKey = String(data.surah_number);
-          const entry = {
-            id: change.doc.id,
-            surahNumber: data.surah_number,
-            startAyah: data.start_ayah,
-            endAyah: data.end_ayah,
-            videoUrl: data.video_url,
-            title: data.title || ''
-          };
+        if (!videosInitialized) {
+          videosInitialized = true;
+          return;
+        }
+        const changes = snapshot.docChanges();
+        if (!changes.length) return;
+        setVideoMappings((prev) => {
+          const next = { ...prev };
+          changes.forEach((change) => {
+            const data = change.doc.data();
+            const surahKey = String(data.surah_number);
+            const entry = {
+              id: change.doc.id,
+              surahNumber: data.surah_number,
+              startAyah: data.start_ayah,
+              endAyah: data.end_ayah,
+              videoUrl: data.video_url,
+              title: data.title || ''
+            };
 
-          if (change.type === 'added' || change.type === 'modified') {
-            setVideoMappings((prev) => {
-              const next = { ...prev };
+            if (change.type === 'added' || change.type === 'modified') {
               const items = next[surahKey] ? [...next[surahKey]] : [];
               const filtered = items.filter((item) => item.id !== entry.id);
               next[surahKey] = [...filtered, entry].sort((a, b) => a.startAyah - b.startAyah);
-              localStorage.setItem('quran_video_mappings', JSON.stringify(next));
-              return next;
-            });
-          } else if (change.type === 'removed') {
-            setVideoMappings((prev) => {
-              const next = { ...prev };
-              if (next[surahKey]) {
-                next[surahKey] = next[surahKey].filter((item) => item.id !== entry.id);
-                if (next[surahKey].length === 0) {
-                  delete next[surahKey];
-                }
+            } else if (change.type === 'removed' && next[surahKey]) {
+              next[surahKey] = next[surahKey].filter((item) => item.id !== entry.id);
+              if (next[surahKey].length === 0) {
+                delete next[surahKey];
               }
-              localStorage.setItem('quran_video_mappings', JSON.stringify(next));
-              return next;
-            });
+            }
+          });
+          try {
+            localStorage.setItem('quran_video_mappings', JSON.stringify(next));
+          } catch {
+            // Ignore storage quota errors
           }
+          return next;
         });
       },
       (error) => {
@@ -2791,6 +2819,10 @@ export const QuranProvider = ({ children }) => {
     const unsubscribeUrls = onSnapshot(
       customUrlsRef,
       (snapshot) => {
+        if (!urlsInitialized) {
+          urlsInitialized = true;
+          return;
+        }
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added' || change.type === 'modified') {
             fetchCustomUrls();

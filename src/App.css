@@ -366,30 +366,23 @@ dialog::backdrop {
   }
 }
 
-/* Surah 103 emphasis particles (و of oath, إِنَّ, لَ): slow red outline glow 3 times, then stops */
+/* Surah 103 emphasis particles (و of oath, إِنَّ, لَ): slow letter-hugging red outline glow 3 times, then stops (NO rectangle) */
 @keyframes harfEmphasisRedOutline {
   0%, 100% {
     text-shadow: 0 0 0 rgba(239, 68, 68, 0);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
   }
   50% {
     text-shadow:
-      -1px -1px 0 rgba(239, 68, 68, 0.9),
-      1px -1px 0 rgba(239, 68, 68, 0.9),
-      -1px 1px 0 rgba(239, 68, 68, 0.9),
-      1px 1px 0 rgba(239, 68, 68, 0.9),
-      0 0 14px rgba(239, 68, 68, 0.72);
-    box-shadow:
-      0 0 0 2px rgba(239, 68, 68, 0.85),
-      0 0 14px rgba(239, 68, 68, 0.45);
+      -1px -1px 0 rgba(239, 68, 68, 0.95),
+      1px -1px 0 rgba(239, 68, 68, 0.95),
+      -1px 1px 0 rgba(239, 68, 68, 0.95),
+      1px 1px 0 rgba(239, 68, 68, 0.95),
+      0 0 12px rgba(239, 68, 68, 0.72);
   }
 }
 
 .harf-emphasis-red-glow {
   display: inline;
-  border-radius: 0.35rem;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -408,7 +401,7 @@ dialog::backdrop {
   }
 }
 
-/* ---------- Visual Grammar Inspector Modal (conic border, brackets, tiles, timeline, root) ---------- */
+/* ---------- Visual Grammar Inspector Modal (GPU-composited conic border, brackets, tiles, timeline, root) ---------- */
 :root {
   --in-oklab: ;
   --in-oklch: ;
@@ -421,36 +414,69 @@ dialog::backdrop {
   }
 }
 
-@property --grammar-frame-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes grammarFrameSpin {
-  to {
-    --grammar-frame-angle: 360deg;
-  }
-}
-
+/* GPU-composited rotating conic-gradient border (transform: rotate on ::before avoids main-thread paint stalls) */
 .grammar-modal-frame {
-  --grammar-frame-angle: 0deg;
+  position: relative;
   padding: 2.5px;
   border-radius: 28px;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: 0 28px 70px -24px rgba(15, 23, 42, 0.42);
+}
+
+.grammar-modal-frame::before {
+  content: "";
+  position: absolute;
+  inset: -65%;
+  z-index: -1;
   background: conic-gradient(
-    from var(--grammar-frame-angle),
     var(--gf-c1, #10b981),
     var(--gf-c2, #ef4444),
     var(--gf-c3, #eab308),
     var(--gf-c4, #0d9488),
     var(--gf-c1, #10b981)
   );
-  box-shadow: 0 32px 80px -24px rgba(15, 23, 42, 0.45);
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .grammar-modal-frame:not(.grammar-motion-paused) {
-    animation: grammarFrameSpin 8s linear infinite;
+  .grammar-modal-frame:not(.grammar-motion-paused)::before {
+    animation: grammarSpinLoop 8s linear infinite;
+  }
+}
+
+/* Sound Tip animated dropped / changed Arabic letters (display: inline preserves Arabic cursive joining) */
+@keyframes soundLetterDropPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.sound-letter-dropped {
+  display: inline;
+  color: #dc2626;
+  font-weight: 800;
+  text-decoration: line-through;
+  text-decoration-color: rgba(220, 38, 38, 0.85);
+  text-decoration-thickness: 2px;
+}
+
+.sound-letter-dropped-dark {
+  display: inline;
+  color: #fb7185;
+  font-weight: 800;
+  text-decoration: line-through;
+  text-decoration-color: rgba(251, 113, 133, 0.9);
+  text-decoration-thickness: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sound-letter-dropped,
+  .sound-letter-dropped-dark {
+    animation: soundLetterDropPulse 1.8s ease-in-out infinite;
   }
 }
 

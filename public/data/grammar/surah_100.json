@@ -130,7 +130,43 @@
             },
             "transformation": {
               "type_en": "Sound shift (w → y)",
-              "en": "Originally ʿādiwāt from root ع-د-و: the \"w\" turned into \"y\" because it comes right after an \"i\" sound, making it smoother to pronounce (ʿādiyāt)."
+              "en": "Originally ʿādiwāt from root ع-د-و: the \"w\" turned into \"y\" because it comes right after an \"i\" sound, making it smoother to pronounce (ʿādiyāt).",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "عَادِ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "وَ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "اتِ",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "عَـٰدِ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "يَ",
+                      "s": "result"
+                    },
+                    {
+                      "t": "ـٰتِ",
+                      "s": "normal"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -367,7 +403,43 @@
             },
             "transformation": {
               "type_en": "Long vowel smoothing",
-              "en": "The prefix \"mū-\" makes the 1st root letter (wāw) stretch into a long \"ū\" sound: mūriyāt."
+              "en": "The prefix \"mū-\" makes the 1st root letter (wāw) stretch into a long \"ū\" sound: mūriyāt.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "مُ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "وْ",
+                      "s": "changed"
+                    },
+                    {
+                      "t": "رِيَاتِ",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "مُ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "و",
+                      "s": "result"
+                    },
+                    {
+                      "t": "رِيَـٰتِ",
+                      "s": "normal"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -592,7 +664,43 @@
             },
             "transformation": {
               "type_en": "Sound shift (w → ī)",
-              "en": "Originally mughwirāt: the \"i\" vowel moved onto the letter before it and the middle \"w\" became a long \"ī\" — making mughīrāt smooth to say."
+              "en": "Originally mughwirāt: the \"i\" vowel moved onto the letter before it and the middle \"w\" became a long \"ī\" — making mughīrāt smooth to say.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "مُغْ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "وِ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "رَاتِ",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "مُغِ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "ي",
+                      "s": "result"
+                    },
+                    {
+                      "t": "رَٰتِ",
+                      "s": "normal"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -1001,7 +1109,35 @@
             "noun": null,
             "transformation": {
               "type_en": "Shortened middle vowel",
-              "en": "The base past verb is athāra (\"he stirred up\"). When the \"-na\" (\"they f.\") ending attaches, the long \"ā\" shortens and drops so it is easy to pronounce: atharna."
+              "en": "The base past verb is athāra (\"he stirred up\"). When the \"-na\" (\"they f.\") ending attaches, the long \"ā\" shortens and drops so it is easy to pronounce: atharna.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "أَثَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "ا",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "رْنَ",
+                      "s": "normal"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "أَثَرْنَ",
+                      "s": "result"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -1856,7 +1992,43 @@
             },
             "transformation": {
               "type_en": "Merged identical letters",
-              "en": "The two \"b\" letters merge under one shadda (ّ), carrying both the 2nd and 3rd root letters in one doubled sound."
+              "en": "The two \"b\" letters merge under one shadda (ّ), carrying both the 2nd and 3rd root letters in one doubled sound.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "رَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "بْ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "بِهِ",
+                      "s": "changed"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "رَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "بِّ",
+                      "s": "result"
+                    },
+                    {
+                      "t": "هِۦ",
+                      "s": "normal"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -2386,7 +2558,39 @@
             },
             "transformation": {
               "type_en": "Merged identical letters",
-              "en": "The two \"b\" letters merge under one shadda (ّ), carrying both the 2nd and 3rd root letters."
+              "en": "The two \"b\" letters merge under one shadda (ّ), carrying both the 2nd and 3rd root letters.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "حُ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "بْ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "بِ",
+                      "s": "changed"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "حُ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "بِّ",
+                      "s": "result"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {
@@ -4032,7 +4236,43 @@
             },
             "transformation": {
               "type_en": "Merged identical letters",
-              "en": "The two \"b\" letters merge under one shadda (ّ), carrying both the 2nd and 3rd root letters."
+              "en": "The two \"b\" letters merge under one shadda (ّ), carrying both the 2nd and 3rd root letters.",
+              "steps": [
+                {
+                  "label": "Before",
+                  "parts": [
+                    {
+                      "t": "رَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "بْ",
+                      "s": "dropped"
+                    },
+                    {
+                      "t": "بَهُم",
+                      "s": "changed"
+                    }
+                  ]
+                },
+                {
+                  "label": "After",
+                  "parts": [
+                    {
+                      "t": "رَ",
+                      "s": "normal"
+                    },
+                    {
+                      "t": "بَّ",
+                      "s": "result"
+                    },
+                    {
+                      "t": "هُم",
+                      "s": "normal"
+                    }
+                  ]
+                }
+              ]
             },
             "family": [
               {

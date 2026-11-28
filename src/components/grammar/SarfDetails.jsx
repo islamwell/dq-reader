@@ -425,7 +425,7 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah, hideConjugation
                         </div>
                         {p.en && (
                           <div className="text-xs opacity-85 mt-0.5" dir="ltr">
-                            &ldquo;{p.en}&rdquo;
+                            {p.en}
                           </div>
                         )}
                       </div>
@@ -447,7 +447,10 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah, hideConjugation
 
           {/* 5. Quick Sound Tip (only when letters merged/changed/dropped) */}
           {sarf.transformation?.en && (
-            <div className={`p-3.5 rounded-2xl border-l-4 border-l-violet-500 border flex items-start gap-3 ${cardBg}`}>
+            <div
+              data-testid="sound-tip-card"
+              className={`p-3.5 rounded-2xl border-l-4 border-l-violet-500 border flex items-start gap-3 ${cardBg}`}
+            >
               <span
                 className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                   dark ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
@@ -456,11 +459,82 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah, hideConjugation
               >
                 <SafeIcon icon={FiVolume2} className="text-sm" />
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1 space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">
                   Sound Tip · {sarf.transformation.type_en || 'Pronunciation'}
                 </div>
-                <p className="text-xs opacity-90 mt-1 leading-relaxed">{sarf.transformation.en}</p>
+
+                {/* Animated Arabic Before -> After visual letter flow */}
+                {Array.isArray(sarf.transformation.steps) && sarf.transformation.steps.length > 0 && (
+                  <div
+                    dir="ltr"
+                    data-testid="sound-tip-flow"
+                    className="flex flex-wrap items-center gap-2 pt-0.5"
+                  >
+                    {sarf.transformation.steps.map((step, stepIdx) => {
+                      const isFinal = stepIdx === sarf.transformation.steps.length - 1;
+                      const hasDropped = step.parts?.some((p) => p.s === 'dropped');
+                      return (
+                        <React.Fragment key={`${step.label}-${stepIdx}`}>
+                          {stepIdx > 0 && (
+                            <span
+                              aria-hidden="true"
+                              className={`text-base font-bold select-none ${
+                                dark ? 'text-violet-300' : 'text-violet-600'
+                              }`}
+                            >
+                              →
+                            </span>
+                          )}
+                          <div
+                            data-testid={`sound-step-${step.label.toLowerCase()}`}
+                            className={`px-3 py-1.5 rounded-xl border text-center ${
+                              isFinal
+                                ? dark
+                                  ? 'bg-emerald-950/60 border-emerald-500/60'
+                                  : 'bg-emerald-50 border-emerald-300'
+                                : hasDropped
+                                  ? dark
+                                    ? 'bg-rose-950/45 border-rose-500/50'
+                                    : 'bg-rose-50/80 border-rose-200'
+                                  : dark
+                                    ? 'bg-white/5 border-white/15'
+                                    : 'bg-white border-slate-200'
+                            }`}
+                          >
+                            <span className="block text-[9px] font-bold uppercase tracking-wider opacity-70">
+                              {step.label}
+                            </span>
+                            <span
+                              dir="rtl"
+                              className="quran-text-pak !text-2xl !leading-[1.55] [text-shadow:none] !text-inherit block"
+                            >
+                              {step.parts.map((part, partIdx) => {
+                                let partClass = dark ? 'text-slate-100' : 'text-slate-900';
+                                if (part.s === 'dropped') {
+                                  partClass = dark ? 'sound-letter-dropped-dark' : 'sound-letter-dropped';
+                                } else if (part.s === 'changed') {
+                                  partClass = dark ? 'text-amber-300 font-bold' : 'text-amber-700 font-bold';
+                                } else if (part.s === 'result') {
+                                  partClass = dark ? 'text-emerald-300 font-bold' : 'text-emerald-700 font-bold';
+                                }
+                                return (
+                                  <span
+                                    key={partIdx}
+                                    data-letter-state={part.s}
+                                    className={partClass}
+                                  >{part.t}</span>
+                                );
+                              })}
+                            </span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs opacity-90 leading-relaxed">{sarf.transformation.en}</p>
               </div>
             </div>
           )}

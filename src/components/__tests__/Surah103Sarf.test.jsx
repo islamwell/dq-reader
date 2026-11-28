@@ -270,8 +270,8 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(screen.getByText('Specific')).toBeInTheDocument();
       expect(screen.getByText('Linked')).toBeInTheDocument();
 
-      // Expanding "More details" reveals the full root summary & quick facts
-      fireEvent.click(screen.getByTestId('toggle-more-details'));
+      // Detailed content renders directly without needing a "More details" toggle button
+      expect(screen.queryByTestId('toggle-more-details')).not.toBeInTheDocument();
       expect(screen.getByTestId('root-summary-card')).toBeInTheDocument();
       expect(screen.getByTestId('quick-facts-grid')).toBeInTheDocument();
 
@@ -351,7 +351,12 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(screen.getByRole('dialog').className).not.toContain('overscroll-contain');
       expect(screen.getByTestId('grammar-hero-stage')).toBeInTheDocument();
       expect(screen.getByTestId('word-bracket-diagram')).toBeInTheDocument();
-      expect(screen.getByTestId('hero-root-pill')).toHaveTextContent('أ · م · ن');
+
+      // Quotation marks and redundant "Verb · Past" / "Root:" hero pills are removed
+      expect(screen.queryByTestId('word-pos-label')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('hero-root-pill')).not.toBeInTheDocument();
+      expect(screen.getByText('believe', { selector: 'p' })).toBeInTheDocument();
+      expect(screen.queryByText('“believe”')).not.toBeInTheDocument();
 
       // Grouped visual tiles: Verb + They (never "Pronoun") + animated Past timeline + bottom duo row
       expect(screen.getByTestId('visual-feature-groups')).toBeInTheDocument();
@@ -374,9 +379,10 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       fireEvent.click(motionBtn);
       expect(motionBtn).toHaveTextContent('Play motion');
 
-      // For verbs, "More details" is moved inside VerbConjugationModal (not inline in FactsPanel)
+      // Button reads "Conjugation Table" and opens the modal with details directly visible (no "More details" button)
       expect(screen.queryByTestId('toggle-more-details')).not.toBeInTheDocument();
       const openConjBtn = screen.getByTestId('open-conjugation-modal');
+      expect(openConjBtn).toHaveTextContent('Conjugation Table');
       fireEvent.click(openConjBtn);
 
       const conjModal = screen.getByTestId('verb-conjugation-modal');
@@ -385,11 +391,14 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(conjModal).toHaveTextContent('we believed');
       expect(conjModal).toHaveTextContent('Believe!');
 
-      // Expand "More details" inside VerbConjugationModal: Quick Verb Forms, Passive Form, and Same Root are present; Word Pieces stays absent
-      fireEvent.click(screen.getByTestId('toggle-more-details'));
+      // Verb details & animated Sound Tip render directly inside VerbConjugationModal without clicking a toggle button
+      expect(screen.queryByTestId('toggle-more-details')).not.toBeInTheDocument();
       expect(screen.queryByText(/Word Pieces/i)).not.toBeInTheDocument();
       expect(screen.getByText('Quick Verb Forms')).toBeInTheDocument();
       expect(screen.getByText(/Same Root/i)).toBeInTheDocument();
+      expect(screen.getByTestId('sound-tip-flow')).toBeInTheDocument();
+      expect(screen.getByTestId('sound-step-before')).toHaveTextContent('أَأْمَنُوا');
+      expect(screen.getByTestId('sound-step-after')).toHaveTextContent('ءَامَنُوا۟');
       const passiveStrip = screen.getByTestId('verb-passive-strip');
       expect(passiveStrip).toHaveTextContent('أُومِنَ');
       expect(passiveStrip).toHaveTextContent('يُؤْمَنُ');
@@ -408,6 +417,26 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       fireEvent.pointerDown(outside);
       fireEvent.pointerUp(outside);
       expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders animated Before -> Dropped -> After Arabic letter transformation in Sound Tip for وَتَوَاصَوْا۟', () => {
+      const tawasaw = surah103.ayahs['3'].words[5];
+      render(
+        <MorphologyTab
+          word={tawasaw}
+          theme="light"
+          cardBg="bg-slate-50 border-slate-200"
+          hideConjugationButton={true}
+        />
+      );
+
+      const flow = screen.getByTestId('sound-tip-flow');
+      expect(flow).toBeInTheDocument();
+      expect(screen.getByTestId('sound-step-before')).toHaveTextContent('تَوَاصَيُوا');
+      const droppedStep = screen.getByTestId('sound-step-dropped');
+      expect(droppedStep).toHaveTextContent('تَوَاصَاوْا');
+      expect(droppedStep.querySelector('.sound-letter-dropped')).toHaveTextContent('ا');
+      expect(screen.getByTestId('sound-step-after')).toHaveTextContent('تَوَاصَوْا۟');
     });
 
     it('preserves v1 layout when opening a Surah 32 word without enhanced fields', () => {

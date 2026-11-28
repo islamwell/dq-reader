@@ -9,7 +9,6 @@ import {
   getCategoryTextClass,
   isDarkSurface
 } from './sarfStyles';
-import { getSimplePartOfSpeech } from './GrammarWord';
 import { MorphologyTab, SyntaxTab, InsightTab } from './SarfDetails';
 import VerbConjugationModal from './VerbConjugationModal';
 
@@ -385,14 +384,35 @@ export const buildDiagramChips = (word, palette, dark) => {
   });
 };
 
+/* Helper: measure element's box relative to ancestor using offset* (immune to CSS transforms) */
+const getOffsetRelativeTo = (el, ancestor) => {
+  let left = 0;
+  let top = 0;
+  let cur = el;
+  let guard = 0;
+  while (cur && cur !== ancestor && guard < 12) {
+    left += cur.offsetLeft || 0;
+    top += cur.offsetTop || 0;
+    cur = cur.offsetParent;
+    guard += 1;
+  }
+  return {
+    left,
+    top,
+    width: el.offsetWidth || 0,
+    height: el.offsetHeight || 0
+  };
+};
+
 /* ------------------------------------------------------------------
    HERO BRACKET DIAGRAM — Animated SVG curved lines connecting each
    morpheme segment directly to its floating icon chip underneath.
 ------------------------------------------------------------------- */
-const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
+const WordBracketDiagram = ({ word, theme, palette, dark }) => {
   const boxRef = useRef(null);
   const segRefs = useRef([]);
   const chipRefs = useRef([]);
+  const lastWidthRef = useRef(0);
   const [layout, setLayout] = useState(null);
 
   const segments = useMemo(() => word?.segments || [], [word]);
@@ -401,14 +421,13 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
   const computeLayout = useCallback(() => {
     const box = boxRef.current;
     if (!box || !chips.length) {
-      setLayout(null);
+      setLayout((prev) => (prev === null ? prev : null));
       return;
     }
 
-    const boxRect = box.getBoundingClientRect();
-    const W = box.offsetWidth || boxRect.width;
+    const W = box.clientWidth || box.offsetWidth;
     if (!W || W < 40) {
-      setLayout(null);
+      setLayout((prev) => (prev === null ? prev : null));
       return;
     }
 
@@ -417,15 +436,14 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
         const segEl = segRefs.current[chip.segIndex];
         const chipEl = chipRefs.current[idx];
         if (!segEl || !chipEl) return null;
-        const sr = segEl.getBoundingClientRect();
-        const cr = chipEl.getBoundingClientRect();
-        const segWidth = sr.width || segEl.offsetWidth;
-        const chipWidth = cr.width || chipEl.offsetWidth;
-        if (!segWidth || !chipWidth) return null;
+        const sr = getOffsetRelativeTo(segEl, box);
+        const chipWidth = chipEl.offsetWidth || 0;
+        const chipHeight = chipEl.offsetHeight || 44;
+        if (!sr.width || !chipWidth) return null;
 
-        const l = sr.left - boxRect.left + 2;
-        const r = sr.right - boxRect.left - 2;
-        const y = sr.bottom - boxRect.top - 8;
+        const l = sr.left + 2;
+        const r = sr.left + sr.width - 2;
+        const y = sr.top + sr.height - 8;
         return {
           idx,
           chip,
@@ -434,13 +452,13 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
           cx: (l + r) / 2,
           y,
           w: chipWidth,
-          h: cr.height || chipEl.offsetHeight || 44
+          h: chipHeight
         };
       })
       .filter(Boolean);
 
     if (measured.length !== chips.length) {
-      setLayout(null);
+      setLayout((prev) => (prev === null ? prev : null));
       return;
     }
 
@@ -485,16 +503,16 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
     const paths = [];
 
     ordered.forEach((m, i) => {
-      const x = Math.min(Math.max(xs[i], m.w / 2 + pad), W - m.w / 2 - pad);
-      positions[m.idx] = { left: x, top };
+      const x = Math.round(Math.min(Math.max(xs[i], m.w / 2 + pad), W - m.w / 2 - pad));
+      positions[m.idx] = { left: x, top: Math.round(top) };
 
       const span = Math.max(0, m.r - m.l);
       const rad = Math.min(7, Math.max(1.5, span / 3));
       const bracketPart =
         span > 6
-          ? `M${m.l} ${m.y - rad} Q${m.l} ${m.y} ${m.l + rad} ${m.y} H${m.r - rad} Q${m.r} ${m.y} ${m.r} ${m.y - rad}`
-          : `M${m.cx} ${m.y - 4} V${m.y}`;
-      const stemPart = `M${m.cx} ${m.y} C${m.cx} ${m.y + 20} ${x} ${top - 20} ${x} ${top}`;
+          ? `M${m.l.toFixed(1)} ${(m.y - rad).toFixed(1)} Q${m.l.toFixed(1)} ${m.y.toFixed(1)} ${(m.l + rad).toFixed(1)} ${m.y.toFixed(1)} H${(m.r - rad).toFixed(1)} Q${m.r.toFixed(1)} ${m.y.toFixed(1)} ${m.r.toFixed(1)} ${(m.y - rad).toFixed(1)}`
+          : `M${m.cx.toFixed(1)} ${(m.y - 4).toFixed(1)} V${m.y.toFixed(1)}`;
+      const stemPart = `M${m.cx.toFixed(1)} ${m.y.toFixed(1)} C${m.cx.toFixed(1)} ${(m.y + 20).toFixed(1)} ${x} ${(top - 20).toFixed(1)} ${x} ${top.toFixed(1)}`;
       paths.push({
         id: m.chip.id,
         color: m.chip.color,
@@ -502,14 +520,28 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
       });
     });
 
-    setLayout({
+    const nextLayout = {
       height: Math.ceil(top + maxChipH + 8),
       positions,
       paths
+    };
+
+    // Only update state when computed geometry genuinely changed (eliminates layout loops)
+    setLayout((prev) => {
+      if (
+        prev &&
+        prev.height === nextLayout.height &&
+        prev.paths.length === nextLayout.paths.length &&
+        prev.paths.every((p, i) => p.d === nextLayout.paths[i].d && p.color === nextLayout.paths[i].color)
+      ) {
+        return prev;
+      }
+      return nextLayout;
     });
   }, [chips]);
 
   useLayoutEffect(() => {
+    lastWidthRef.current = boxRef.current?.clientWidth || 0;
     computeLayout();
     let cancelled = false;
     if (typeof document !== 'undefined' && document.fonts?.ready) {
@@ -519,7 +551,14 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
     }
     let observer;
     if (typeof ResizeObserver !== 'undefined' && boxRef.current) {
-      observer = new ResizeObserver(() => computeLayout());
+      observer = new ResizeObserver((entries) => {
+        const entryWidth = Math.round(entries?.[0]?.contentRect?.width || boxRef.current?.clientWidth || 0);
+        // Only recompute on horizontal width changes — never on our own minHeight update!
+        if (entryWidth > 0 && entryWidth !== lastWidthRef.current) {
+          lastWidthRef.current = entryWidth;
+          computeLayout();
+        }
+      });
       observer.observe(boxRef.current);
     }
     return () => {
@@ -541,14 +580,11 @@ const WordBracketDiagram = ({ word, theme, palette, dark, reduce }) => {
         className="quran-text-pak !text-5xl sm:!text-6xl !leading-[1.65] [text-shadow:none] !text-inherit inline-block"
       >
         {segments.map((seg, i) => (
-          <motion.span
+          <span
             key={i}
             ref={(el) => { segRefs.current[i] = el; }}
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduce ? { duration: 0.01 } : { delay: i * 0.05, duration: 0.28 }}
             className={getCategoryTextClass(seg.category, theme, seg, palette)}
-          >{seg.text}</motion.span>
+          >{seg.text}</span>
         ))}
       </div>
 
@@ -1064,7 +1100,7 @@ const VisualDuoRow = ({ word, palette, dark, cardBg, reduce }) => {
               />
               <div className="min-w-0 text-left">
                 <div className="text-sm font-extrabold leading-tight">
-                  &ldquo;{verseEq.result}&rdquo;
+                  {verseEq.result}
                 </div>
                 {verseEq.note && (
                   <small className="block text-[11px] opacity-75 leading-snug mt-0.5">
@@ -1150,22 +1186,17 @@ const VisualDuoRow = ({ word, palette, dark, cardBg, reduce }) => {
 
 /* ------------------------------------------------------------------
    FACTS PANEL — Grouped Prototype Feature Tiles + Duo Cards.
-   For verbs: "More details" lives inside VerbConjugationModal!
-   For non-verbs: "More details" remains cleanly accessible inline.
+   For verbs: "Conjugation Table" button opens VerbConjugationModal
+   (which directly includes the detailed morphology & Sound Tip content).
+   For non-verbs: Detailed morphology content renders directly below.
 ------------------------------------------------------------------- */
 const FactsPanel = ({ word, theme, palette, cardBg, dark, reduce, onOpenAyah }) => {
-  const [more, setMore] = useState(false);
   const [isConjugationModalOpen, setIsConjugationModalOpen] = useState(false);
 
   const groups = useMemo(() => buildFeatureGroups(word, palette, dark), [word, palette, dark]);
   const hasVerbConjugation = Boolean(
     word?.sarf?.verb?.conjugation_table || word?.sarf?.verb?.conjugation
   );
-
-  // Reset inline details when switching words
-  useEffect(() => {
-    setMore(false);
-  }, [word]);
 
   return (
     <div className="space-y-3.5" data-testid="facts-panel">
@@ -1234,11 +1265,9 @@ const FactsPanel = ({ word, theme, palette, cardBg, dark, reduce, onOpenAyah }) 
       {/* Bottom Duo Cards: "In this verse" + "Root" */}
       <VisualDuoRow word={word} palette={palette} dark={dark} cardBg={cardBg} reduce={reduce} />
 
-      {/* Action Footer:
-          - For verbs: Open Conjugation Table (which contains "More details" inside!)
-          - For non-verbs: Keep "More details" accessible right here */}
-      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
-        {hasVerbConjugation ? (
+      {/* Verbs: Conjugation Table trigger (details live directly inside VerbConjugationModal) */}
+      {hasVerbConjugation ? (
+        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
           <button
             type="button"
             data-testid="open-conjugation-modal"
@@ -1250,50 +1279,19 @@ const FactsPanel = ({ word, theme, palette, cardBg, dark, reduce, onOpenAyah }) 
             }`}
           >
             <SafeIcon icon={Fi('FiMaximize2')} className="text-xs" aria-hidden="true" />
-            <span>Open Conjugation Table &amp; More Details</span>
+            <span>Conjugation Table</span>
           </button>
-        ) : (
-          <button
-            type="button"
-            data-testid="toggle-more-details"
-            onClick={() => setMore((m) => !m)}
-            aria-expanded={more}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 hover:shadow-sm active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
-              dark
-                ? 'bg-white/5 border-white/15 hover:bg-white/10 text-slate-200'
-                : 'bg-slate-100/90 border-slate-200/90 hover:bg-slate-200/75 text-slate-700'
-            }`}
-          >
-            {more ? 'Hide details' : 'More details'}
-            <SafeIcon
-              icon={Fi('FiChevronDown')}
-              className={`transition-transform duration-200 ${more ? 'rotate-180' : ''}`}
-              aria-hidden="true"
-            />
-          </button>
-        )}
-      </div>
-
-      {!hasVerbConjugation && (
-        <AnimatePresence initial={false}>
-          {more && (
-            <motion.div
-              initial={reduce ? false : { height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-              transition={reduce ? { duration: 0.01 } : { duration: 0.25, ease: 'easeOut' }}
-              className="overflow-hidden pt-1"
-            >
-              <MorphologyTab
-                word={word}
-                theme={theme}
-                cardBg={cardBg}
-                onOpenAyah={onOpenAyah}
-                hideConjugationButton={true}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
+      ) : (
+        <div className="pt-1" data-testid="inline-more-details-body">
+          <MorphologyTab
+            word={word}
+            theme={theme}
+            cardBg={cardBg}
+            onOpenAyah={onOpenAyah}
+            hideConjugationButton={true}
+          />
+        </div>
       )}
 
       {hasVerbConjugation && (
@@ -1351,11 +1349,8 @@ const Sheet = ({
   const surfaceStyle = THEME_SURFACE_STYLES[theme] || THEME_SURFACE_STYLES.light;
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
   const segments = word.segments || [];
-  const cat = word.primary_category === 'fil' ? 'fil' : word.primary_category === 'harf' ? 'harf' : 'ism';
-  const posIcon = Fi(cat === 'fil' ? 'FiZap' : cat === 'harf' ? 'FiLink2' : 'FiTag');
   const singularAr = word.sarf?.noun?.singular_ar;
   const singularEn = word.sarf?.noun?.singular_en;
-  const rootLetters = isEnhanced && word.sarf?.root?.length ? word.sarf.root : null;
   const wordKey = `${word.surahNumber ?? ''}-${word.ayahNumber ?? ''}-${word.position ?? ''}-${word.text_uthmani}`;
 
   const frameColors = FRAME_GRADIENT_COLORS[palette] || FRAME_GRADIENT_COLORS.default;
@@ -1446,7 +1441,7 @@ const Sheet = ({
           tabIndex={-1}
           role="dialog"
           aria-label={`Grammar details for ${word.text_uthmani}`}
-          className={`relative w-full max-h-[72vh] sm:max-h-[76vh] overflow-y-auto rounded-[25.5px] px-4 sm:px-6 pb-4 backdrop-blur-2xl focus:outline-none ${surfaceStyle}`}
+          className={`relative w-full max-h-[64vh] sm:max-h-[70vh] overflow-y-auto rounded-[25.5px] px-4 sm:px-6 pb-4 focus:outline-none ${surfaceStyle}`}
         >
           {/* Drag handle */}
           <div
@@ -1522,7 +1517,6 @@ const Sheet = ({
                   theme={theme}
                   palette={palette}
                   dark={dark}
-                  reduce={reduce}
                 />
               ) : (
                 <div className="quran-text-pak !text-4xl sm:!text-5xl !leading-[1.7] [text-shadow:none] !text-inherit">
@@ -1536,69 +1530,46 @@ const Sheet = ({
               )}
 
               <p className="mt-2 text-xl sm:text-2xl font-extrabold tracking-tight">
-                &ldquo;{word.translation}&rdquo;
+                {word.translation}
               </p>
 
-              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
-                <span
-                  data-testid="word-pos-label"
-                  className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold border shadow-2xs ${getCategoryBadgeClass(word.primary_category, theme, word, palette)}`}
-                >
-                  <SafeIcon icon={posIcon} className="text-xs shrink-0" aria-hidden="true" />
-                  <span>{getSimplePartOfSpeech(word)}</span>
-                </span>
-
-                {rootLetters && (
-                  <span
-                    data-testid="hero-root-pill"
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                      dark
-                        ? 'bg-amber-950/60 border-amber-500/50 text-amber-200'
-                        : 'bg-amber-50 border-amber-300/90 text-amber-900'
-                    }`}
-                  >
-                    <GrammarVisualIcon name="root" className="w-3.5 h-3.5 shrink-0" />
-                    <span>Root:</span>
-                    <span dir="rtl" className="font-arabic text-sm font-bold tracking-wide">
-                      {rootLetters.join(' · ')}
+              {(word.idafa || singularAr) && (
+                <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
+                  {word.idafa && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        dark
+                          ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
+                          : 'bg-amber-100/80 border-amber-300 text-amber-950'
+                      }`}
+                    >
+                      <SafeIcon icon={Fi('FiLink')} className="text-xs shrink-0" aria-hidden="true" />
+                      <span>{word.idafa.label_en}:</span>
+                      <span dir="rtl" className="font-arabic text-sm font-bold">
+                        {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
+                      </span>
                     </span>
-                  </span>
-                )}
+                  )}
 
-                {word.idafa && (
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                      dark
-                        ? 'bg-amber-950/70 border-amber-500/60 text-amber-200'
-                        : 'bg-amber-100/80 border-amber-300 text-amber-950'
-                    }`}
-                  >
-                    <SafeIcon icon={Fi('FiLink')} className="text-xs shrink-0" aria-hidden="true" />
-                    <span>{word.idafa.label_en}:</span>
-                    <span dir="rtl" className="font-arabic text-sm font-bold">
-                      {word.idafa.mudaf_ar} + {word.idafa.mudaf_ilayhi_ar}
+                  {singularAr && (
+                    <span
+                      data-testid="plural-singular-badge"
+                      className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full border text-xs ${
+                        dark
+                          ? 'bg-rose-950/60 border-rose-700/70 text-rose-100'
+                          : 'bg-rose-50 border-rose-200 text-rose-950'
+                      }`}
+                    >
+                      <SafeIcon icon={Fi('FiUser')} className="shrink-0" aria-hidden="true" />
+                      <span className="font-semibold">One of them:</span>
+                      <span dir="rtl" className={`quran-text-pak !text-xl !leading-[1.5] [text-shadow:none] font-bold ${dark ? '!text-rose-200' : '!text-rose-800'}`}>
+                        {singularAr}
+                      </span>
+                      {singularEn && <span className="opacity-80">({singularEn})</span>}
                     </span>
-                  </span>
-                )}
-
-                {singularAr && (
-                  <span
-                    data-testid="plural-singular-badge"
-                    className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full border text-xs ${
-                      dark
-                        ? 'bg-rose-950/60 border-rose-700/70 text-rose-100'
-                        : 'bg-rose-50 border-rose-200 text-rose-950'
-                    }`}
-                  >
-                    <SafeIcon icon={Fi('FiUser')} className="shrink-0" aria-hidden="true" />
-                    <span className="font-semibold">One of them:</span>
-                    <span dir="rtl" className={`quran-text-pak !text-xl !leading-[1.5] [text-shadow:none] font-bold ${dark ? '!text-rose-200' : '!text-rose-800'}`}>
-                      {singularAr}
-                    </span>
-                    {singularEn && <span className="opacity-80">({singularEn})</span>}
-                  </span>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {isEnhanced ? (
@@ -1935,11 +1906,17 @@ const GrammarBottomSheet = ({
     let startedInside = false;
     let closedViaPointer = false;
 
+    const resolveElement = (target) => {
+      if (!target) return null;
+      return target.nodeType === 1 ? target : target.parentElement || null;
+    };
+
     const isEventTargetIgnored = (target) => {
-      if (!target || typeof target.closest !== 'function') return false;
-      if (dialogRef.current?.contains(target)) return true;
+      const el = resolveElement(target);
+      if (!el || typeof el.closest !== 'function') return false;
+      if (dialogRef.current?.contains(el)) return true;
       if (document.querySelector('dialog[open]')) return true;
-      if (target.closest('[data-arabic-word], .grammar-word-pill, .grammar-word-card')) {
+      if (el.closest('[data-arabic-word], .grammar-word-pill, .grammar-word-card')) {
         return true;
       }
       return false;
@@ -1947,7 +1924,8 @@ const GrammarBottomSheet = ({
 
     const handlePointerDown = (e) => {
       closedViaPointer = false;
-      if (dialogRef.current?.contains(e.target)) {
+      const el = resolveElement(e.target);
+      if (el && dialogRef.current?.contains(el)) {
         startedInside = true;
         pressedOutside = false;
         return;
