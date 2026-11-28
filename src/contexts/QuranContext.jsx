@@ -1960,9 +1960,17 @@ export const QuranProvider = ({ children }) => {
       audioMappingsRef,
       (snapshot) => {
         snapshot.docChanges().forEach((change) => {
+          const data = change.doc.data();
           if (change.type === 'added' || change.type === 'modified') {
-            const data = change.doc.data();
             fetchUpdatedAudioMapping(data.surah_number, data.ayah_number);
+          } else if (change.type === 'removed') {
+            const key = `${data.surah_number}:${data.ayah_number}`;
+            setAudioMappings((prev) => {
+              const next = { ...prev };
+              delete next[key];
+              localStorage.setItem('quran_audio_mappings', JSON.stringify(next));
+              return next;
+            });
           }
         });
       },
@@ -2009,7 +2017,7 @@ export const QuranProvider = ({ children }) => {
       customUrlsRef,
       (snapshot) => {
         snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added' || change.type === 'modified') {
+          if (['added', 'modified', 'removed'].includes(change.type)) {
             fetchCustomUrls();
             updateAudioMappingsWithUrl(change.doc.id);
           }
