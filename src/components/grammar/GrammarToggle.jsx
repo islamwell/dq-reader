@@ -21,6 +21,8 @@ const GrammarToggle = ({ className = '', surahNumber = null }) => {
   const surahGrammar = resolvedSurah ? grammarData?.[resolvedSurah] : null;
   const supportsInterlinearCards = Boolean(surahGrammar?.enhanced && resolvedSurah !== 103);
   const isSurah100Palette = surahGrammar?.color_palette === 'surah_100';
+  const isSurah103Palette =
+    surahGrammar?.color_palette === 'surah_103' || resolvedSurah === 103;
   const cardsActive = Boolean(supportsInterlinearCards && showInterlinear && grammarMode !== 'off');
 
   const getButtonStyles = () => {
@@ -75,9 +77,25 @@ const GrammarToggle = ({ className = '', surahNumber = null }) => {
           aria-label="Toggle Arabic Grammar Colors"
         >
           <span className="flex items-center space-x-1" aria-hidden="true">
-            <span className={`w-2 h-2 rounded-full inline-block ${isSurah100Palette ? 'bg-red-600' : 'bg-blue-500'}`} />
-            <span className={`w-2 h-2 rounded-full inline-block ${isSurah100Palette ? 'bg-emerald-600' : 'bg-amber-500'}`} />
-            <span className={`w-2 h-2 rounded-full inline-block ${isSurah100Palette ? 'bg-blue-600' : 'bg-emerald-500'}`} />
+            <span
+              className={`w-2 h-2 rounded-full inline-block ${
+                isSurah100Palette || isSurah103Palette ? 'bg-red-600' : 'bg-blue-500'
+              }`}
+            />
+            <span
+              className={`w-2 h-2 rounded-full inline-block ${
+                isSurah100Palette || isSurah103Palette ? 'bg-emerald-600' : 'bg-amber-500'
+              }`}
+            />
+            <span
+              className={`w-2 h-2 rounded-full inline-block ${
+                isSurah100Palette
+                  ? 'bg-blue-600'
+                  : isSurah103Palette
+                    ? 'bg-yellow-500'
+                    : 'bg-emerald-500'
+              }`}
+            />
           </span>
           <span className="font-bold">نحو</span>
           <span className="hidden sm:inline opacity-80">• {getBadgeText()}</span>

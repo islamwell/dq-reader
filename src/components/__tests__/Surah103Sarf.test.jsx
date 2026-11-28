@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Layout from '../Layout';
-import GrammarWord from '../grammar/GrammarWord';
+import GrammarWord, { getGrammarSegmentClass } from '../grammar/GrammarWord';
 import GrammarBottomSheet, { buildTraits } from '../grammar/GrammarBottomSheet';
 import { RootSummaryCard, MorphologyTab, SyntaxTab, InsightTab } from '../grammar/SarfDetails';
 import AyahGrammarText from '../grammar/AyahGrammarText';
@@ -93,6 +93,7 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(surah103.surah_number).toBe(103);
       expect(surah103.version).toBe(2);
       expect(surah103.enhanced).toBe(true);
+      expect(surah103.color_palette).toBe('surah_103');
       expect(allWords103).toHaveLength(14);
 
       const expectedVerses = versesJson['103'].verses;
@@ -293,8 +294,19 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(handleNavigate).toHaveBeenCalledWith(1);
     });
 
-    it('renders plain-English visual traits and 1-click conjugation button for ءَامَنُوا۟', () => {
-      const amanu = { ...surah103.ayahs['3'].words[2], ayahNumber: 3, surahNumber: 103 };
+    it('uses Green for Verb, Red for Ism, and Yellow for Harf in Surah 103 palette', () => {
+      expect(getGrammarSegmentClass('fil', 'colored', 'light', null, 'surah_103')).toContain('text-emerald-700');
+      expect(getGrammarSegmentClass('ism', 'colored', 'light', null, 'surah_103')).toContain('text-red-600');
+      expect(getGrammarSegmentClass('harf', 'colored', 'light', null, 'surah_103')).toContain('text-yellow-600');
+
+      expect(getGrammarSegmentClass('fil', 'colored', 'dark', null, 'surah_103')).toContain('text-emerald-400');
+      expect(getGrammarSegmentClass('ism', 'colored', 'dark', null, 'surah_103')).toContain('text-red-400');
+      expect(getGrammarSegmentClass('harf', 'colored', 'dark', null, 'surah_103')).toContain('text-yellow-300');
+    });
+
+    it('renders plain-English visual traits, click-outside close, and passive verb forms under More details for ءَامَنُوا۟', () => {
+      const amanu = { ...surah103.ayahs['3'].words[2], ayahNumber: 3, surahNumber: 103, color_palette: 'surah_103' };
+      const handleClose = vi.fn();
       const traits = buildTraits(amanu);
       expect(traits.map((t) => `${t.label}:${t.value}`)).toEqual([
         'Time:Past',
@@ -305,18 +317,22 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       ]);
 
       render(
-        <GrammarBottomSheet
-          word={amanu}
-          theme="light"
-          onClose={vi.fn()}
-          onNavigateWord={vi.fn()}
-          hasPreviousWord={true}
-          hasNextWord={true}
-        />
+        <div>
+          <div data-testid="outside-surah-area">Outside area</div>
+          <GrammarBottomSheet
+            word={amanu}
+            theme="light"
+            onClose={handleClose}
+            onNavigateWord={vi.fn()}
+            hasPreviousWord={true}
+            hasNextWord={true}
+          />
+        </div>
       );
 
       expect(screen.getByTestId('facts-panel')).toBeInTheDocument();
-      expect(screen.getByTestId('grammar-floating-wrapper').className).toContain('bottom-8');
+      expect(screen.getByTestId('grammar-floating-wrapper').className).toContain('bottom-6');
+      expect(screen.getByRole('dialog').className).not.toContain('overscroll-contain');
       expect(screen.getByTestId('grammar-hero-stage')).toBeInTheDocument();
       expect(screen.getByTestId('hero-root-pill')).toHaveTextContent('أ · م · ن');
       expect(screen.getAllByTestId('bento-trait-card')).toHaveLength(5);
@@ -326,6 +342,26 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(screen.getByText('Male')).toBeInTheDocument();
       expect(screen.getByText('Many')).toBeInTheDocument();
       expect(screen.getByTestId('open-conjugation-modal')).toBeInTheDocument();
+
+      // Expand "More details": Word Pieces is removed; Quick Verb Forms, Passive Form, and Same Root are kept
+      fireEvent.click(screen.getByTestId('toggle-more-details'));
+      expect(screen.queryByText(/Word Pieces/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Quick Verb Forms')).toBeInTheDocument();
+      expect(screen.getByText(/Same Root/i)).toBeInTheDocument();
+      const passiveStrip = screen.getByTestId('verb-passive-strip');
+      expect(passiveStrip).toHaveTextContent('أُومِنَ');
+      expect(passiveStrip).toHaveTextContent('يُؤْمَنُ');
+      expect(handleClose).not.toHaveBeenCalled();
+
+      // Clicking inside the modal does not close it
+      fireEvent.click(screen.getByTestId('grammar-hero-stage'));
+      expect(handleClose).not.toHaveBeenCalled();
+
+      // Clicking outside the modal closes the box
+      const outside = screen.getByTestId('outside-surah-area');
+      fireEvent.pointerDown(outside);
+      fireEvent.pointerUp(outside);
+      expect(handleClose).toHaveBeenCalledTimes(1);
     });
 
     it('preserves v1 layout when opening a Surah 32 word without enhanced fields', () => {
@@ -388,9 +424,12 @@ describe('Surah 103 Enhanced Sarf Data & UI', () => {
       expect(screen.queryByTestId('ayah-structure-banner')).not.toBeInTheDocument();
     });
 
-    it('omits Ṣarf Cards toggle button on Surah 103 and Surah 32, showing it only on Surah 100', () => {
-      const { rerender } = render(<GrammarToggle surahNumber={103} />);
+    it('omits Ṣarf Cards toggle button on Surah 103 and Surah 32, showing Red/Green/Yellow dots on Surah 103', () => {
+      const { rerender, container } = render(<GrammarToggle surahNumber={103} />);
       expect(screen.queryByTestId('interlinear-toggle')).not.toBeInTheDocument();
+      expect(container.querySelector('.bg-red-600')).toBeTruthy();
+      expect(container.querySelector('.bg-emerald-600')).toBeTruthy();
+      expect(container.querySelector('.bg-yellow-500')).toBeTruthy();
 
       rerender(<GrammarToggle surahNumber={32} />);
       expect(screen.queryByTestId('interlinear-toggle')).not.toBeInTheDocument();

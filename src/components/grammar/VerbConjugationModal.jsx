@@ -51,7 +51,7 @@ const buildFallbackConjugationTable = (word) => {
         in_ayah: true
       }
     ],
-    passive: [],
+    passive: Array.isArray(verb.passive) ? verb.passive : [],
     imperative: amrBase
       ? [{ pronoun_ar: 'أَنتَ', pronoun_en: 'You (Command)', ar: amrBase, en: 'Command (Amr)!' }]
       : []

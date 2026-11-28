@@ -41,6 +41,33 @@ export const getGrammarSegmentClass = (
     return `${isDark ? shade.darkText : shade.lightText}${pulseClass}`;
   }
 
+  if (resolvedPalette === 'surah_103') {
+    if (mode === 'underline') {
+      const darkText = isDark ? ' text-slate-100' : '';
+      switch (category) {
+        case 'fil':
+          return `border-b-2 border-emerald-500 pb-0.5${darkText}`;
+        case 'ism':
+          return `border-b-2 border-red-500 pb-0.5${darkText}`;
+        case 'harf':
+          return `border-b-2 border-yellow-500 pb-0.5${darkText}`;
+        default:
+          return '';
+      }
+    }
+
+    switch (category) {
+      case 'fil':
+        return isDark ? 'text-emerald-400 font-semibold' : 'text-emerald-700 font-semibold';
+      case 'ism':
+        return isDark ? 'text-red-400 font-semibold' : 'text-red-600 font-semibold';
+      case 'harf':
+        return isDark ? 'text-yellow-300 font-semibold' : 'text-yellow-600 font-semibold';
+      default:
+        return '';
+    }
+  }
+
   if (mode === 'underline') {
     const darkText = isDark ? ' text-slate-100' : '';
     switch (category) {

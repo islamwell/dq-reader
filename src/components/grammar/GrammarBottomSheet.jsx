@@ -102,13 +102,36 @@ const CATEGORY_ACCENTS = {
       halo: 'border-blue-400/35',
       ring: 'ring-blue-500/25'
     }
+  },
+  surah_103: {
+    ism: {
+      beam: 'from-rose-500 via-red-500 to-orange-500',
+      aura: 'bg-red-500/30',
+      orb2: 'bg-rose-400/20',
+      halo: 'border-red-400/35',
+      ring: 'ring-red-500/25'
+    },
+    fil: {
+      beam: 'from-emerald-400 via-green-500 to-teal-500',
+      aura: 'bg-emerald-500/30',
+      orb2: 'bg-teal-400/20',
+      halo: 'border-emerald-400/35',
+      ring: 'ring-emerald-500/25'
+    },
+    harf: {
+      beam: 'from-yellow-400 via-amber-400 to-yellow-500',
+      aura: 'bg-yellow-400/30',
+      orb2: 'bg-amber-300/25',
+      halo: 'border-yellow-400/40',
+      ring: 'ring-yellow-400/30'
+    }
   }
 };
 
 const LEGEND = [
-  { label: 'Name', dot: 'bg-blue-500', dot100: 'bg-red-600' },
-  { label: 'Action', dot: 'bg-amber-500', dot100: 'bg-emerald-600' },
-  { label: 'Small word', dot: 'bg-emerald-500', dot100: 'bg-blue-600' }
+  { label: 'Name', dot: 'bg-blue-500', dot100: 'bg-red-600', dot103: 'bg-red-600' },
+  { label: 'Action', dot: 'bg-amber-500', dot100: 'bg-emerald-600', dot103: 'bg-emerald-600' },
+  { label: 'Small word', dot: 'bg-emerald-500', dot100: 'bg-blue-600', dot103: 'bg-yellow-500' }
 ];
 
 // [light icon badge, dark icon badge]
@@ -435,7 +458,13 @@ const FactsPanel = ({ word, theme, cardBg, dark, reduce, onOpenAyah }) => {
             transition={reduce ? { duration: 0.01 } : { duration: 0.25, ease: 'easeOut' }}
             className="overflow-hidden pt-1"
           >
-            <MorphologyTab word={word} theme={theme} cardBg={cardBg} onOpenAyah={onOpenAyah} />
+            <MorphologyTab
+              word={word}
+              theme={theme}
+              cardBg={cardBg}
+              onOpenAyah={onOpenAyah}
+              hideConjugationButton={hasVerbConjugation}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -474,7 +503,12 @@ const Sheet = ({
   const reduce = useReducedMotion();
 
   const isEnhanced = hasEnhancedData(word);
-  const palette = word.color_palette === 'surah_100' ? 'surah_100' : 'default';
+  const palette =
+    word.color_palette === 'surah_100'
+      ? 'surah_100'
+      : word.color_palette === 'surah_103' || Number(word.surahNumber) === 103
+        ? 'surah_103'
+        : 'default';
   const dark = isDarkSurface(theme);
   const drawerStyle = THEME_DRAWER_STYLES[theme] || THEME_DRAWER_STYLES.light;
   const cardBg = THEME_CARD_BG[theme] || THEME_CARD_BG.light;
@@ -528,12 +562,15 @@ const Sheet = ({
   ].filter(Boolean).join(', ');
 
   return (
-    <div
+    <motion.div
       data-testid="grammar-floating-wrapper"
-      className="fixed inset-x-0 bottom-8 sm:bottom-14 md:bottom-20 z-[70] flex justify-center px-3 sm:px-6 pointer-events-none"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.14 } }}
+      className="fixed inset-x-0 bottom-6 sm:bottom-10 md:bottom-12 z-[70] flex justify-center px-3 sm:px-6 pointer-events-none"
     >
-      {/* Elevated floating glass inspector card: positioned comfortably above the bottom edge
-          with no blocking backdrop so the glowing verse remains visible and interactive. */}
+      {/* Elevated floating glass inspector card: positioned comfortably above the bottom edge;
+          clicking outside closes the box while keeping the surah scrollable and interactive. */}
       <motion.div
         ref={dialogRef}
         tabIndex={-1}
@@ -547,11 +584,15 @@ const Sheet = ({
         onDragEnd={(_, info) => {
           if (info.offset.y > 85 || info.velocity.y > 480) onClose?.();
         }}
-        initial={reduce ? { opacity: 0 } : { y: 80, scale: 0.92, opacity: 0 }}
+        initial={reduce ? { opacity: 0 } : { y: 64, scale: 0.94, opacity: 0 }}
         animate={reduce ? { opacity: 1 } : { y: 0, scale: 1, opacity: 1 }}
-        exit={reduce ? { opacity: 0 } : { y: 65, scale: 0.94, opacity: 0 }}
+        exit={
+          reduce
+            ? { opacity: 0, transition: { duration: 0.01 } }
+            : { y: 40, scale: 0.96, opacity: 0, transition: { duration: 0.14, ease: 'easeOut' } }
+        }
         transition={reduce ? { duration: 0.01 } : { type: 'spring', damping: 24, stiffness: 320 }}
-        className={`pointer-events-auto relative w-full max-w-2xl max-h-[75vh] sm:max-h-[78vh] overflow-y-auto overscroll-contain rounded-3xl border ring-1 ${accent.ring} px-4 sm:px-7 pb-5 backdrop-blur-2xl focus:outline-none ${drawerStyle}`}
+        className={`pointer-events-auto relative w-full max-w-2xl max-h-[66vh] sm:max-h-[70vh] overflow-y-auto rounded-3xl border ring-1 ${accent.ring} px-4 sm:px-7 pb-5 backdrop-blur-2xl focus:outline-none ${drawerStyle}`}
       >
         {/* Top category-colored luminous shimmer beam */}
         <div
@@ -977,7 +1018,15 @@ const Sheet = ({
           <div className="flex items-center gap-3">
             {LEGEND.map((l) => (
               <span key={l.label} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full ${palette === 'surah_100' ? l.dot100 : l.dot}`} />
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    palette === 'surah_100'
+                      ? l.dot100
+                      : palette === 'surah_103'
+                        ? l.dot103
+                        : l.dot
+                  }`}
+                />
                 {l.label}
               </span>
             ))}
@@ -996,7 +1045,7 @@ const Sheet = ({
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -1084,6 +1133,71 @@ const GrammarBottomSheet = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [word, isEnhanced, onClose, onNavigateWord]);
+
+  // Light-dismiss when clicking or tapping outside the floating modal box
+  // (keeps the surah scrollable & lets tapping another Arabic word switch directly).
+  useEffect(() => {
+    if (!word) return undefined;
+
+    let pressedOutside = false;
+    let startedInside = false;
+    let closedViaPointer = false;
+
+    const isEventTargetIgnored = (target) => {
+      if (!target || typeof target.closest !== 'function') return false;
+      if (dialogRef.current?.contains(target)) return true;
+      if (document.querySelector('dialog[open]')) return true;
+      if (target.closest('[data-arabic-word], .grammar-word-pill, .grammar-word-card')) {
+        return true;
+      }
+      return false;
+    };
+
+    const handlePointerDown = (e) => {
+      closedViaPointer = false;
+      if (dialogRef.current?.contains(e.target)) {
+        startedInside = true;
+        pressedOutside = false;
+        return;
+      }
+      startedInside = false;
+      pressedOutside = !isEventTargetIgnored(e.target);
+    };
+
+    const handlePointerUp = (e) => {
+      if (pressedOutside && !startedInside && !isEventTargetIgnored(e.target)) {
+        closedViaPointer = true;
+        pressedOutside = false;
+        onClose?.();
+        return;
+      }
+      pressedOutside = false;
+    };
+
+    const handleDocumentClick = (e) => {
+      if (closedViaPointer) {
+        closedViaPointer = false;
+        return;
+      }
+      if (startedInside) {
+        startedInside = false;
+        return;
+      }
+      if (!isEventTargetIgnored(e.target)) {
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('click', handleDocumentClick);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [word, onClose]);
 
   // AnimatePresence stays mounted so the sheet slides out cleanly.
   return (

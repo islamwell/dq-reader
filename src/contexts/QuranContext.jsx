@@ -268,6 +268,7 @@ export const QuranProvider = ({ children }) => {
   });
   const [selectedGrammarWord, setSelectedGrammarWord] = useState(null);
   const [grammarData, setGrammarData] = useState({});
+  const grammarDataRef = useRef({});
   // Word-by-word interlinear study cards (only used by enhanced sarf datasets, e.g. Surah 103)
   const [showInterlinear, setShowInterlinearState] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -1220,7 +1221,7 @@ export const QuranProvider = ({ children }) => {
   const fetchSurahGrammar = useCallback(async (surahNumber) => {
     const sNum = parseInt(surahNumber, 10);
     if (!sNum) return null;
-    if (grammarData[sNum]) return grammarData[sNum];
+    if (grammarDataRef.current[sNum]) return grammarDataRef.current[sNum];
 
     try {
       const response = await fetch(`/data/grammar/surah_${sNum}.json`);
@@ -1228,12 +1229,13 @@ export const QuranProvider = ({ children }) => {
         return null;
       }
       const data = await response.json();
+      grammarDataRef.current = { ...grammarDataRef.current, [sNum]: data };
       setGrammarData((prev) => ({ ...prev, [sNum]: data }));
       return data;
     } catch {
       return null;
     }
-  }, [grammarData]);
+  }, []);
 
   const setDQ2AudioEnabled = useCallback((value) => {
     const normalizedValue = Boolean(value);

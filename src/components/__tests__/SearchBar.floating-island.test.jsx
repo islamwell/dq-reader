@@ -310,11 +310,9 @@ describe('SearchBar floating island behaviour', () => {
       expect(translationEl.textContent).toBe('Sample translation at the bottom that stays on a single line even when long');
       expect(translationEl.className).toContain('truncate');
 
-      // Window blur / lost capture / Escape unfreezes the HUD immediately without hanging
+      // Window blur / lost capture / Escape unmounts the HUD immediately so no overlay lingers
       fireEvent(window, new Event('blur'));
-      const hudOverlay = screen.getByTestId('scrub-hud-overlay');
-      expect(hudOverlay.className).toContain('opacity-0');
-      expect(hudOverlay.className).toContain('invisible');
+      expect(screen.queryByTestId('scrub-hud-overlay')).not.toBeInTheDocument();
 
       // Re-open scrub via Escape test and verify data-ayah-arabic canonical attribute takes precedence
       mockAyahEl.setAttribute('data-ayah-arabic', 'وَٱلْعَصْرِ إِنَّ ٱلْإِنسَـٰنَ لَفِى خُسْرٍ إِلَّا');
@@ -326,8 +324,7 @@ describe('SearchBar floating island behaviour', () => {
       expect(screen.getByTestId('scrub-arabic-words').textContent).not.toContain('إِلَّا');
 
       fireEvent.keyDown(window, { key: 'Escape' });
-      expect(screen.getByTestId('scrub-hud-overlay').className).toContain('opacity-0');
-      expect(screen.getByTestId('scrub-hud-overlay').className).toContain('invisible');
+      expect(screen.queryByTestId('scrub-hud-overlay')).not.toBeInTheDocument();
     } finally {
       mockAyahEl.remove();
     }

@@ -2,11 +2,8 @@ import React, { useState } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import {
-  getCategoryMeta,
-  getCategoryTextClass,
   isDarkSurface,
-  parseQuranRef,
-  resolveSurah100Shade
+  parseQuranRef
 } from './sarfStyles';
 import VerbConjugationModal from './VerbConjugationModal';
 
@@ -15,10 +12,6 @@ const {
   FiLink,
   FiMaximize2,
   FiGitBranch,
-  FiLayers,
-  FiBox,
-  FiCornerDownLeft,
-  FiCornerUpRight,
   FiClock,
   FiUsers,
   FiShield,
@@ -83,12 +76,6 @@ const QuickFactCard = ({ icon, label, valueArabic, valueEn, theme, cardBg, accen
       </div>
     </div>
   );
-};
-
-const getSegmentRoleMeta = (role) => {
-  if (role === 'prefix') return { icon: FiCornerDownLeft, label: 'Prefix' };
-  if (role === 'suffix') return { icon: FiCornerUpRight, label: 'Ending' };
-  return { icon: FiBox, label: 'Main Word' };
 };
 
 /* ------------------------------------------------------------------------ */
@@ -247,78 +234,23 @@ export const RootSummaryCard = ({ sarf, theme, cardBg }) => {
 /* Tabs                                                                       */
 /* ------------------------------------------------------------------------ */
 
-export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
+export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah, hideConjugationButton = false }) => {
   const [isConjugationModalOpen, setIsConjugationModalOpen] = useState(false);
   const dark = isDarkSurface(theme);
   const sarf = word.sarf;
-  const segments = word.segments || [];
-  const palette = word.color_palette || 'default';
+  const passiveForms =
+    sarf?.verb?.passive?.length
+      ? sarf.verb.passive
+      : sarf?.verb?.conjugation_table?.passive?.length
+        ? sarf.verb.conjugation_table.passive.slice(0, 2)
+        : [];
 
   return (
     <div className="space-y-4">
-      {/* 1. Word Pieces (Visual Building Blocks) */}
-      <div>
-        <SectionHeading
-          icon={FiLayers}
-          title={segments.length > 1 ? `Word Pieces (${segments.length} parts)` : 'Word Piece'}
-          theme={theme}
-          accentClass={dark ? 'text-sky-300' : 'text-blue-700'}
-        />
-        <div dir="rtl" className="flex flex-wrap gap-2">
-          {segments.map((seg, idx) => {
-            const meta = getCategoryMeta(seg.category, palette);
-            const shade = palette === 'surah_100' ? resolveSurah100Shade(seg.category, seg) : null;
-            const dotClass = shade ? shade.dot : meta.dot;
-            const roleMeta = getSegmentRoleMeta(seg.role);
-
-            return (
-              <div key={idx} className={`flex-1 min-w-[9rem] p-3 rounded-xl border ${cardBg}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`quran-text-pak !text-3xl !leading-[1.6] [text-shadow:none] ${getCategoryTextClass(
-                      seg.category,
-                      theme,
-                      seg,
-                      palette
-                    )}`}
-                  >
-                    {seg.text}
-                  </span>
-                  <div className="flex flex-col items-end gap-1" dir="ltr">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                      <SafeIcon icon={roleMeta.icon} className="text-[11px]" aria-hidden="true" />
-                      <span>{roleMeta.label}</span>
-                    </span>
-                    {shade && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                          dark ? shade.darkPill : shade.lightPill
-                        }`}
-                      >
-                        {shade.labelEn}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div dir="ltr" className="flex items-center gap-1.5 mt-1.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} aria-hidden="true" />
-                  <span className="text-xs font-bold">{seg.pos_name_en}</span>
-                </div>
-                {seg.desc_en && (
-                  <p dir="ltr" className="text-[11px] opacity-80 text-left mt-1 leading-snug">
-                    {seg.desc_en}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. Possessive Pair (Iḍāfa) when present */}
+      {/* 1. Possessive Pair (Iḍāfa) when present */}
       {word.idafa && <IdafaCard idafa={word.idafa} theme={theme} />}
 
-      {/* 3. Root & Quick Icon Facts */}
+      {/* 2. Root & Quick Icon Facts */}
       {!sarf ? (
         <div
           className={`p-4 rounded-2xl border flex items-start gap-3 ${cardBg}`}
@@ -415,10 +347,10 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
             )}
           </div>
 
-          {/* 4. Verb Conjugation Strip + Full Sub-Modal Trigger */}
+          {/* 4. Verb Conjugation Strip + Passive Forms + Full Sub-Modal Trigger */}
           {sarf.verb?.conjugation && (
-            <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-85">
                   <SafeIcon
                     icon={FiSliders}
@@ -428,19 +360,21 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                   <span>Quick Verb Forms</span>
                 </h4>
 
-                <button
-                  type="button"
-                  data-testid="open-conjugation-modal"
-                  onClick={() => setIsConjugationModalOpen(true)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
-                    dark
-                      ? 'bg-emerald-950/90 text-emerald-200 border-emerald-600 hover:bg-emerald-900'
-                      : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
-                  }`}
-                >
-                  <SafeIcon icon={FiMaximize2} className="text-xs" aria-hidden="true" />
-                  <span>Open Full Conjugation Table</span>
-                </button>
+                {!hideConjugationButton && (
+                  <button
+                    type="button"
+                    data-testid="open-conjugation-modal"
+                    onClick={() => setIsConjugationModalOpen(true)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
+                      dark
+                        ? 'bg-emerald-950/90 text-emerald-200 border-emerald-600 hover:bg-emerald-900'
+                        : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <SafeIcon icon={FiMaximize2} className="text-xs" aria-hidden="true" />
+                    <span>Open Full Conjugation Table</span>
+                  </button>
+                )}
               </div>
 
               <div dir="rtl" className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -456,12 +390,58 @@ export const MorphologyTab = ({ word, theme, cardBg, onOpenAyah }) => {
                 ))}
               </div>
 
-              <VerbConjugationModal
-                isOpen={isConjugationModalOpen}
-                onClose={() => setIsConjugationModalOpen(false)}
-                word={word}
-                theme={theme}
-              />
+              {passiveForms.length > 0 && (
+                <div
+                  data-testid="verb-passive-strip"
+                  className={`p-3 rounded-2xl border ${
+                    dark
+                      ? 'bg-emerald-950/35 border-emerald-700/50'
+                      : 'bg-emerald-50/70 border-emerald-200/90'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider opacity-85 mb-2">
+                    <SafeIcon
+                      icon={FiShield}
+                      className={dark ? 'text-emerald-300' : 'text-emerald-700'}
+                      aria-hidden="true"
+                    />
+                    <span>Passive Form (&ldquo;It was…&rdquo;)</span>
+                  </div>
+                  <div dir="rtl" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {passiveForms.map((p) => (
+                      <div
+                        key={p.label_en}
+                        className={`p-2.5 rounded-xl border text-center ${cardBg}`}
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-wider opacity-75" dir="ltr">
+                          {p.label_en}
+                        </div>
+                        <div
+                          className={`quran-text-pak !text-2xl !leading-[1.6] [text-shadow:none] font-bold ${
+                            dark ? '!text-emerald-300' : '!text-emerald-700'
+                          }`}
+                        >
+                          {p.ar}
+                        </div>
+                        {p.en && (
+                          <div className="text-xs opacity-85 mt-0.5" dir="ltr">
+                            &ldquo;{p.en}&rdquo;
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!hideConjugationButton && (
+                <VerbConjugationModal
+                  isOpen={isConjugationModalOpen}
+                  onClose={() => setIsConjugationModalOpen(false)}
+                  word={word}
+                  theme={theme}
+                />
+              )}
             </div>
           )}
 

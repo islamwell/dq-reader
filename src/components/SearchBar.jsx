@@ -230,6 +230,17 @@ const SearchBar = ({ variant = 'global' }) => {
       detachWindowScrubListeners();
       clearScrubTimers();
       const scrubState = scrubStateRef.current;
+      try {
+        const buttonEl = circleButtonRef.current;
+        if (
+          scrubState.pointerId !== null &&
+          buttonEl?.hasPointerCapture?.(scrubState.pointerId)
+        ) {
+          buttonEl.releasePointerCapture?.(scrubState.pointerId);
+        }
+      } catch {
+        // Ignore release errors
+      }
       scrubState.active = false;
       scrubState.dragging = false;
       scrubState.pointerId = null;
@@ -648,7 +659,10 @@ const SearchBar = ({ variant = 'global' }) => {
     }
 
     // Extract clean Arabic words only (never grammar POS labels, glosses, or badges)
-    let rawArabic = ayahNode.getAttribute('data-ayah-arabic') || '';
+    let rawArabic =
+      ayahNode.getAttribute('data-ayah-arabic') ||
+      ayahNode.querySelector('[data-ayah-arabic]')?.getAttribute('data-ayah-arabic') ||
+      '';
     if (!rawArabic) {
       const arabicWordNodes = ayahNode.querySelectorAll('[data-arabic-word]');
       if (arabicWordNodes.length > 0) {
@@ -670,7 +684,10 @@ const SearchBar = ({ variant = 'global' }) => {
     const arabic = truncateArabicWords(rawArabic, 5);
 
     // Extract translation line (never Tafseer), keeping full text so CSS handles single-line ellipsis
-    let translation = ayahNode.getAttribute('data-ayah-translation')?.trim() || '';
+    let translation =
+      ayahNode.getAttribute('data-ayah-translation')?.trim() ||
+      ayahNode.querySelector('[data-ayah-translation]')?.getAttribute('data-ayah-translation')?.trim() ||
+      '';
     if (!translation) {
       const explicitTranslationEl = ayahNode.querySelector('[data-ayah-translation-text]');
       if (explicitTranslationEl) {
@@ -748,7 +765,7 @@ const SearchBar = ({ variant = 'global' }) => {
       detachWindowScrubListeners();
 
       try {
-        const captureTarget = event?.currentTarget || circleButtonRef.current;
+        const captureTarget = circleButtonRef.current || event?.currentTarget;
         if (
           scrubState.pointerId !== null &&
           captureTarget?.hasPointerCapture?.(scrubState.pointerId)
@@ -1384,103 +1401,101 @@ const SearchBar = ({ variant = 'global' }) => {
       </div>
     </div>
 
-      {/* Vertical Scrub Track & Large Centered Fade-In Ayah HUD Overlay */}
-      {isScrubEnabled && (
+      {/* Vertical Scrub Track & Large Centered Fade-In Ayah HUD Overlay
+          Mounted ONLY while scrubbing or fading out so no fixed overlay lingers over the Surah. */}
+      {isScrubEnabled && (isScrubbing || hudVisible) && (
         <>
-          <div
-            aria-hidden="true"
-            className={`fixed top-6 bottom-28 left-1/2 -translate-x-1/2 z-40 w-1.5 rounded-full bg-slate-300/50 backdrop-blur-xs pointer-events-none transition-opacity duration-200 ${
-              isScrubbing ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
+          {isScrubbing && (
             <div
-              className="w-full rounded-full bg-gradient-to-b from-blue-500 to-emerald-500 transition-all duration-75"
-              style={{ height: `${scrubProgressPercent}%` }}
-            />
-          </div>
-
-          <div
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            data-testid="scrub-hud-overlay"
-            className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4 transition-opacity duration-200 ${
-              hudVisible ? 'opacity-100 visible bg-black/35' : 'opacity-0 invisible bg-transparent'
-            }`}
-            style={{
-              transform: hudVisible ? 'scale(1)' : 'scale(0.94)'
-            }}
-          >
-            <div
-              className={`relative rounded-3xl px-6 sm:px-8 py-5 shadow-2xl border backdrop-blur-xl w-full max-w-[340px] sm:max-w-md text-center transition-transform duration-200 ${hudStyles.card}`}
+              aria-hidden="true"
+              className="fixed top-6 bottom-28 left-1/2 -translate-x-1/2 z-40 w-1.5 rounded-full bg-slate-300/50 pointer-events-none transition-opacity duration-200 opacity-100"
             >
-              {scrubArabic && (
-                <div
-                  dir="rtl"
-                  lang="ar"
-                  data-testid="scrub-arabic-words"
-                  className={`quran-text-pak !text-xl sm:!text-2xl font-bold !leading-snug text-center px-1 line-clamp-2 ${hudStyles.arabicText}`}
-                  style={{
-                    color: hudStyles.arabicColor,
-                    textShadow: hudStyles.arabicShadow
-                  }}
-                >
-                  {scrubArabic}
-                </div>
-              )}
-
-              <div className={`${scrubArabic ? 'mt-2.5' : 'mt-0'} flex items-baseline justify-center gap-2`}>
-                {isHomeScrubContext && (
-                  <span
-                    data-testid="scrub-mode-badge"
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
-                      homeScrubMode === 'juz'
-                        ? 'uppercase tracking-wider border-amber-400/50 bg-amber-400/15 text-amber-300'
-                        : 'tracking-wide max-w-[170px] truncate border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-                    }`}
-                  >
-                    {homeScrubMode === 'juz' ? 'Juz' : scrubbedSurahName}
-                  </span>
-                )}
-                <span
-                  data-testid="scrub-ayah-number"
-                  className={`text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none ${
-                    isHomeScrubContext && homeScrubMode === 'surah'
-                      ? 'text-emerald-400'
-                      : hudStyles.number
-                  }`}
-                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
-                >
-                  {scrubAyah}
-                </span>
-                <span className={`text-sm sm:text-base font-semibold tabular-nums ${hudStyles.totalText}`}>
-                  / {scrubTotalItems}
-                </span>
-              </div>
-
-              {isHomeScrubContext && (
-                <div className={`mt-2 text-[11px] font-medium tracking-wide opacity-75 ${hudStyles.totalText}`}>
-                  {homeScrubMode === 'juz' ? 'Slide ← for Surah' : 'Slide → for Juz'}
-                </div>
-              )}
-
-              <div className={`mt-3 w-full h-1.5 ${hudStyles.trackBg} rounded-full overflow-hidden`}>
-                <div
-                  className={`h-full ${hudStyles.trackFill} rounded-full transition-all duration-75`}
-                  style={{ width: `${scrubProgressPercent}%` }}
-                />
-              </div>
-
-              {scrubSnippet && (
-                <p
-                  data-testid="scrub-translation"
-                  className={`mt-3 text-xs sm:text-sm truncate leading-normal px-1 ${hudStyles.snippetText}`}
-                >
-                  {scrubSnippet}
-                </p>
-              )}
+              <div
+                className="w-full rounded-full bg-gradient-to-b from-blue-500 to-emerald-500 transition-all duration-75"
+                style={{ height: `${scrubProgressPercent}%` }}
+              />
             </div>
-          </div>
+          )}
+
+          {hudVisible && (
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid="scrub-hud-overlay"
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4 transition-opacity duration-200 opacity-100 bg-black/35"
+            >
+              <div
+                className={`relative rounded-3xl px-6 sm:px-8 py-5 shadow-2xl border backdrop-blur-xl w-full max-w-[340px] sm:max-w-md text-center transition-transform duration-200 ${hudStyles.card}`}
+              >
+                {scrubArabic && (
+                  <div
+                    dir="rtl"
+                    lang="ar"
+                    data-testid="scrub-arabic-words"
+                    className={`quran-text-pak !text-xl sm:!text-2xl font-bold !leading-snug text-center px-1 line-clamp-2 ${hudStyles.arabicText}`}
+                    style={{
+                      color: hudStyles.arabicColor,
+                      textShadow: hudStyles.arabicShadow
+                    }}
+                  >
+                    {scrubArabic}
+                  </div>
+                )}
+
+                <div className={`${scrubArabic ? 'mt-2.5' : 'mt-0'} flex items-baseline justify-center gap-2`}>
+                  {isHomeScrubContext && (
+                    <span
+                      data-testid="scrub-mode-badge"
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                        homeScrubMode === 'juz'
+                          ? 'uppercase tracking-wider border-amber-400/50 bg-amber-400/15 text-amber-300'
+                          : 'tracking-wide max-w-[170px] truncate border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+                      }`}
+                    >
+                      {homeScrubMode === 'juz' ? 'Juz' : scrubbedSurahName}
+                    </span>
+                  )}
+                  <span
+                    data-testid="scrub-ayah-number"
+                    className={`text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none ${
+                      isHomeScrubContext && homeScrubMode === 'surah'
+                        ? 'text-emerald-400'
+                        : hudStyles.number
+                    }`}
+                    style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
+                  >
+                    {scrubAyah}
+                  </span>
+                  <span className={`text-sm sm:text-base font-semibold tabular-nums ${hudStyles.totalText}`}>
+                    / {scrubTotalItems}
+                  </span>
+                </div>
+
+                {isHomeScrubContext && (
+                  <div className={`mt-2 text-[11px] font-medium tracking-wide opacity-75 ${hudStyles.totalText}`}>
+                    {homeScrubMode === 'juz' ? 'Slide ← for Surah' : 'Slide → for Juz'}
+                  </div>
+                )}
+
+                <div className={`mt-3 w-full h-1.5 ${hudStyles.trackBg} rounded-full overflow-hidden`}>
+                  <div
+                    className={`h-full ${hudStyles.trackFill} rounded-full transition-all duration-75`}
+                    style={{ width: `${scrubProgressPercent}%` }}
+                  />
+                </div>
+
+                {scrubSnippet && (
+                  <p
+                    data-testid="scrub-translation"
+                    className={`mt-3 text-xs sm:text-sm truncate leading-normal px-1 ${hudStyles.snippetText}`}
+                  >
+                    {scrubSnippet}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </>

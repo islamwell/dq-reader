@@ -161,6 +161,7 @@ const Layout = () => {
 
       setSelectedGrammarWord({
         ...nextWord,
+        color_palette: nextWord.color_palette || selectedGrammarWord.color_palette,
         surahNumber: selectedGrammarWord.surahNumber,
         ayahNumber: nextAyahNumber,
         wordsInAyah: words,
@@ -255,7 +256,7 @@ const Layout = () => {
             <Link to="/credits" className="opacity-80 hover:opacity-100 hover:underline transition-opacity">Credits</Link>
           </div>
           <div className="text-xs opacity-75 font-mono">
-            v1.1.27 (updated 2026-11-26 12:04)
+            v1.1.28 (updated 2026-11-28 11:31)
           </div>
         </div>
       </footer>

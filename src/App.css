@@ -41,12 +41,11 @@
 }
 
 .ayah-card {
-  transition: all 0.3s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
   border: 2px solid transparent;
 }
 
 .ayah-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 

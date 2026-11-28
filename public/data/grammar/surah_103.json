@@ -5,6 +5,7 @@
   "total_verses": 3,
   "version": 2,
   "enhanced": true,
+  "color_palette": "surah_103",
   "sources": [
     "Quranic Arabic Corpus (corpus.quran.com) — morphology v0.4",
     "Quran.com word-by-word translation"
@@ -675,6 +676,20 @@
                   "label_en": "Active participle",
                   "ar": "مُؤْمِن"
                 }
+              ],
+              "passive": [
+                {
+                  "label_ar": "الماضي المجهول",
+                  "label_en": "Past Passive",
+                  "ar": "أُومِنَ",
+                  "en": "he / it was believed in (trusted)"
+                },
+                {
+                  "label_ar": "المضارع المجهول",
+                  "label_en": "Present Passive",
+                  "ar": "يُؤْمَنُ",
+                  "en": "he / it is believed in (trusted)"
+                }
               ]
             },
             "noun": null,
@@ -841,6 +856,20 @@
                   "label_ar": "اسم الفاعل",
                   "label_en": "Active participle",
                   "ar": "عَامِل"
+                }
+              ],
+              "passive": [
+                {
+                  "label_ar": "الماضي المجهول",
+                  "label_en": "Past Passive",
+                  "ar": "عُمِلَ",
+                  "en": "it was done / worked"
+                },
+                {
+                  "label_ar": "المضارع المجهول",
+                  "label_en": "Present Passive",
+                  "ar": "يُعْمَلُ",
+                  "en": "it is done / worked"
                 }
               ]
             },
@@ -1153,6 +1182,20 @@
                   "label_en": "Active participle",
                   "ar": "مُتَوَاصٍ"
                 }
+              ],
+              "passive": [
+                {
+                  "label_ar": "الماضي المجهول",
+                  "label_en": "Past Passive",
+                  "ar": "تُوُوصِيَ",
+                  "en": "it was mutually enjoined"
+                },
+                {
+                  "label_ar": "المضارع المجهول",
+                  "label_en": "Present Passive",
+                  "ar": "يُتَوَاصَى",
+                  "en": "it is mutually enjoined"
+                }
               ]
             },
             "noun": null,
@@ -1460,6 +1503,20 @@
                   "label_ar": "اسم الفاعل",
                   "label_en": "Active participle",
                   "ar": "مُتَوَاصٍ"
+                }
+              ],
+              "passive": [
+                {
+                  "label_ar": "الماضي المجهول",
+                  "label_en": "Past Passive",
+                  "ar": "تُوُوصِيَ",
+                  "en": "it was mutually enjoined"
+                },
+                {
+                  "label_ar": "المضارع المجهول",
+                  "label_en": "Present Passive",
+                  "ar": "يُتَوَاصَى",
+                  "en": "it is mutually enjoined"
                 }
               ]
             },

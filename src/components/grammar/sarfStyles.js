@@ -71,8 +71,40 @@ export const SURAH_100_CATEGORY_LABELS = {
   }
 };
 
+export const SURAH_103_CATEGORY_LABELS = {
+  ism: {
+    ar: 'اسم',
+    en: 'Noun',
+    dot: 'bg-red-600',
+    bar: 'bg-red-600',
+    lightBadge: 'bg-red-100 text-red-900 border-red-300',
+    darkBadge: 'bg-red-950/75 text-red-200 border-red-700'
+  },
+  fil: {
+    ar: 'فعل',
+    en: 'Verb',
+    dot: 'bg-emerald-600',
+    bar: 'bg-emerald-600',
+    lightBadge: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    darkBadge: 'bg-emerald-950/75 text-emerald-200 border-emerald-700'
+  },
+  harf: {
+    ar: 'حرف',
+    en: 'Particle',
+    dot: 'bg-yellow-500',
+    bar: 'bg-yellow-500',
+    lightBadge: 'bg-yellow-100 text-yellow-900 border-yellow-400',
+    darkBadge: 'bg-yellow-950/75 text-yellow-200 border-yellow-600'
+  }
+};
+
 export const getCategoryMeta = (category, palette = 'default') => {
-  const table = palette === 'surah_100' ? SURAH_100_CATEGORY_LABELS : CATEGORY_LABELS;
+  const table =
+    palette === 'surah_100'
+      ? SURAH_100_CATEGORY_LABELS
+      : palette === 'surah_103'
+        ? SURAH_103_CATEGORY_LABELS
+        : CATEGORY_LABELS;
   return table[category] || table.ism;
 };
 
@@ -213,6 +245,19 @@ export const getCategoryTextClass = (category, theme, item = null, palette = 'de
     return `${dark ? shade.darkText : shade.lightText}${pulse}`;
   }
 
+  if (resolvedPalette === 'surah_103') {
+    switch (category) {
+      case 'fil':
+        return dark ? 'text-emerald-400' : 'text-emerald-700';
+      case 'ism':
+        return dark ? 'text-red-400' : 'text-red-600';
+      case 'harf':
+        return dark ? 'text-yellow-300' : 'text-yellow-600';
+      default:
+        return '';
+    }
+  }
+
   switch (category) {
     case 'fil':
       return dark ? 'text-amber-300' : 'text-amber-700';
@@ -231,6 +276,10 @@ export const getCategoryBadgeClass = (category, theme, item = null, palette = 'd
     const shade = resolveSurah100Shade(category, item || {});
     return isDarkSurface(theme) ? shade.darkPill : shade.lightPill;
   }
+  if (resolvedPalette === 'surah_103') {
+    const meta = SURAH_103_CATEGORY_LABELS[category] || SURAH_103_CATEGORY_LABELS.harf;
+    return isDarkSurface(theme) ? meta.darkBadge : meta.lightBadge;
+  }
   const meta = CATEGORY_LABELS[category] || CATEGORY_LABELS.harf;
   return isDarkSurface(theme) ? meta.darkBadge : meta.lightBadge;
 };
@@ -238,6 +287,9 @@ export const getCategoryBadgeClass = (category, theme, item = null, palette = 'd
 export const getSegmentBarClass = (segment, palette = 'default') => {
   if (palette === 'surah_100') {
     return resolveSurah100Shade(segment?.category, segment).bar;
+  }
+  if (palette === 'surah_103') {
+    return SURAH_103_CATEGORY_LABELS[segment?.category]?.bar || 'bg-slate-300';
   }
   return CATEGORY_LABELS[segment?.category]?.bar || 'bg-slate-300';
 };
